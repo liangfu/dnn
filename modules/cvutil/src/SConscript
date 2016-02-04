@@ -1,0 +1,29 @@
+
+import os
+
+print os.getcwd()
+source_list=filter(lambda x:x[-4:]=='.cpp',os.listdir(os.getcwd()))
+print source_list
+header_list=filter(lambda x:x[-2:]=='.h',os.listdir('../include'))
+print header_list
+
+env=Environment()
+
+env.Append(CPPPATH = ['.','/usr/include','../include',
+                      '../extern/cxcore/include',
+                      '../extern/cv/include',
+                      '../extern/highgui/include'])
+debug = ARGUMENTS.get('debug', 1)
+win32 = ARGUMENTS.get('win32', 0)
+if int(debug):
+  env.Append(CPPFLAGS = ['-g','-Wall'])
+  env.Append(OBJPREFIX = '.obj_debug/')
+else:
+  env.Append(CPPFLAGS = ['-O2','-Wall'])
+  env.Append(OBJPREFIX = '.obj_release/')
+    
+env.Append(LIBS = ['cxcore','cv','highgui'])
+env.Append(LIBPATH = ['/usr/lib'])
+env.Append(RPATH = ['/usr/lib','.'])
+
+env.SharedLibrary(target='../lib/compvis',source=source_list,header=header_list)
