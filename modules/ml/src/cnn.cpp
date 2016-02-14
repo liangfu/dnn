@@ -119,12 +119,10 @@ static void icvCNNFullConnectBackward( CvCNNLayer* layer, int,
 *                              Classifier functions                                      *
 \****************************************************************************************/
 // the cvCreateStatModel function can be found nowhere, so I try to implement it - lxts
-ML_IMPL CvCNNStatModel*	
-cvCreateCNNStatModel(
-        int flag, int size,
-        CvCNNStatModelRelease release,
-		CvCNNStatModelPredict predict,
-		CvCNNStatModelUpdate update)
+ML_IMPL CvCNNStatModel*	cvCreateCNNStatModel(int flag, int size)// ,
+    // CvCNNStatModelRelease release,
+		// CvCNNStatModelPredict predict,
+		// CvCNNStatModelUpdate update)
 {
 	CvCNNStatModel *p_model;
 	CV_FUNCNAME("cvCreateStatModel");
@@ -134,8 +132,8 @@ cvCreateCNNStatModel(
 	CV_CALL(p_model = (CvCNNStatModel*) cvAlloc(sizeof(*p_model)));
 	memset(p_model, 0, sizeof(*p_model));
 	p_model->release = icvCNNModelRelease; //release;
-	p_model->update = NULL;
-	p_model->predict = NULL;
+	p_model->update = icvCNNModelUpdate;// NULL;
+	p_model->predict = icvCNNModelPredict;// NULL;
 
 	__CV_END__;
 
@@ -241,8 +239,8 @@ cvTrainCNNClassifier( const CvMat* _train_data, int tflag,
 	CvCNNStatModelParams* params = (CvCNNStatModelParams*) _params;
 
     CV_CALL(cnn_model = (CvCNNStatModel*)cvCreateCNNStatModel(
-        CV_STAT_MODEL_MAGIC_VAL|CV_CNN_MAGIC_VAL, sizeof(CvCNNStatModel),
-        icvCNNModelRelease, NULL, NULL ));
+    CV_STAT_MODEL_MAGIC_VAL|CV_CNN_MAGIC_VAL, sizeof(CvCNNStatModel)));// ,
+        // icvCNNModelRelease, NULL, NULL ));
 
 	CV_CALL( out_train_data =
                 cvGetTrainSamples( _train_data, tflag, NULL, NULL,
@@ -254,7 +252,7 @@ cvTrainCNNClassifier( const CvMat* _train_data, int tflag,
 	cnn_model->network = params->network;
 	CV_CALL(cnn_model->etalons = (CvMat*) cvCloneMat(params->etalons));
 
-    CV_CALL( icvTrainCNNetwork( cnn_model->network, out_train_data, _responses,
+  CV_CALL( icvTrainCNNetwork( cnn_model->network, out_train_data, _responses,
         cnn_model->etalons, params->grad_estim_type, params->max_iter,
         params->start_iter ));
 
@@ -279,11 +277,11 @@ static void icvTrainCNNetwork( CvCNNetwork* network,
                                int max_iter,
                                int start_iter )
 {
-    CvMat** X     = 0;
-    CvMat** dE_dX = 0;
-    CvMat** d2E_dX2 = 0;
-    const int n_layers = network->n_layers;
-    int k;
+  CvMat** X     = 0;
+  CvMat** dE_dX = 0;
+  CvMat** d2E_dX2 = 0;
+  const int n_layers = network->n_layers;
+  int k;
 
 	CV_FUNCNAME("icvTrainCNNetwork");
 	__CV_BEGIN__;
@@ -305,8 +303,8 @@ static void icvTrainCNNetwork( CvCNNetwork* network,
 
 	CvMat* mattemp;
 	mattemp = cvCreateMat(etalons->cols, 1, CV_32FC1);
-	fplog = fopen("log_mlcnn.txt", "w");
-	fpprogress = fopen("training_progress.txt", "w");
+	fplog = stderr;//fopen("log_mlcnn.txt", "w");
+	fpprogress = stderr;//fopen("training_progress.txt", "w");
 
 	CV_CALL(X = (CvMat**) cvAlloc((n_layers + 1) * sizeof(CvMat*)));
 	CV_CALL(dE_dX = (CvMat**) cvAlloc((n_layers + 1) * sizeof(CvMat*)));
@@ -315,27 +313,27 @@ static void icvTrainCNNetwork( CvCNNetwork* network,
 	memset(dE_dX, 0, (n_layers + 1) * sizeof(CvMat*));
 	memset(d2E_dX2, 0, (n_layers + 1) * sizeof(CvMat*));
 
-    CV_CALL(X[0] = cvCreateMat( img_height*img_width,1,CV_32FC1 ));
-    CV_CALL(dE_dX[0] = cvCreateMat( 1, X[0]->rows, CV_32FC1 ));
-    CV_CALL(d2E_dX2[0] = cvCreateMat( 1, X[0]->rows, CV_32FC1 ));
-    for( k = 0, layer = first_layer; k < n_layers; k++, layer = layer->next_layer ){
-        CV_CALL(X[k+1] = cvCreateMat( layer->n_output_planes*layer->output_height*layer->output_width, 1, CV_32FC1 ));
-        CV_CALL(dE_dX[k+1] = cvCreateMat( 1, X[k+1]->rows, CV_32FC1 ));
-        CV_CALL(d2E_dX2[k+1] = cvCreateMat( 1, X[k+1]->rows, CV_32FC1 ));
-    }
+  CV_CALL(X[0] = cvCreateMat( img_height*img_width,1,CV_32FC1 ));
+  CV_CALL(dE_dX[0] = cvCreateMat( 1, X[0]->rows, CV_32FC1 ));
+  CV_CALL(d2E_dX2[0] = cvCreateMat( 1, X[0]->rows, CV_32FC1 ));
+  for( k = 0, layer = first_layer; k < n_layers; k++, layer = layer->next_layer ){
+    CV_CALL(X[k+1] = cvCreateMat( layer->n_output_planes*layer->output_height*layer->output_width, 1, CV_32FC1 ));
+    CV_CALL(dE_dX[k+1] = cvCreateMat( 1, X[k+1]->rows, CV_32FC1 ));
+    CV_CALL(d2E_dX2[k+1] = cvCreateMat( 1, X[k+1]->rows, CV_32FC1 ));
+  }
 
-    for( n = 1; n <= max_iter; n++ ) {
+  for( n = 1; n <= max_iter; n++ ) {
 
-        float loss, max_loss = 0;
-        int i;
-        int worst_img_idx = -1;
-        int* right_etal_idx = responses->data.i;
-        CvMat etalon;
+    float loss, max_loss = 0;
+    int i;
+    int worst_img_idx = -1;
+    int* right_etal_idx = responses->data.i;
+    CvMat etalon;
 
 		const int numSamples = n_images;
 
 		rewind(fpprogress);
-		fprintf(fpprogress,"%d/%d = %f",n,max_iter,float(n)/float(max_iter));
+		fprintf(fpprogress,"%d/%d = %f,",n,max_iter,float(n)/float(max_iter));
 		fflush(fpprogress);
 		// Find the worst image (which produces the greatest loss) or use the random image
 		if (grad_estim_type == CV_CNN_GRAD_ESTIM_BY_WORST_IMG) {
@@ -344,15 +342,16 @@ static void icvTrainCNNetwork( CvCNNetwork* network,
 				image.data.fl = (float*) images[i];
 				cvTranspose(&image, X[0]);
 
-				for (k = 0, layer = first_layer; k < n_layers; k++, layer =	layer->next_layer)
+				for (k = 0, layer = first_layer; k < n_layers;
+               k++, layer = layer->next_layer){
 					CV_CALL(layer->forward(layer, X[k], X[k + 1]));
-
+        }
 				cvTranspose(X[n_layers], dE_dX[n_layers]);
-#ifdef TRAINFACE
-				cvGetRow( responses, &etalon, worst_img_idx);
-#else
+// #ifdef TRAINFACE
+// 				cvGetRow( responses, &etalon, worst_img_idx);
+// #else
 				cvGetRow(etalons, &etalon, *right_etal_idx);
-#endif
+// #endif
 
 				loss = (float) cvNorm(dE_dX[n_layers], &etalon);
 				if (loss > max_loss) {
@@ -369,34 +368,37 @@ static void icvTrainCNNetwork( CvCNNetwork* network,
 
 		CV_CALL(cvTranspose(&image, X[0]));
 
-        for( k = 0, layer = first_layer; k < n_layers - 1; k++, layer = layer->next_layer )
-            CV_CALL(layer->forward( layer, X[k], X[k+1] ));
-        CV_CALL(layer->forward( layer, X[k], X[k+1] ));
+    for( k = 0, layer = first_layer; k < n_layers - 1; k++, layer = layer->next_layer ){
+      CV_CALL(layer->forward( layer, X[k], X[k+1] ));
+    }
+    CV_CALL(layer->forward( layer, X[k], X[k+1] ));
 
 		// 2) Compute the gradient
 		cvTranspose(X[n_layers], dE_dX[n_layers]);
 		//cvGetRow(etalon)
 
-#ifdef TRAINFACE
-		cvGetRow(responses, &etalon, worst_img_idx);
-#else
+// #ifdef TRAINFACE
+// 		cvGetRow(responses, &etalon, worst_img_idx);
+// #else
 		cvGetRow(etalons, &etalon, (int) responses->data.fl[worst_img_idx]);
-#endif
+// #endif
 
 		cvSub(dE_dX[n_layers], &etalon, dE_dX[n_layers]);
 
-		for (i = 0; i < d2E_dX2[n_layers]->cols; i++)
+		for (i = 0; i < d2E_dX2[n_layers]->cols; i++){
 			d2E_dX2[n_layers]->data.fl[i] = 1.0f;
+    }
 
 		// 3) Update weights by the gradient descent
-        for( k = n_layers; k > 0; k--, layer = layer->prev_layer )
-            CV_CALL(layer->backward( layer, n + start_iter, X[k-1], X[k], dE_dX[k], dE_dX[k-1], d2E_dX2[k], d2E_dX2[k-1] ));
+    for( k = n_layers; k > 0; k--, layer = layer->prev_layer ){
+      CV_CALL(layer->backward( layer, n + start_iter, X[k-1], X[k], dE_dX[k], dE_dX[k-1], d2E_dX2[k], d2E_dX2[k-1] ));
+    }
 
 		cvTranspose(&etalon, mattemp);
 		trloss = (float) cvNorm(X[n_layers], mattemp);
 		sumloss += trloss;
 		fflush(fplog);
-		fprintf(fplog, "%f\n", sumloss / n);
+		fprintf(fplog, "loss: %f\n", sumloss / n);
 
 		if (n % numSamples == 0) {
 			FILE *fpweights;
@@ -439,8 +441,8 @@ static void icvTrainCNNetwork( CvCNNetwork* network,
 		}
 	}
 
-	fclose(fpprogress);
-	fclose(fplog);
+	// fclose(fpprogress);
+	// fclose(fplog);
 	cvReleaseMat(&mattemp);
 
 	__CV_END__;

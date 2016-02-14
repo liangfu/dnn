@@ -74,6 +74,7 @@ int main(int argc, char * argv[])
 
   const char * pretrained_filename = "../data/mnist/pretrained.xml";
 
+  fprintf(stderr,"Loading MNIST Images ...\n");
   CvMat * training = read_Mnist_Images((char*)training_filename);
   CvMat * response = read_Mnist_Labels((char*)response_filename);
   CvMat * testing = read_Mnist_Images((char*)testing_filename);
@@ -82,9 +83,9 @@ int main(int argc, char * argv[])
   int nr = sqrt(training->cols);
   int nc = nr;
   assert(training->cols==nr*nc);
+  fprintf(stderr,"%d Images in %dx%d Loaded!\n",training->rows,nr,nc);
 
-  cvPrintf(stderr,"%d,",response,cvRect(0,0,1,10));
-
+  // cvPrintf(stderr,"%d,",response,cvRect(0,0,1,10));
   // {
   // CvMat * sample = cvCreateMat(nr,nc,CV_32F);
   // memcpy(sample->data.ptr,training->data.ptr,sizeof(float)*nr*nc);
@@ -93,26 +94,25 @@ int main(int argc, char * argv[])
   // cvReleaseMat(&sample);
   // }
 
-  ConvNN * cnn = new ConvNN(28,28,4,4,.8);
+  ConvNN * cnn = new ConvNN(28,28,4,4,.05/*alpha*/,1000/*maxiter*/);
   cnn->createCNN();
-  cnn->trainNN(training,response);
-
+  cnn->trainNN(training,response,testing,expected);
   cnn->writeCNNParams(pretrained_filename);
 
   CNNIO * cnnio = new CNNIO();
   cnnio->init(3,1,1,cnn);
-
-  CvMat * result = cvCreateMat(testing->rows,1,CV_32F);
-  //cnnio->fpredict = icvCNNModelPredict(cnn->m_cnn,testing,cnnio->output);
-  //cnn->m_cnn->predict
-  CvMat testing_stub;
-  // CvMat * testing1 = cvGetSubRect();
-  // float clslabel = icvCNNModelPredict(cnn->m_cnn,testing,result);
   
-  // fprintf(stderr,"class label: %d\n",clslabel);
-  // cvPrintf(stderr,"%f,",result);
-  // cvReleaseMat(&result);
-
+  CvMat * result = cvCreateMat(10,1,CV_32F);
+  for (int i=0;i<10;i++){
+    CvMat testing_stub;
+    cvGetSubRect(testing,&testing_stub,cvRect(0,i,nr*nc,1));
+    icvCNNModelPredict(cnn->m_cnn,&testing_stub,result);
+    double minval,maxval;CvPoint minloc,maxloc;
+    cvMinMaxLoc(result,&minval,&maxval,&minloc,&maxloc);
+    fprintf(stderr,"class label: %d, expect: %d\n",maxloc.y,expected->data.ptr[i]);
+    cvPrintf(stderr,"%f,",result);
+  }
+  cvReleaseMat(&result);
 
   cvReleaseMat(&training);
 

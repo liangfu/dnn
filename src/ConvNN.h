@@ -23,7 +23,7 @@ class ConvNN
 {
 public:
 	ConvNN(void);
-	ConvNN(int height, int width, int node, int cNode, double learningRate);
+	ConvNN(int height, int width, int node, int cNode, double alpha, int maxiter);
 	~ConvNN(void);
 
     /** \brief Create CNN models
@@ -61,7 +61,8 @@ public:
      * @param trainingData an integer argument.
      * @param responseMat a constant character pointer.
      */
-	void trainNN(CvMat *trainingData, CvMat *responseMat);
+	void trainNN(CvMat *trainingData, CvMat *responseMat,
+               CvMat *testingData, CvMat *expectedMat);
 
   void predictNN(CvMat * inputData, CvMat ** resultData);
 };

@@ -53,14 +53,15 @@ ConvNN::ConvNN(void)
 	cnn_train = 0;
 }
 
-ConvNN::ConvNN(int height, int width, int node, int cNode, double learningRate)
+ConvNN::ConvNN(int height, int width, int node, int cNode,
+               double alpha, int maxiter)
 {
 	m_clipHeight = height;
 	m_clipWidth  = width;
 	m_nNode = node;
 	m_connectNode = cNode;
-	m_learningRate = learningRate;
-	m_max_iter = 10;
+	m_learningRate = alpha;
+	m_max_iter = maxiter;
 }
 
 ConvNN::~ConvNN(void)
@@ -113,14 +114,12 @@ void ConvNN::createCNN()/*(int nSample, float maxIter,
 	a = 1;
 	s = 1;
 
-
-
 	CV_FUNCNAME("CNNTrainThread_Simard");
 	__CV_BEGIN__;
 
 	CV_CALL(m_cnn = (CvCNNStatModel*)cvCreateCNNStatModel(
-		CV_STAT_MODEL_MAGIC_VAL|CV_CNN_MAGIC_VAL, sizeof(CvCNNStatModel),
-		NULL, NULL, NULL ));
+      CV_STAT_MODEL_MAGIC_VAL|CV_CNN_MAGIC_VAL, sizeof(CvCNNStatModel)));//,
+		// NULL, NULL, NULL ));
 
 	CV_CALL(layer = cvCreateCNNConvolutionLayer(
 		n_input_planes, input_height, input_width, n_output_planes, K,a,s,
@@ -230,8 +229,6 @@ void ConvNN::LoadCNNParams(string inFile/*string inFile, int nSample, float maxI
 									  int output_width, float learn_rate, int learn_type, int delat_w_increase_type, 
 									  int  P_K, int P_a, int P_s*/)
 {
-
-
 	float a,s;
 	int n_input_planes, input_height, input_width;
 	int n_output_planes, output_height, output_width;
@@ -241,8 +238,6 @@ void ConvNN::LoadCNNParams(string inFile/*string inFile, int nSample, float maxI
 	int nsamples;
 	int maxiters;
 	int K;
-
-
 
 	CvMat* weights_C1;
 	CvMat* weights_C2;
@@ -254,7 +249,6 @@ void ConvNN::LoadCNNParams(string inFile/*string inFile, int nSample, float maxI
 
 	weights_C1 = cvCreateMat( 6*26, 1, CV_32FC1 );
 	weights_C2 = cvCreateMat( 50*(6*25+1), 1, CV_32FC1 );
-
 
 	input_height = ((m_clipHeight-3)/2-3)/2;
 	input_width  = ((m_clipWidth -3)/2-3)/2;
@@ -328,15 +322,12 @@ void ConvNN::LoadCNNParams(string inFile/*string inFile, int nSample, float maxI
 	a = 1.0f;
 	s = 1.0f;
 
-
-
 	CV_FUNCNAME("OnButtonCNNTest");
 	__CV_BEGIN__;
 
-
 	CV_CALL(m_cnn = (CvCNNStatModel*)cvCreateCNNStatModel(
-		CV_STAT_MODEL_MAGIC_VAL|CV_CNN_MAGIC_VAL, sizeof(CvCNNStatModel),
-		NULL, NULL, NULL ));
+      CV_STAT_MODEL_MAGIC_VAL|CV_CNN_MAGIC_VAL, sizeof(CvCNNStatModel)));// ,
+		// NULL, NULL, NULL ));
 
 	CV_CALL(layer = cvCreateCNNConvolutionLayer(
 		n_input_planes, input_height, input_width, n_output_planes, K,a,s,
@@ -393,7 +384,8 @@ void ConvNN::LoadCNNParams(string inFile/*string inFile, int nSample, float maxI
 	cvReleaseMat( &connect_mask );
 }
 
-void ConvNN::trainNN(CvMat *trainingData, CvMat *responseMat)
+void ConvNN::trainNN(CvMat *trainingData, CvMat *responseMat,
+                     CvMat *testingData, CvMat *expectedMat)
 {
 	int i, j;	
 
@@ -401,17 +393,17 @@ void ConvNN::trainNN(CvMat *trainingData, CvMat *responseMat)
 	params.cls_labels = cvCreateMat( 12, 12, CV_32FC1 );
 
 	params.etalons = cvCreateMat( 12, 12, CV_32FC1 );
-	for(i=0;i<12;i++)
-	{
-		for(j=0;j<12;j++)
+	for(i=0;i<12;i++){
+		for(j=0;j<12;j++){
 			cvmSet(params.etalons,i,j,(double)-1.0);
+    }
 		cvmSet(params.etalons,i,i,(double)1.0);
 	}
 
-	for(i=0;i<12;i++)
-	{
-		for(j=0;j<12;j++)
+	for(i=0;i<12;i++){
+		for(j=0;j<12;j++){
 			cvmSet(params.cls_labels,i,j,(double)1.0);
+    }
 	}
 	params.network = m_cnn->network;
 	params.start_iter=0;

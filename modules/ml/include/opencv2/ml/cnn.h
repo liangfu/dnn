@@ -296,8 +296,13 @@ struct CvCNNStatModel;
 typedef float (CV_CDECL *CvCNNStatModelPredict)
 (const CvCNNStatModel *,const CvMat *,CvMat *);
 
-typedef void (CV_CDECL *CvCNNStatModelUpdate)
-    (CvCNNStatModel *,const CvMat *,int,const CvMat *,const CvCNNStatModelParams *,const CvMat *,const CvMat *,const CvMat *,const CvMat *);
+// typedef void (CV_CDECL *CvCNNStatModelUpdate)
+//     (CvCNNStatModel *,const CvMat *,int,const CvMat *,const CvCNNStatModelParams *,const CvMat *,const CvMat *,const CvMat *,const CvMat *);
+typedef void (CV_CDECL *CvCNNStatModelUpdate)(
+        CvStatModel* _cnn_model, const CvMat* _train_data, int tflag,
+        const CvMat* _responses, const CvStatModelParams* _params,
+        const CvMat*, const CvMat* _sample_idx,
+        const CvMat*, const CvMat* );
 typedef void (CV_CDECL *CvCNNStatModelRelease)
     (CvCNNStatModel **);
 
@@ -371,12 +376,10 @@ typedef void (CV_CDECL *CvStatModelEstimateReset)
                     ( CvStatModel* estimateModel );
 
 //added by lxts on june-28-2008
-CVAPI(CvCNNStatModel*)
-cvCreateCNNStatModel(
-        int flag, int size,
-        CvCNNStatModelRelease release,
-		CvCNNStatModelPredict predict,
-		CvCNNStatModelUpdate update);
+CVAPI(CvCNNStatModel*) cvCreateCNNStatModel(int flag, int size);// ,
+    // CvCNNStatModelRelease release,
+		// CvCNNStatModelPredict predict,
+		// CvCNNStatModelUpdate update);
 
 // CVAPI(CvMat*) icvCNNModelPredict( const CvCNNStatModel* model,
 // 								  const CvMat* _image,
