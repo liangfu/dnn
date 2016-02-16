@@ -94,23 +94,23 @@ void ConvNN::createCNN()/*(int nSample, float maxIter,
 	int nsamples;
 	int maxiters;
 	int K;
-
+  int sub_samp_size;
+  
 	CvCNNLayer     * layer;
 
 	n_input_planes  = 1;
-	input_height    = m_clipHeight;//m_clipHeight;
-	input_width     = m_clipWidth;//m_clipWidth;
-	n_output_planes = 6;
-	//n_output_planes = 7;
-	output_height   = (m_clipHeight-3)/2;
-	output_width    = (m_clipWidth-3)/2;
-	init_learn_rate = m_learningRate;//m_learningRate;
+	input_height    = m_clipHeight;
+	input_width     = m_clipWidth;
+	n_output_planes = 20;
+	K = 5;
+	output_height   = input_height-K+1; // (m_clipHeight-3)/2;//
+	output_width    = input_width-K+1; // (m_clipWidth-3)/2;//
+	init_learn_rate = m_learningRate;
 	learn_type = CV_CNN_LEARN_RATE_DECREASE_SQRT_INV;//CV_CNN_LEARN_RATE_DECREASE_HYPERBOLICALLY;
-	delta_w_increase_type = CV_CNN_DELTA_W_INCREASE_LM;//CV_CNN_DELTA_W_INCREASE_FIRSTORDER;
-	//	delta_w_increase_type = CV_CNN_DELTA_W_INCREASE_FIRSTORDER;//CV_CNN_DELTA_W_INCREASE_LM;
+	// delta_w_increase_type = CV_CNN_DELTA_W_INCREASE_LM;//CV_CNN_DELTA_W_INCREASE_FIRSTORDER;
+	delta_w_increase_type = CV_CNN_DELTA_W_INCREASE_FIRSTORDER;//CV_CNN_DELTA_W_INCREASE_LM;
 	nsamples = 1;//NSAMPLES;
 	maxiters = m_max_iter;//MAX_ITER;
-	K = 5;
 	a = 1;
 	s = 1;
 
@@ -121,28 +121,45 @@ void ConvNN::createCNN()/*(int nSample, float maxIter,
       CV_STAT_MODEL_MAGIC_VAL|CV_CNN_MAGIC_VAL, sizeof(CvCNNStatModel)));//,
 		// NULL, NULL, NULL ));
 
+  // 20 @ 28x28
 	CV_CALL(layer = cvCreateCNNConvolutionLayer(
 		n_input_planes, input_height, input_width, n_output_planes, K,a,s,
 		init_learn_rate, learn_type, delta_w_increase_type, nsamples, maxiters, connect_mask, NULL ));
 	CV_CALL(m_cnn->network = cvCreateCNNetwork( layer ));
 
-	//n_input_planes  = 7;
-	n_input_planes  = 6;
-	input_height    = (m_clipHeight-3)/2;
-	input_width     = (m_clipWidth-3)/2;
+  // 20 @ 14x14
+  sub_samp_size=2;
+	CV_CALL(layer = cvCreateCNNSubSamplingLayer(
+      n_output_planes, output_height, output_width, sub_samp_size,a,s,
+      init_learn_rate, learn_type, delta_w_increase_type,
+      nsamples, maxiters, NULL));
+	CV_CALL(m_cnn->network->add_layer( m_cnn->network, layer ));
+
+	n_input_planes  = n_output_planes;
+	input_height    = output_height/sub_samp_size;//(m_clipHeight-3)/2;//
+	input_width     = output_width/sub_samp_size;//(m_clipWidth-3)/2;//
 	n_output_planes = 50;
-	//n_output_planes = 60;
-	output_height   = (input_height-3)/2;
-	output_width    = (input_width -3)/2;
-	init_learn_rate = m_learningRate;
 	K = 5;
+	output_height   = input_height-K+1; // (input_height-3)/2;//
+	output_width    = input_width-K+1; // (input_width -3)/2;//
+	init_learn_rate = m_learningRate;
 
-
+  // 50 @ 14x14
 	CV_CALL(layer = cvCreateCNNConvolutionLayer(
 		n_input_planes, input_height, input_width, n_output_planes, K,a,s,
 		init_learn_rate, learn_type, delta_w_increase_type, nsamples, maxiters, connect_mask, NULL ));
 	CV_CALL(m_cnn->network->add_layer( m_cnn->network, layer ));
 
+  sub_samp_size=2;
+	CV_CALL(layer = cvCreateCNNSubSamplingLayer(
+      n_output_planes, output_height, output_width, sub_samp_size,a,s,
+      init_learn_rate, learn_type, delta_w_increase_type,
+      nsamples, maxiters, NULL));
+	CV_CALL(m_cnn->network->add_layer( m_cnn->network, layer ));
+
+	output_height   = output_height/sub_samp_size; // (input_height-3)/2;
+	output_width    = output_width/sub_samp_size; // (input_width -3)/2;
+  
 	n_input_planes  = n_output_planes * output_height* output_width;
 	n_output_planes = m_connectNode;
 	init_learn_rate = m_learningRate;
@@ -166,62 +183,60 @@ void ConvNN::createCNN()/*(int nSample, float maxIter,
 
 void ConvNN::writeCNNParams(string outFile)
 {
-	FILE *fpweights;
-	CvCNNConvolutionLayer* templayer;
+	FILE * fpweights;
+	CvCNNConvolutionLayer * layer;
 	int i,j;
-
-	if(m_cnn == NULL)
-	{
+  CvFileStorage * fs = cvOpenFileStorage(outFile.c_str(),0,CV_STORAGE_WRITE);
+  
+	if(m_cnn == NULL){
 		printf("error! CNN has not been built yet\n");
 		exit(0);
 	}
 
-	templayer=(CvCNNConvolutionLayer*)m_cnn->network->layers;
-	if((fpweights=fopen(outFile.c_str(),"w"))==NULL)
-	{
-		printf("Can not open file to store CNN weights\n");
-		exit(0);
+	if((fpweights=fopen(outFile.c_str(),"w"))==NULL){
+		printf("Can not open file to store CNN weights\n");exit(0);
 	}
-	//str.Format("weight size: %d,%d",templayer->weights->rows,templayer->weights->cols);
-	fprintf(fpweights,"weights of 1st layer weight size: %d,%d\n",templayer->weights->rows,templayer->weights->cols);
-	for(i=0;i<templayer->weights->rows;i++)
-	{
-		for(j=0;j<templayer->weights->cols;j++)
-		{
-			fprintf(fpweights,"%f\n",cvmGet(templayer->weights,i,j));
-		}
-	}
-	templayer=(CvCNNConvolutionLayer*)m_cnn->network->layers->next_layer;
-	fprintf(fpweights,"weights of 2nd layer weight size: %d,%d\n",templayer->weights->rows,templayer->weights->cols);
-	//fprintf(fpweights,"weights of 2nd layer %s:\n",str);
-	for(i=0;i<templayer->weights->rows;i++)
-	{
-		for(j=0;j<templayer->weights->cols;j++)
-		{
-			fprintf(fpweights,"%f\n",cvmGet(templayer->weights,i,j));
-		}
-	}
-	templayer=(CvCNNConvolutionLayer*)m_cnn->network->layers->next_layer->next_layer;
-	fprintf(fpweights,"weights of 3rd layer weight size: %d,%d\n",templayer->weights->rows,templayer->weights->cols);
-	for(i=0;i<templayer->weights->rows;i++)
-	{
-		for(j=0;j<templayer->weights->cols;j++)
-		{
-			fprintf(fpweights,"%f\n",cvmGet(templayer->weights,i,j));
-		}
-	}
-	templayer=(CvCNNConvolutionLayer*)m_cnn->network->layers->next_layer->next_layer->next_layer;
-	fprintf(fpweights,"weights of 4th layer weight size: %d,%d\n",templayer->weights->rows,templayer->weights->cols);
-	//fprintf(fpweights,"weights of 2nd layer %s:\n",str);
-	for(i=0;i<templayer->weights->rows;i++)
-	{
-		for(j=0;j<templayer->weights->cols;j++)
-		{
-			fprintf(fpweights,"%f\n",cvmGet(templayer->weights,i,j));
-		}
-	}
+  
+	layer=(CvCNNConvolutionLayer*)m_cnn->network->layers;
+  cvWrite(fs,"conv1",layer->weights);
+  cvWrite(fs,"pool1",layer->next_layer->weights);
+  cvWrite(fs,"conv2",layer->next_layer->next_layer->weights);
+  cvWrite(fs,"pool2",layer->next_layer->next_layer->next_layer->weights);
+
+	// layer=(CvCNNConvolutionLayer*)m_cnn->network->layers;
+  // fprintf(fpweights,"weights of 1st layer weight size: %d,%d\n",layer->weights->rows,layer->weights->cols);
+	// for(i=0;i<layer->weights->rows;i++){
+	// 	for(j=0;j<layer->weights->cols;j++){
+	// 		fprintf(fpweights,"%f\n",cvmGet(layer->weights,i,j));
+	// 	}
+	// }
+  
+	// layer=(CvCNNConvolutionLayer*)m_cnn->network->layers->next_layer;
+	// fprintf(fpweights,"weights of 2nd layer weight size: %d,%d\n",layer->weights->rows,layer->weights->cols);
+	// for(i=0;i<layer->weights->rows;i++){
+	// 	for(j=0;j<layer->weights->cols;j++){
+	// 		fprintf(fpweights,"%f\n",cvmGet(layer->weights,i,j));
+	// 	}
+	// }
+  
+	// layer=(CvCNNConvolutionLayer*)m_cnn->network->layers->next_layer->next_layer;
+	// fprintf(fpweights,"weights of 3rd layer weight size: %d,%d\n",layer->weights->rows,layer->weights->cols);
+	// for(i=0;i<layer->weights->rows;i++){
+	// 	for(j=0;j<layer->weights->cols;j++){
+	// 		fprintf(fpweights,"%f\n",cvmGet(layer->weights,i,j));
+	// 	}
+	// }
+  
+	// layer=(CvCNNConvolutionLayer*)m_cnn->network->layers->next_layer->next_layer->next_layer;
+	// fprintf(fpweights,"weights of 4th layer weight size: %d,%d\n",layer->weights->rows,layer->weights->cols);
+	// for(i=0;i<layer->weights->rows;i++){
+	// 	for(j=0;j<layer->weights->cols;j++){
+	// 		fprintf(fpweights,"%f\n",cvmGet(layer->weights,i,j));
+	// 	}
+	// }
 
 	fclose(fpweights);
+  cvReleaseFileStorage(&fs);
 }
 
 void ConvNN::LoadCNNParams(string inFile/*string inFile, int nSample, float maxIter, 

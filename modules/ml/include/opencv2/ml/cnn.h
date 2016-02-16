@@ -203,12 +203,12 @@ typedef struct CvCNNLayer
     CV_CNN_LAYER_FIELDS();
 }CvCNNLayer;
 
-#define CV_STAT_MODEL_PARAM_FIELDS() \
-      int flags
+// #define CV_STAT_MODEL_PARAM_FIELDS() int flags
 
 typedef struct CvStatModelParams
 {
-  CV_STAT_MODEL_PARAM_FIELDS();
+  // CV_STAT_MODEL_PARAM_FIELDS();
+  int flags;
 } CvStatModelParams;
 
 typedef struct CvCNNConvolutionLayer
@@ -274,18 +274,21 @@ typedef struct CvCNNetwork
     CvCNNetworkRelease release;
 }CvCNNetwork;
 
-#define CV_STAT_MODEL_PARAM_FIELDS() CvMat* cls_labels   //add by lxts on jun-22-2008
+//add by lxts on jun-22-2008
+// #define CV_STAT_MODEL_PARAM_FIELDS() CvMat * cls_labels
 
 typedef struct CvCNNStatModelParams
 {
-    CV_STAT_MODEL_PARAM_FIELDS();
-    // network must be created by the functions cvCreateCNNetwork and <add_layer>
-    CvCNNetwork* network;
-    CvMat* etalons;
-    // termination criteria
-    int max_iter;
-    int start_iter;
-    int grad_estim_type;
+  // CV_STAT_MODEL_PARAM_FIELDS();
+  CvMat * cls_labels;
+  // network must be created by the functions cvCreateCNNetwork
+  // and <add_layer>
+  CvCNNetwork * network;
+  CvMat * etalons;
+  // termination criteria
+  int max_iter;
+  int start_iter;
+  int grad_estim_type;
 }CvCNNStatModelParams;
 
 // this macro is added by lxts on jun/22/2008

@@ -78,10 +78,10 @@ CV_INLINE void cvDoNothing() { }
 #define EXIT 
 #endif // EXIT
 
-#ifdef CV_ASSERT
-#undef CV_ASSERT
-#endif // CV_ASSERT
-#define CV_ASSERT assert
+// #ifdef CV_ASSERT
+// #undef CV_ASSERT
+// #endif // CV_ASSERT
+// #define CV_ASSERT assert
 
 #ifdef CV_CALL
 #undef CV_CALL

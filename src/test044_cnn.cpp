@@ -94,7 +94,7 @@ int main(int argc, char * argv[])
   // cvReleaseMat(&sample);
   // }
 
-  ConvNN * cnn = new ConvNN(28,28,4,4,.05/*alpha*/,1000/*maxiter*/);
+  ConvNN * cnn = new ConvNN(28,28,4,4,.05/*alpha*/,200/*maxiter*/);
   cnn->createCNN();
   cnn->trainNN(training,response,testing,expected);
   cnn->writeCNNParams(pretrained_filename);

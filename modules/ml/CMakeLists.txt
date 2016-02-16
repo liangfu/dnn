@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 2.8.2)
 
 project(ml)
 
-INCLUDE_DIRECTORIES(./include ../cxcore/include)
+INCLUDE_DIRECTORIES(./include ../cxcore/include ../cvutil/include ../cv/include ../highgui/include)
 
 add_library(ml SHARED
 	src/em.cpp
@@ -43,12 +43,12 @@ if( OPENMP_FOUND )
   set( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}" )
 	IF(WIN32)
 	ELSE(WIN32)
-		TARGET_LINK_LIBRARIES(ml pthread rt cxcore gomp)
+		TARGET_LINK_LIBRARIES(ml pthread rt cxcore cvutil cv highgui gomp)
 	ENDIF(WIN32)
 ELSE (OPENMP_FOUND)
 	IF(WIN32)
 	ELSE(WIN32)
-		TARGET_LINK_LIBRARIES(ml pthread rt cxcore)
+		TARGET_LINK_LIBRARIES(ml pthread rt cxcore cvutil cv highgui)
 	ENDIF(WIN32)
 ENDIF(OPENMP_FOUND)
 

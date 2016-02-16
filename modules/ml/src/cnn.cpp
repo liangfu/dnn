@@ -17,6 +17,8 @@
 #include <iostream>
 #include <string>
 
+#include "cvext.h"
+
 using namespace std;
 
 //sigmoid function
@@ -327,14 +329,13 @@ static void icvTrainCNNetwork( CvCNNetwork* network,
     float loss, max_loss = 0;
     int i;
     int worst_img_idx = -1;
-    int* right_etal_idx = responses->data.i;
+    CV_ASSERT(CV_MAT_TYPE(responses->type)==CV_8U);
+    // int* right_etal_idx = responses->data.i;
+    uchar * right_etal_idx = responses->data.ptr;
     CvMat etalon;
 
 		const int numSamples = n_images;
 
-		rewind(fpprogress);
-		fprintf(fpprogress,"%d/%d = %f,",n,max_iter,float(n)/float(max_iter));
-		fflush(fpprogress);
 		// Find the worst image (which produces the greatest loss) or use the random image
 		if (grad_estim_type == CV_CNN_GRAD_ESTIM_BY_WORST_IMG) {
 			for (i = 0; i < n_images; i++, right_etal_idx++) {
@@ -368,8 +369,19 @@ static void icvTrainCNNetwork( CvCNNetwork* network,
 
 		CV_CALL(cvTranspose(&image, X[0]));
 
-    for( k = 0, layer = first_layer; k < n_layers - 1; k++, layer = layer->next_layer ){
+    for( k = 0, layer = first_layer; k < n_layers - 1;
+         k++, layer = layer->next_layer ){
       CV_CALL(layer->forward( layer, X[k], X[k+1] ));
+
+      // visualize sample images
+#if 0
+      CvMat * imgY =
+          cvCreateMat(layer->output_height,layer->output_width,CV_32F);
+      memcpy(imgY->data.ptr,X[k+1]->data.ptr,
+             sizeof(float)*layer->output_height*layer->output_width);
+      cvShowImageEx("Test",imgY);cvWaitKey();
+      cvReleaseMat(&imgY);
+#endif
     }
     CV_CALL(layer->forward( layer, X[k], X[k+1] ));
 
@@ -380,7 +392,9 @@ static void icvTrainCNNetwork( CvCNNetwork* network,
 // #ifdef TRAINFACE
 // 		cvGetRow(responses, &etalon, worst_img_idx);
 // #else
-		cvGetRow(etalons, &etalon, (int) responses->data.fl[worst_img_idx]);
+    CV_ASSERT(CV_MAT_TYPE(responses->type)==CV_8U);
+		// cvGetRow(etalons, &etalon, (int) responses->data.fl[worst_img_idx]);
+		cvGetRow(etalons, &etalon, (int) responses->data.ptr[worst_img_idx]);
 // #endif
 
 		cvSub(dE_dX[n_layers], &etalon, dE_dX[n_layers]);
@@ -391,54 +405,25 @@ static void icvTrainCNNetwork( CvCNNetwork* network,
 
 		// 3) Update weights by the gradient descent
     for( k = n_layers; k > 0; k--, layer = layer->prev_layer ){
-      CV_CALL(layer->backward( layer, n + start_iter, X[k-1], X[k], dE_dX[k], dE_dX[k-1], d2E_dX2[k], d2E_dX2[k-1] ));
+      CV_CALL(layer->backward( layer, n + start_iter, X[k-1], X[k],
+                               dE_dX[k], dE_dX[k-1],
+                               d2E_dX2[k], d2E_dX2[k-1] ));
     }
 
 		cvTranspose(&etalon, mattemp);
 		trloss = (float) cvNorm(X[n_layers], mattemp);
 		sumloss += trloss;
-		fflush(fplog);
-		fprintf(fplog, "loss: %f\n", sumloss / n);
 
-		if (n % numSamples == 0) {
-			FILE *fpweights;
-			char *str;
-			str = (char*) malloc(sizeof(char) * 100);
-			int j;
-			CvCNNConvolutionLayer* templayer;
-
-			string chname = "tweights";
-			char multNum[3];
-			sprintf(multNum, "%d", n / numSamples);
-			chname = chname + multNum + ".dat";
-			fpweights=fopen(chname.c_str(),"wb");
-			templayer=(CvCNNConvolutionLayer*)first_layer;
-			for(i=0;i<templayer->weights->rows;i++){
-				for(j=0;j<templayer->weights->cols;j++){
-					fwrite(&templayer->weights->data.fl[i*templayer->weights->cols+j],sizeof(float),1,fpweights);
-				}
-			}
-			templayer=(CvCNNConvolutionLayer*)first_layer->next_layer;
-			for(i=0;i<templayer->weights->rows;i++){
-				for(j=0;j<templayer->weights->cols;j++){
-					fwrite(&templayer->weights->data.fl[i*templayer->weights->cols+j],sizeof(float),1,fpweights);
-				}
-			}
-			templayer=(CvCNNConvolutionLayer*)first_layer->next_layer->next_layer;
-			for(i=0;i<templayer->weights->rows;i++){
-				for(j=0;j<templayer->weights->cols;j++)	{
-					fwrite(&templayer->weights->data.fl[i*templayer->weights->cols+j],sizeof(float),1,fpweights);
-				}
-			}
-			templayer=(CvCNNConvolutionLayer*)first_layer->next_layer->next_layer->next_layer;
-			for(i=0;i<templayer->weights->rows;i++)	{
-				for(j=0;j<templayer->weights->cols;j++)	{
-					fwrite(&templayer->weights->data.fl[i*templayer->weights->cols+j],sizeof(float),1,fpweights);
-				}
-			}
-			fclose(fpweights);
-			free(str);
-		}
+    // log and progress
+    if (int(float(n*100)/float(max_iter))<
+        int(float((n+1)*100)/float(max_iter)))
+    {
+      rewind(fpprogress);
+      fprintf(fpprogress,"%d/%d = %f,",n,max_iter,float(n)/float(max_iter));
+      fflush(fpprogress);
+      fflush(fplog);
+      fprintf(fplog, "loss: %f\n", sumloss / n);
+    }
 	}
 
 	// fclose(fpprogress);
@@ -448,9 +433,9 @@ static void icvTrainCNNetwork( CvCNNetwork* network,
 	__CV_END__;
 
 	for (k = 0; k <= n_layers; k++) {
-		cvReleaseMat(&X[k]);
-		cvReleaseMat(&dE_dX[k]);
-		cvReleaseMat(&d2E_dX2[k]);
+		if (X[k]){cvReleaseMat(&X[k]);X[k]=0;}
+		// if (dE_dX[k]){cvReleaseMat(&dE_dX[k]);dE_dX[k]=0;}
+		// if (d2E_dX2[k]){cvReleaseMat(&d2E_dX2[k]);d2E_dX2[k]=0;}
 	}
 	cvFree(&X);
 	cvFree(&dE_dX);
@@ -801,8 +786,8 @@ static CvCNNLayer* icvCreateCNNLayer( int layer_type, int header_size,
 	CV_FUNCNAME("icvCreateCNNLayer");
 	__CV_BEGIN__;
 
-	CV_ASSERT(release && forward && backward)
-	CV_ASSERT(header_size >= sizeof(CvCNNLayer))
+	CV_ASSERT(release && forward && backward);
+	CV_ASSERT(header_size >= sizeof(CvCNNLayer));
 
     if( n_input_planes < 1 || n_output_planes < 1 ||
         input_height   < 1 || input_width < 1 ||
@@ -821,7 +806,7 @@ static CvCNNLayer* icvCreateCNNLayer( int layer_type, int header_size,
     memset( layer, 0, header_size );
 
 	layer->flags = ICV_CNN_LAYER | layer_type;
-	CV_ASSERT(ICV_IS_CNN_LAYER(layer))
+	CV_ASSERT(ICV_IS_CNN_LAYER(layer));
 
 	layer->n_input_planes = n_input_planes;
 	layer->input_height = input_height;
@@ -862,8 +847,10 @@ ML_IMPL CvCNNLayer* cvCreateCNNConvolutionLayer(
 	CV_FUNCNAME("cvCreateCNNConvolutionLayer");
 	__CV_BEGIN__;
 
-	const int output_height = (input_height - 3) / 2;
-	const int output_width = (input_width - 3) / 2;
+	const int output_height = input_height-K+1;//(input_height - 3) / 2;//
+	const int output_width = input_width-K+1;//(input_width - 3) / 2;//
+  fprintf(stderr,"ConvolutionLayer: input (%d@%dx%d), output (%d@%dx%d)\n",
+          n_input_planes,input_width,input_height,n_output_planes,output_width,output_height);
 
 	if (K < 1 || init_learn_rate <= 0)
 		CV_ERROR(CV_StsBadArg, "Incorrect parameters");
@@ -940,6 +927,8 @@ ML_IMPL CvCNNLayer* cvCreateCNNSubSamplingLayer(
 	const int output_height = input_height / sub_samp_scale;
 	const int output_width = input_width / sub_samp_scale;
 	const int n_output_planes = n_input_planes;
+  fprintf(stderr,"SubSamplingLayer: input (%d@%dx%d), output (%d@%dx%d)\n",
+          n_input_planes,input_width,input_height,n_output_planes,output_width,output_height);
 
 	if (sub_samp_scale < 1 || a <= 0 || s <= 0)
 		CV_ERROR(CV_StsBadArg, "Incorrect parameters");
@@ -1078,13 +1067,13 @@ static void icvCNNConvolutionForward( CvCNNLayer* _layer,
 
 		int ni, no, Yi, Yj, Xi, Xj;
 		float *pY = 0, *pX = 0, *w = 0;
-		uchar* connect_mask_data = 0;
+		// uchar* connect_mask_data = 0;
 
 		cvSetZero(Y);
 
 		pY = Y->data.fl;
 		pX = X->data.fl;
-		connect_mask_data = layer->connect_mask->data.ptr;
+		// connect_mask_data = layer->connect_mask->data.ptr;
 		w = layer->weights->data.fl;
 
 		for (no = 0; no < nYplanes; no++) {
@@ -1104,7 +1093,6 @@ static void icvCNNConvolutionForward( CvCNNLayer* _layer,
 				}
 			}
 		}
-
 	}
 	__CV_END__;
 }
@@ -1425,9 +1413,11 @@ static void icvCNNConvolutionBackward(CvCNNLayer* _layer, int t, const CvMat* X,
 }
 
 /****************************************************************************************/
-static void icvCNNSubSamplingBackward(CvCNNLayer* _layer, int t, const CvMat* X,
+static void icvCNNSubSamplingBackward(
+    CvCNNLayer* _layer, int t, const CvMat* X,
 		CvMat* Y, const CvMat* dE_dY, CvMat* dE_dX, const CvMat* d2E_dY2,
-		CvMat* d2E_dX2) {
+		CvMat* d2E_dX2)
+{
 	// derivative of active function
 	CvMat* dY_dX_elems = 0; // elements of matrix dY_dX
 	CvMat* dY_dW_elems = 0; // elements of matrix dY_dW
@@ -1443,10 +1433,9 @@ static void icvCNNSubSamplingBackward(CvCNNLayer* _layer, int t, const CvMat* X,
 		CV_ERROR(CV_StsBadArg, "Invalid layer");
 	}
 
+  __CV_BEGIN__;
 	{
-		__CV_BEGIN__;
-
-		CvCNNSubSamplingLayer* layer = (CvCNNSubSamplingLayer*) _layer;
+		CvCNNSubSamplingLayer * layer = (CvCNNSubSamplingLayer*) _layer;
 
 		const int Xwidth = layer->input_width;
 		const int Xheight = layer->input_height;
@@ -1458,9 +1447,7 @@ static void icvCNNSubSamplingBackward(CvCNNLayer* _layer, int t, const CvMat* X,
 		const int k_max = layer->n_output_planes * Yheight;
 		const int n_Out_planes = layer->n_output_planes;
 
-
-    	float* dY_dX_current_elem = 0, *dE_dX_start = 0, *dE_dW_data = 0, *w = 0;
-
+    float* dY_dX_current_elem = 0, *dE_dX_start = 0, *dE_dW_data = 0, *w = 0;
 
 		CvMat* weights = layer->weights;
 
@@ -1484,21 +1471,19 @@ static void icvCNNSubSamplingBackward(CvCNNLayer* _layer, int t, const CvMat* X,
 		pY = dErr_dYn_Tmp->data.fl;
 		pX = X->data.fl;
 		for (no = 0; no < n_Out_planes; no++) {
-			for (Yi = 0; Yi < Yheight; Yi++) {
-				for (Yj = 0; Yj < Ywidth; Yj++) {
-					output = 0;
-					for (Xi = 0; Xi < scale; Xi++) {
-						for (Xj = 0; Xj < scale; Xj++) {
-							output += pX[no * Xsize + (Yi * scale + Xi) * Xwidth + (Yj * scale + Xj)];
-						}
-					}
-					dE_dW->data.fl[no * 2] += output
-							* pY[no * Ysize + Yi * Ywidth + Yj];
-					output = 1;
-					dE_dW->data.fl[no * 2 + 1] += output
-							* pY[no * Ysize + Yi * Ywidth + Yj];
-				}
-			}
+		for (Yi = 0; Yi < Yheight; Yi++) {
+		for (Yj = 0; Yj < Ywidth; Yj++) {
+			output = 0;
+			for (Xi = 0; Xi < scale; Xi++) {
+			for (Xj = 0; Xj < scale; Xj++) {
+        output += pX[no * Xsize + (Yi * scale + Xi) * Xwidth + (Yj * scale + Xj)];
+      }
+      }
+      dE_dW->data.fl[no * 2] += output * pY[no * Ysize + Yi * Ywidth + Yj];
+      output = 1;
+      dE_dW->data.fl[no * 2 + 1] += output * pY[no * Ysize + Yi * Ywidth + Yj];
+    }
+    }
 		}
 
 		cvZero(dE_dX);
@@ -1506,17 +1491,18 @@ static void icvCNNSubSamplingBackward(CvCNNLayer* _layer, int t, const CvMat* X,
 		pX = dE_dX->data.fl;
 		w = weights->data.fl;
 		for (no = 0; no < n_Out_planes; no++) {
-			for (Yi = 0; Yi < Yheight; Yi++) {
-				for (Yj = 0; Yj < Ywidth; Yj++) {
-					for (Xi = 0; Xi < scale; Xi++) {
-						for (Xj = 0; Xj < scale; Xj++) {
-							pX[no * Xsize + (Yi * 2 + Xi) * Xwidth + (Yj * 2 + Xj)] += pY[no * Ysize + Yi * Ywidth + Yj] * w[no * scale];
-						}
-					}
-				}
-			}
+		for (Yi = 0; Yi < Yheight; Yi++) {
+		for (Yj = 0; Yj < Ywidth; Yj++) {
+		for (Xi = 0; Xi < scale; Xi++) {
+		for (Xj = 0; Xj < scale; Xj++) {
+      pX[no * Xsize + (Yi * 2 + Xi) * Xwidth + (Yj * 2 + Xj)] += pY[no * Ysize + Yi * Ywidth + Yj] * w[no * scale];
+    }
+    }
+    }
+    }
 		}
 
+#if 0
 		if (layer->delta_w_increase_type == CV_CNN_DELTA_W_INCREASE_LM)
 		{
 			CvMat *d2E_dW2, *d2Err_dYn_Tmp2;
@@ -1541,19 +1527,19 @@ static void icvCNNSubSamplingBackward(CvCNNLayer* _layer, int t, const CvMat* X,
 			pY = d2Err_dYn_Tmp2->data.fl;
 			pX = X->data.fl;
 			for (no = 0; no < n_Out_planes; no++) {
-				for (Yi = 0; Yi < Yheight; Yi++) {
-					for (Yj = 0; Yj < Ywidth; Yj++) {
-						output = 0;
-						for (Xi = 0; Xi < scale; Xi++) {
-							for (Xj = 0; Xj < scale; Xj++) {
-								output += pX[no * Xsize + (Yi * scale + Xi) * Xwidth + (Yj * scale + Xj)];
-							}
-						}
-						d2E_dW2->data.fl[no * 2] += output * output * pY[no * Ysize + Yi * Ywidth + Yj];
-						output = 1;
-						d2E_dW2->data.fl[no * 2 + 1] += output * output * pY[no * Ysize + Yi * Ywidth + Yj];
-					}
-				}
+			for (Yi = 0; Yi < Yheight; Yi++) {
+			for (Yj = 0; Yj < Ywidth; Yj++) {
+				output = 0;
+        for (Xi = 0; Xi < scale; Xi++) {
+				for (Xj = 0; Xj < scale; Xj++) {
+					output += pX[no * Xsize + (Yi * scale + Xi) * Xwidth + (Yj * scale + Xj)];
+        }
+        }
+        d2E_dW2->data.fl[no * 2] += output * output * pY[no * Ysize + Yi * Ywidth + Yj];
+        output = 1;
+        d2E_dW2->data.fl[no * 2 + 1] += output * output * pY[no * Ysize + Yi * Ywidth + Yj];
+      }
+      }
 			}
 
 			cvZero(dE_dX);
@@ -1561,17 +1547,16 @@ static void icvCNNSubSamplingBackward(CvCNNLayer* _layer, int t, const CvMat* X,
 			pX = d2E_dX2->data.fl;
 			w = weights->data.fl;
 			for (no = 0; no < n_Out_planes; no++) {
-				for (Yi = 0; Yi < Yheight; Yi++) {
-					for (Yj = 0; Yj < Ywidth; Yj++) {
-						for (Xi = 0; Xi < scale; Xi++) {
-							for (Xj = 0; Xj < scale; Xj++) {
-								pX[no * Xsize + (Yi * 2 + Xi) * Xwidth + (Yj * 2 + Xj)] += pY[no * Ysize + Yi * Ywidth + Yj] 
-									* w[no * scale]
-									* w[no * scale];
-							}
-						}
-					}
-				}
+			for (Yi = 0; Yi < Yheight; Yi++) {
+			for (Yj = 0; Yj < Ywidth; Yj++) {
+			for (Xi = 0; Xi < scale; Xi++) {
+			for (Xj = 0; Xj < scale; Xj++) {
+				pX[no * Xsize + (Yi * 2 + Xi) * Xwidth + (Yj * 2 + Xj)] +=
+        pY[no * Ysize + Yi * Ywidth + Yj] * w[no * scale] * w[no * scale];
+      }
+      }
+      }
+      }
 			}
 
 			float eta;
@@ -1595,7 +1580,9 @@ static void icvCNNSubSamplingBackward(CvCNNLayer* _layer, int t, const CvMat* X,
 
 			cvReleaseMat(&d2E_dW2);
 			cvReleaseMat(&d2Err_dYn_Tmp2);
-		} else { // update weights
+		} else
+#endif
+    { // update weights
 			float eta;
 			if (layer->learn_rate_decrease_type	== CV_CNN_LEARN_RATE_DECREASE_LOG_INV) {
 				eta = -layer->init_learn_rate / logf(1 + (float) t);
@@ -1605,8 +1592,9 @@ static void icvCNNSubSamplingBackward(CvCNNLayer* _layer, int t, const CvMat* X,
 				eta = -layer->init_learn_rate/(float)t;
 			}
 
-			if ((t + 1) % layer->nsamples == 0)
+			if ((t + 1) % layer->nsamples == 0){
 				layer->init_learn_rate /= 1.08;
+      }
 
 			cvScaleAdd(dE_dW, cvRealScalar(eta), weights, weights);
 		}
@@ -1614,9 +1602,9 @@ static void icvCNNSubSamplingBackward(CvCNNLayer* _layer, int t, const CvMat* X,
 	}
 	__CV_END__;
 
-	cvReleaseMat(&dY_dW);
-	cvReleaseMat(&dE_dW);
-	cvReleaseMat(&dErr_dYn_Tmp);
+	if (dY_dW){cvReleaseMat(&dY_dW);dY_dW=0;}
+	if (dE_dW){cvReleaseMat(&dE_dW);dE_dW=0;}
+	if (dErr_dYn_Tmp){cvReleaseMat(&dErr_dYn_Tmp);dErr_dYn_Tmp=0;}
 }
 
 /****************************************************************************************/
