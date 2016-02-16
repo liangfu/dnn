@@ -21,13 +21,14 @@
 
 using namespace std;
 
-//sigmoid function
+// sigmoid function
 #define SIG(p) (1.7159*tanh(0.66666667*p))
-#define DSIG(p) (0.66666667/1.7159*(1.7159+(p))*(1.7159-(p)))  // derivative of the sigmoid
-/****************************************************************************************\
-*                         Auxilary functions declarations                                *
- \****************************************************************************************/
-/*---------------------- functions for the CNN classifier ------------------------------*/
+// derivative of the sigmoid
+#define DSIG(p) (0.66666667/1.7159*(1.7159+(p))*(1.7159-(p)))  
+/**************************************************************************\
+ *                    Auxilary functions declarations                     *
+ \************************************************************************/
+/*-------------- functions for the CNN classifier ------------------------*/
 static void icvCNNModelRelease(CvCNNStatModel** cnn_model);
 
 static void icvTrainCNNetwork( CvCNNetwork* network,
@@ -38,7 +39,7 @@ static void icvTrainCNNetwork( CvCNNetwork* network,
                                int max_iter,
                                int start_iter );
 
-/*------------------------- functions for the CNN network ------------------------------*/
+/*--------------- functions for the CNN network -------------------------*/
 static void icvCNNetworkAddLayer( CvCNNetwork* network, CvCNNLayer* layer );
 static void icvCNNetworkRelease( CvCNNetwork** network );
 
@@ -47,24 +48,24 @@ static void icvCNNetworkRelease( CvCNNetwork** network );
    length(X)==<n_input_planes>*<input_height>*<input_width>,
    length(Y)==<n_output_planes>*<output_height>*<output_width>.
 */
-/*------------------------ functions for convolutional layer ---------------------------*/
+/*-------------- functions for convolutional layer ----------------------*/
 static void icvCNNConvolutionRelease( CvCNNLayer** p_layer );
 static void icvCNNConvolutionForward( CvCNNLayer* layer, const CvMat* X, CvMat* Y );
 static void icvCNNConvolutionBackward( CvCNNLayer*  layer, int t,
     const CvMat* X, CvMat* Y, const CvMat* dE_dY, CvMat* dE_dX, const CvMat* d2E_dY2, CvMat* d2E_dX2 );
-/*------------------------ functions for sub-sampling layer ----------------------------*/
+/*-------------- functions for sub-sampling layer ------------------------*/
 static void icvCNNSubSamplingRelease( CvCNNLayer** p_layer );
 static void icvCNNSubSamplingForward( CvCNNLayer* layer, const CvMat* X, CvMat* Y );
 static void icvCNNSubSamplingBackward( CvCNNLayer*  layer, int t,
     const CvMat* X, CvMat* Y, const CvMat* dE_dY, CvMat* dE_dX, const CvMat* d2E_dY2, CvMat* d2E_dX2 );
-/*------------------------ functions for full connected layer --------------------------*/
+/*--------------- functions for full connected layer ---------------------*/
 static void icvCNNFullConnectRelease( CvCNNLayer** p_layer );
 static void icvCNNFullConnectForward( CvCNNLayer* layer, const CvMat* X, CvMat* Y );
 static void icvCNNFullConnectBackward( CvCNNLayer* layer, int,
     const CvMat*, CvMat* Y, const CvMat* dE_dY, CvMat* dE_dX, const CvMat* d2E_dY2, CvMat* d2E_dX2 );
-/****************************************************************************************\
-*                             Functions implementations                                  *
- \****************************************************************************************/
+/************************************************************************ 
+ *                        Functions implementations                     *
+ ************************************************************************/
 #define ICV_CHECK_CNN_NETWORK(network)                                                  \
 {                                                                                       \
     CvCNNLayer* first_layer, *layer, *last_layer;                                       \
@@ -374,7 +375,7 @@ static void icvTrainCNNetwork( CvCNNetwork* network,
       CV_CALL(layer->forward( layer, X[k], X[k+1] ));
 
       // visualize sample images
-#if 0
+#if 1
       CvMat * imgY =
           cvCreateMat(layer->output_height,layer->output_width,CV_32F);
       memcpy(imgY->data.ptr,X[k+1]->data.ptr,
@@ -872,28 +873,35 @@ ML_IMPL CvCNNLayer* cvCreateCNNConvolutionLayer(
 	CV_CALL( layer->weights = cvCreateMat( n_output_planes * (K * K * n_input_planes + 1), 1, CV_32FC1));
 	CV_CALL( layer->connect_mask = cvCreateMat(n_output_planes, n_input_planes, CV_8UC1)); 
 	if (weights) {
-		if (!ICV_IS_MAT_OF_TYPE( weights, CV_32FC1 ))
+		if (!ICV_IS_MAT_OF_TYPE( weights, CV_32FC1 )) {
 			CV_ERROR(CV_StsBadSize, "Type of initial weights matrix must be CV_32FC1");
-		if (!CV_ARE_SIZES_EQ(weights, layer->weights))
+    }
+		if (!CV_ARE_SIZES_EQ(weights, layer->weights)) {
 			CV_ERROR(CV_StsBadSize, "Invalid size of initial weights matrix");
+    }
 		CV_CALL(cvCopy(weights, layer->weights));
 	} else {
 		CvRNG rng = cvRNG(0xFFFFFFFF);
-		int i;
-		for (i = 0; i < n_output_planes * (K * K * n_input_planes + 1); i++)
-			layer->weights->data.fl[i] = (float) (0.05 * (2.0 * rand() / RAND_MAX - 1.0));
+		// int i;
+		// for (i = 0; i < n_output_planes * (K * K * n_input_planes + 1); i++) {
+		// 	layer->weights->data.fl[i] = (float) (0.05 * (2.0 * rand() / RAND_MAX - 1.0));
+    // }
+    cvRandArr(&rng,layer->weights,CV_RAND_UNI,cvScalar(-0.05),cvScalar(0.05));
 	}
 
 	if (connect_mask) {
-		if (!ICV_IS_MAT_OF_TYPE( connect_mask, CV_8UC1 ))
+		if (!ICV_IS_MAT_OF_TYPE( connect_mask, CV_8UC1 )) {
 			CV_ERROR(CV_StsBadSize,	"Type of connection matrix must be CV_8UC1");
-		if (!CV_ARE_SIZES_EQ(connect_mask, layer->connect_mask))
+    }
+		if (!CV_ARE_SIZES_EQ(connect_mask, layer->connect_mask)) {
 			CV_ERROR(CV_StsBadSize, "Invalid size of connection matrix");
+    }
 		CV_CALL(cvCopy(connect_mask, layer->connect_mask));
-	} else
+	} else {
 		CV_CALL(cvSet(layer->connect_mask, cvRealScalar(1)));
-
-    CV_CALL(layer->hessian_diag = cvCreateMat( layer->weights->rows, layer->weights->cols , CV_32FC1 ));
+  }
+    
+  CV_CALL(layer->hessian_diag = cvCreateMat( layer->weights->rows, layer->weights->cols , CV_32FC1 ));
 	cvZero(layer->hessian_diag);
 
 	layer->nsamples = nsamples;
@@ -901,7 +909,7 @@ ML_IMPL CvCNNLayer* cvCreateCNNConvolutionLayer(
 
 	__CV_END__;
 
-	if (cvGetErrStatus() < 0 && layer) {
+	if ((cvGetErrStatus() < 0) && layer) {
 		cvReleaseMat(&layer->weights);
 		cvReleaseMat(&layer->connect_mask);
 		cvReleaseMat(&layer->hessian_diag);
@@ -1035,21 +1043,19 @@ ML_IMPL CvCNNLayer* cvCreateCNNFullConnectLayer(int n_inputs, int n_outputs,
 	return (CvCNNLayer*) layer;
 }
 
-/****************************************************************************************\
-*                           Layer FORWARD functions                                      *
-\****************************************************************************************/
-static void icvCNNConvolutionForward( CvCNNLayer* _layer,
-                                      const CvMat* X,
-                                      CvMat* Y )
+/*************************************************************************
+ *                 Layer FORWARD functions                               *
+ *************************************************************************/
+static void icvCNNConvolutionForward( CvCNNLayer* _layer, const CvMat* X, CvMat* Y )
 {
-    CV_FUNCNAME("icvCNNConvolutionForward");
+  CV_FUNCNAME("icvCNNConvolutionForward");
 
-	if (!ICV_IS_CNN_CONVOLUTION_LAYER(_layer))
-		CV_ERROR(CV_StsBadArg, "Invalid layer");
+	if (!ICV_IS_CNN_CONVOLUTION_LAYER(_layer)){
+    CV_ERROR(CV_StsBadArg, "Invalid layer");
+  }
 
+  __CV_BEGIN__;
 	{
-		__CV_BEGIN__;
-
 		const CvCNNConvolutionLayer* layer = (CvCNNConvolutionLayer*) _layer;
 
 		const int K = layer->K;
@@ -1066,34 +1072,63 @@ static void icvCNNConvolutionForward( CvCNNLayer* _layer,
 		const int Ysize = Ywidth * Yheight;
 
 		int ni, no, Yi, Yj, Xi, Xj;
-		float *pY = 0, *pX = 0, *w = 0;
+		// float *pY = 0, *pX = 0, *w = 0;
 		// uchar* connect_mask_data = 0;
 
 		cvSetZero(Y);
 
-		pY = Y->data.fl;
-		pX = X->data.fl;
+#if 0
+		float * pY = Y->data.fl;
+		float * pX = X->data.fl;
 		// connect_mask_data = layer->connect_mask->data.ptr;
-		w = layer->weights->data.fl;
+		float * w = layer->weights->data.fl;
 
 		for (no = 0; no < nYplanes; no++) {
-			for (Yi = 0; Yi < Yheight; Yi++) {
-				for (Yj = 0; Yj < Ywidth; Yj++) {
-					for (ni = 0; ni < nXplanes; ni++) {
-						for (Xi = 0; Xi < K; Xi++) {
-							for (Xj = 0; Xj < K; Xj++) {
-								pY[no * Ysize + Yi * Ywidth + Yj] += 
-									w[no * (nXplanes * K * K + 1) + ni * K * K + Xi * K + Xj]
-									* pX[ni * Xsize + (Yi * 2 + Xi) * Xwidth + (Yj * 2 + Xj)];
-							}
-						}
-					}
-					pY[no * Ysize + Yi * Ywidth + Yj] += w[no * (nXplanes * K * K + 1) + nXplanes * K * K];
-					pY[no * Ysize + Yi * Ywidth + Yj] = SIG(pY[no*Ysize + Yi*Ywidth + Yj]);
-				}
-			}
+		for (Yi = 0; Yi < Yheight; Yi++) {
+		for (Yj = 0; Yj < Ywidth; Yj++) {
+		for (ni = 0; ni < nXplanes; ni++) {
+		for (Xi = 0; Xi < K; Xi++) {
+		for (Xj = 0; Xj < K; Xj++) {
+			pY[no * Ysize + Yi * Ywidth + Yj] += 
+				w[no * (nXplanes * K * K + 1) + ni * K * K + Xi * K + Xj]
+          * pX[ni * Xsize + (Yi * 2 + Xi) * Xwidth + (Yj * 2 + Xj)];
+    }
+    }
+    }
+    pY[no * Ysize + Yi * Ywidth + Yj] += w[no * (nXplanes * K * K + 1) + nXplanes * K * K];
+    pY[no * Ysize + Yi * Ywidth + Yj] = SIG(pY[no*Ysize + Yi*Ywidth + Yj]);
+    }
+    }
 		}
+#else
+		float * pY = Y->data.fl;
+		float * pX = X->data.fl;
+		float * w = layer->weights->data.fl;
+    int Ksize = K*K;
+		for (no = 0; no < nYplanes; no++) {
+		for (Yi = 0; Yi < Yheight; Yi++) {
+    for (Yj = 0; Yj < Ywidth; Yj++) {
+    w = layer->weights->data.fl;
+		for (ni = 0; ni < nXplanes; ni++) {
+		for (Xi = 0; Xi < K; Xi++) {
+		for (Xj = 0; Xj < K; Xj++) {
+			pY[Yi * Ywidth + Yj] += 
+       w[ni * Ksize + Xi * K + Xj]
+    * pX[(Yi * 2 + Xi) * Xwidth + (Yj * 2 + Xj)];
+    }
+    }
+    w += (nXplanes * Ksize + 1);
+    }
+    pY[Yi * Ywidth + Yj] += w[no * (nXplanes * Ksize + 1) + nXplanes * Ksize];
+    pY[Yi * Ywidth + Yj] = SIG(pY[Yi*Ywidth + Yj]);
+    }
+    }
+    pY += Ysize;
+    pX += Xsize;
+    }    
+#endif
 	}
+  
 	__CV_END__;
 }
 

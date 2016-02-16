@@ -23,44 +23,47 @@ class ConvNN
 {
 public:
 	ConvNN(void);
-	ConvNN(int height, int width, int node, int cNode, double alpha, int maxiter);
+	ConvNN(int height, int width, int node, int cNode,
+         double alpha, int maxiter);
 	~ConvNN(void);
 
-    /** \brief Create CNN models
-     * Create CNN models.
-     * @param a an integer argument.
-     * @param s a constant character pointer.
-     * @see publicVar()
-     * @return The test results
-     */
+  /** \brief Create CNN models
+   * Create CNN models.
+   * @param a an integer argument.
+   * @param s a constant character pointer.
+   * @see publicVar()
+   * @return The test results
+   */
 	void createCNN( );
 
-    /** \brief Save CNN parameters to a file
-     * a normal member to save the CNN parameters to a file.
-     * @param outFile the name of the output file.
-     */
+  /** \brief Save CNN parameters to a file
+   * a normal member to save the CNN parameters to a file.
+   * @param outFile the name of the output file.
+   */
 	void writeCNNParams(string outFile);
 
 	/** \brief CNN models
-	* a public variable.
-	* Saved the CNN model in this variable.
-	*/
+   * a public variable.
+   * Saved the CNN model in this variable.
+   */
 	CvCNNStatModel * m_cnn ;	
-	CvCNNStatModel *cnn_train;
-  int            m_clipHeight, m_clipWidth, m_nNode, m_connectNode, m_max_iter;
+	CvCNNStatModel * cnn_train;
+  int            m_clipHeight, m_clipWidth;
+  int            m_nNode, m_connectNode;
+  int            m_max_iter;
 	double         m_learningRate;
 
-    /** \brief Load CNN parameters from a file
-     * a normal member loading the parameters of CNN from a file.
-     * @param inFile the file containing the CNN parameter info.
-     */
+  /** \brief Load CNN parameters from a file
+   * a normal member loading the parameters of CNN from a file.
+   * @param inFile the file containing the CNN parameter info.
+   */
 	void LoadCNNParams(string inFile);
 
-    /** \brief Train a CNN model
-     * a normal member to train the CNN.
-     * @param trainingData an integer argument.
-     * @param responseMat a constant character pointer.
-     */
+  /** \brief Train a CNN model
+   * a normal member to train the CNN.
+   * @param trainingData an integer argument.
+   * @param responseMat a constant character pointer.
+   */
 	void trainNN(CvMat *trainingData, CvMat *responseMat,
                CvMat *testingData, CvMat *expectedMat);
 

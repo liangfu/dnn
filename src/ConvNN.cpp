@@ -101,7 +101,7 @@ void ConvNN::createCNN()/*(int nSample, float maxIter,
 	n_input_planes  = 1;
 	input_height    = m_clipHeight;
 	input_width     = m_clipWidth;
-	n_output_planes = 20;
+	n_output_planes = 6;
 	K = 5;
 	output_height   = input_height-K+1; // (m_clipHeight-3)/2;//
 	output_width    = input_width-K+1; // (m_clipWidth-3)/2;//
@@ -138,7 +138,7 @@ void ConvNN::createCNN()/*(int nSample, float maxIter,
 	n_input_planes  = n_output_planes;
 	input_height    = output_height/sub_samp_size;//(m_clipHeight-3)/2;//
 	input_width     = output_width/sub_samp_size;//(m_clipWidth-3)/2;//
-	n_output_planes = 50;
+	n_output_planes = 16;
 	K = 5;
 	output_height   = input_height-K+1; // (input_height-3)/2;//
 	output_width    = input_width-K+1; // (input_width -3)/2;//
