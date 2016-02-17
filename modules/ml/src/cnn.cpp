@@ -45,6 +45,11 @@
 // #include "cnn.h"
 #include "cvext.h"
 
+// sigmoid function
+#define SIG(p) (1.7159*tanh(0.66666667*p))
+// derivative of the sigmoid
+#define DSIG(p) (0.66666667/1.7159*(1.7159+(p))*(1.7159-(p)))  
+
 /****************************************************************************************\
 *                         Auxilary functions declarations                                *
 \****************************************************************************************/
@@ -321,7 +326,7 @@ static void icvTrainCNNetwork( CvCNNetwork* network,
         for( k = 0, layer = first_layer; k < n_layers - 1; k++, layer = layer->next_layer ){
           CV_CALL(layer->forward( layer, X[k], X[k+1] ));
 
-#if 1
+#if 0
           // visualize sample images
           CvMat * imgY =
               cvCreateMat(layer->output_height,layer->output_width,CV_32F);
@@ -990,7 +995,8 @@ static void icvCNNSubSamplingForward( CvCNNLayer* _layer,
     // which will be used in back-propagation
     cvZero( layer->sumX );
     cvZero( layer->exp2ssumWX );
-
+    
+#if 0
     for( ky = 0; ky < stride_size; ky++ ){
     for( kx = 0; kx < stride_size; kx++ ){
       float* Xplane = X->data.fl;
@@ -1025,7 +1031,7 @@ static void icvCNNSubSamplingForward( CvCNNLayer* _layer,
       }
     }
 //#endif
-#if 0
+    
     // compute the output variable Y == ( a - 2a/(layer->exp2ssumWX + 1))
     CV_CALL(cvAddS( layer->exp2ssumWX, cvRealScalar(1), Y ));
     CV_CALL(cvDiv( 0, Y, Y, -2.0*layer->a ));
@@ -1049,14 +1055,10 @@ static void icvCNNSubSamplingForward( CvCNNLayer* _layer,
         }
         }
         yptr[xx] = maxval;
-        // xptr += stride_size;
-        // yptr += 1;
       }
       xptr += Xwidth*stride_size;
       yptr += Ywidth;
       }
-      xptr += Xsize;
-      yptr += Ysize;
     }
 #endif
     }__END__;
@@ -1071,7 +1073,7 @@ static void icvCNNFullConnectForward( CvCNNLayer* _layer, const CvMat* X, CvMat*
         CV_ERROR( CV_StsBadArg, "Invalid layer" );
 
     {__BEGIN__;
-
+#if 1
     const CvCNNFullConnectLayer* layer = (CvCNNFullConnectLayer*)_layer;
     CvMat* weights = layer->weights;
     CvMat sub_weights, bias;
@@ -1102,7 +1104,24 @@ static void icvCNNFullConnectForward( CvCNNLayer* _layer, const CvMat* X, CvMat*
     CV_CALL(cvAddS( layer->exp2ssumWX, cvRealScalar(1), Y ));
     CV_CALL(cvDiv( 0, Y, Y, -2.0*layer->a ));
     CV_CALL(cvAddS( Y, cvRealScalar(layer->a), Y ));
+#else
+		const CvCNNFullConnectLayer* layer = (CvCNNFullConnectLayer*) _layer;
+		CvMat* weights = layer->weights;
+		CvMat sub_weights, bias;
+		int i;
 
+		CV_ASSERT(X->cols == 1 && X->rows == layer->n_input_planes);
+		CV_ASSERT(Y->cols == 1 && Y->rows == layer->n_output_planes);
+
+		CV_CALL( cvGetSubRect(weights, &sub_weights, cvRect(0, 0, weights->cols - 1, weights->rows)));
+		CV_CALL(cvGetCol(weights, &bias, weights->cols - 1));
+
+		//(1.7159*tanh(0.66666667*x))
+		CV_CALL( cvGEMM(&sub_weights, X, 1/*2*layer->s*/, &bias, 1/*2*layer->s*/, layer->exp2ssumWX));
+		for (i = 0; i < Y->rows; i++) {
+			Y->data.fl[i] = SIG( layer->exp2ssumWX->data.fl[ i ] );
+		}
+#endif
     }__END__;
 }
 
@@ -1364,7 +1383,7 @@ static void icvCNNFullConnectBackward( CvCNNLayer* _layer,
         CV_ERROR( CV_StsBadArg, "Invalid layer" );
 
     {__BEGIN__;
-
+#if 1
     const CvCNNFullConnectLayer* layer = (CvCNNFullConnectLayer*)_layer;
     const int n_outputs = layer->n_output_planes;
     const int n_inputs  = layer->n_input_planes;
@@ -1419,7 +1438,137 @@ static void icvCNNFullConnectBackward( CvCNNLayer* _layer,
         cvReshape( dE_dW, &dE_dW_mat, 0, n_outputs );
         cvScaleAdd( &dE_dW_mat, cvRealScalar(eta), weights, weights );
     }
+#else
+    CvMat* dE_dY_af = 0;
+    CvMat* dE_dW = 0;
+    CvMat* dErr_dYn_Tmp = 0;
+    float output;
+    int ii;
+  
+		CvCNNFullConnectLayer* layer = (CvCNNFullConnectLayer*) _layer;
+		const int n_outputs = layer->n_output_planes;
+		const int n_inputs = layer->n_input_planes;
 
+		int i, j;
+		CvMat* weights = layer->weights;
+
+		CV_ASSERT(X->cols == 1 && X->rows == n_inputs);
+		CV_ASSERT(dE_dY->rows == 1 && dE_dY->cols == n_outputs);
+		CV_ASSERT(dE_dX->rows == 1 && dE_dX->cols == n_inputs);
+
+		// we violate the convetion about vector's orientation because
+		// here is more convenient to make this parameter a row-vector
+		// dE_dY_af: the active function
+		CV_CALL(dE_dY_af = cvCreateMat(1, n_outputs, CV_32FC1));
+		CV_CALL(dE_dW = cvCreateMat(1, weights->rows * weights->cols,CV_32FC1));
+
+		for (ii = 0; ii < n_outputs; ++ii) {
+			output = Y->data.fl[ii];
+			dE_dY_af->data.fl[ii] = DSIG( output ) * dE_dY->data.fl[ii];
+		}
+
+		cvZero(dE_dW);
+		for (i = 0; i < n_outputs; i++) {
+			for (j = 0; j < n_inputs; j++) {
+				// dY_dWi, i=1,...,K*K
+				output = X->data.fl[j];
+				dE_dW->data.fl[i * (n_inputs + 1) + j] += output * dE_dY_af->data.fl[i];
+			}
+			output = 1;
+			dE_dW->data.fl[i * (n_inputs + 1) + n_inputs] += output
+					* dE_dY_af->data.fl[i];
+		}
+
+		cvZero(dE_dX);
+		for (j = 0; j < n_outputs; j++) {
+			for (i = 0; i < n_inputs; i++) {
+				dE_dX->data.fl[i] += dE_dY_af->data.fl[j]
+						* weights->data.fl[j * (n_inputs + 1) + i];
+			}
+		}
+
+		if (layer->delta_w_increase_type == CV_CNN_DELTA_W_INCREASE_LM)
+		{
+			// 1. A=J_t*J; w=w+eta*A_inv*dE_dW
+			{
+				CvMat *d2E_dY_af2, *d2E_dW2;
+				CV_CALL(
+						d2E_dY_af2 = cvCreateMat(1, n_outputs, CV_32FC1));
+				CV_CALL(
+						d2E_dW2 = cvCreateMat(1, weights->rows * weights->cols, CV_32FC1));
+
+				for (ii = 0; ii < n_outputs; ++ii) {
+					output = Y->data.fl[ii];
+
+					d2E_dY_af2->data.fl[ii] = DSIG( output ) * DSIG( output ) * d2E_dY2->data.fl[ii];
+				}
+
+				cvZero(d2E_dW2);
+				for (i = 0; i < n_outputs; i++) {
+					for (j = 0; j < n_inputs; j++) {
+						// dY_dWi, i=1,...,K*K
+						output = X->data.fl[j];
+						d2E_dW2->data.fl[i * (n_inputs + 1) + j] += output
+								* output * d2E_dY_af2->data.fl[i];
+					}
+					output = 1;
+					d2E_dW2->data.fl[i * (n_inputs + 1) + n_inputs] += output
+							* output * d2E_dY_af2->data.fl[i];
+				}
+
+				cvZero(d2E_dX2);
+				for (j = 0; j < n_outputs; j++) {
+					for (i = 0; i < n_inputs; i++) {
+						d2E_dX2->data.fl[i] +=
+								d2E_dY_af2->data.fl[j]
+										* weights->data.fl[j * (n_inputs + 1)
+												+ i]
+										* weights->data.fl[j * (n_inputs + 1)
+												+ i];
+					}
+				}
+
+				float eta;
+				if (layer->learn_rate_decrease_type == CV_CNN_LEARN_RATE_DECREASE_LOG_INV) {
+					eta = -layer->init_learn_rate / logf(1 + (float) t);
+				}else if (layer->learn_rate_decrease_type == CV_CNN_LEARN_RATE_DECREASE_SQRT_INV){
+					eta = -layer->init_learn_rate / sqrtf( sqrtf( (float) (	(t % layer->nsamples) ? (t%layer->nsamples):(1))));
+				}else{
+					eta = -layer->init_learn_rate/(float)t;
+				}
+
+				if ((t + 1) % layer->nsamples == 0)
+					layer->init_learn_rate /= 1.08;
+
+				for (ii = 0; ii < weights->cols * weights->rows; ii++) {
+					weights->data.fl[ii] = weights->data.fl[ii]	+ eta / (d2E_dW2->data.fl[ii] + 1.0f)
+									* dE_dW->data.fl[ii];
+				}
+
+				cvReleaseMat(&d2E_dW2);
+				cvReleaseMat(&d2E_dY_af2);
+			}
+		} else {// 2) update weights
+			CvMat dE_dW_mat;
+			float eta;
+			if (layer->learn_rate_decrease_type
+					== CV_CNN_LEARN_RATE_DECREASE_LOG_INV){
+				eta = -layer->init_learn_rate / logf(1 + (float) t);
+			}else if (layer->learn_rate_decrease_type
+					== CV_CNN_LEARN_RATE_DECREASE_SQRT_INV){
+				eta = -layer->init_learn_rate / sqrtf( sqrtf( (float) ( (t % layer->nsamples) ? (t%layer->nsamples):(1))));
+			}else{
+				eta = -layer->init_learn_rate/(float)t;
+			}
+
+			if ((t + 1) % layer->nsamples == 0){
+				layer->init_learn_rate /= 1.08;
+			}
+
+			cvReshape(dE_dW, &dE_dW_mat, 0, n_outputs);
+			cvScaleAdd(&dE_dW_mat, cvRealScalar(eta), weights, weights);
+		}
+#endif
     }__END__;
 
     cvReleaseMat( &dE_dY_activ_func_der );
