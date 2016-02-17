@@ -106,7 +106,7 @@ int main(int argc, char * argv[])
   for (int i=0;i<10;i++){
     CvMat testing_stub;
     cvGetSubRect(testing,&testing_stub,cvRect(0,i,nr*nc,1));
-    icvCNNModelPredict(cnn->m_cnn,&testing_stub,result);
+    // icvCNNModelPredict(cnn->m_cnn,&testing_stub,result);
     double minval,maxval;CvPoint minloc,maxloc;
     cvMinMaxLoc(result,&minval,&maxval,&minloc,&maxloc);
     fprintf(stderr,"class label: %d, expect: %d\n",maxloc.y,expected->data.ptr[i]);

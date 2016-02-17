@@ -55,7 +55,7 @@ CVAPI(void) cvShowImageEx(const char * id, const CvArr * arr,
   }
 
   src = cvCloneMat(src);
-  if ( (src->rows<10) || (src->rows<10) )
+  if ( (src->rows<60) || (src->rows<60) )
   {
     CvMat * orig = cvCloneMat(src);
     int scale=60./MIN(orig->rows, orig->cols);
@@ -65,14 +65,23 @@ CVAPI(void) cvShowImageEx(const char * id, const CvArr * arr,
     int m,n;
     if (CV_MAT_TYPE(src->type)==CV_64F){
       for (m=0;m<orig->rows;m++) {
-        for (n=0;n<orig->cols;n++) {
-          for (i=0;i<scale;i++) {
-            for (j=0;j<scale;j++) {
-              CV_MAT_ELEM(*src, double, m*scale+i, n*scale+j) =
-                  CV_MAT_ELEM(*orig, double, m, n);
-            }
-          }
-        }
+      for (n=0;n<orig->cols;n++) {
+      for (i=0;i<scale;i++) {
+      for (j=0;j<scale;j++) {
+        CV_MAT_ELEM(*src, double, m*scale+i, n*scale+j) = CV_MAT_ELEM(*orig, double, m, n);
+      }
+      }
+      }
+      }
+    }else if (CV_MAT_TYPE(src->type)==CV_32F){
+      for (m=0;m<orig->rows;m++) {
+      for (n=0;n<orig->cols;n++) {
+      for (i=0;i<scale;i++) {
+      for (j=0;j<scale;j++) {
+        CV_MAT_ELEM(*src, float, m*scale+i, n*scale+j) = CV_MAT_ELEM(*orig, float, m, n);
+      }
+      }
+      }
       }
     }
     cvReleaseMat(&orig);
