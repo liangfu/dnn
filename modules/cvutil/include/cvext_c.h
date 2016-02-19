@@ -1992,4 +1992,9 @@ int icvNonMaxSuppress(CvMat * boxes, CvMat * top, const float overlap=.5)
   return N1;
 }
 
+CVAPI(void) cvSigmoid(CvMat * src, CvMat * dst,
+  int islogit = 0, float a = 1.7195, float b = 0.6666667);
+// CVAPI(void) cvSigmoidDrv(CvMat * src, CvMat * dst,
+//   int islogit = 0, float a = 1.7195, float b = 0.6666667);
+
 #endif //__CV_EXT_C_H__

@@ -50,10 +50,10 @@ void CNNIO::init(int outNode, int width, int height, ConvNN *CNN)
 ConvNN::ConvNN(void)
 {
 	m_cnn = 0;
-	cnn_train = 0;
+	// cnn_train = 0;
 }
 
-ConvNN::ConvNN(int height, int width, int node, int cNode,
+ConvNN::ConvNN(int height, int width, int cNode,int node, 
                double alpha, int maxiter)
 {
 	m_clipHeight = height;
@@ -70,7 +70,7 @@ ConvNN::~ConvNN(void)
 	if( cvGetErrStatus() < 0 )
 	{
 		if( m_cnn ) m_cnn->release( (CvCNNStatModel**)&m_cnn ); 
-		if( cnn_train ) cnn_train->release( (CvCNNStatModel**)&cnn_train );
+		// if( cnn_train ) cnn_train->release( (CvCNNStatModel**)&cnn_train );
 	}
 
 	
@@ -169,7 +169,7 @@ void ConvNN::createCNN()/*(int nSample, float maxIter,
 	CV_CALL(m_cnn->network->add_layer( m_cnn->network, layer ));
 
 	n_input_planes  = m_connectNode;
-	n_output_planes = 12;
+	n_output_planes = m_nNode;
 	init_learn_rate = m_learningRate;
 	a = 1;
 	s = 1;
@@ -410,7 +410,7 @@ void ConvNN::trainNN(CvMat *trainingData, CvMat *responseMat,
 	CvCNNStatModelParams params;
 	params.cls_labels = cvCreateMat( 10, 10, CV_32FC1 );
 
-	params.etalons = cvCreateMat( 10, 12, CV_32FC1 );
+	params.etalons = cvCreateMat( 10, m_nNode, CV_32FC1 );
 	for(i=0;i<params.etalons->rows;i++){
 	for(j=0;j<params.etalons->cols;j++){
 		cvmSet(params.etalons,i,j,(double)-1.0);

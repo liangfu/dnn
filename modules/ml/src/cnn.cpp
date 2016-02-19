@@ -359,6 +359,8 @@ static void icvTrainCNNetwork( CvCNNetwork* network,
         CvMat * mattemp = cvCreateMat(etalon.cols,etalon.rows,CV_MAT_TYPE(etalon.type));
         cvTranspose(&etalon, mattemp);
         float trloss = (float) cvNorm(X[n_layers], mattemp);
+        static double sumloss = 0;
+        sumloss += trloss;
         if (int(float(n*100)/float(max_iter))<
             int(float((n+1)*100)/float(max_iter)))
         {
@@ -366,7 +368,7 @@ static void icvTrainCNNetwork( CvCNNetwork* network,
           fprintf(fpprogress,"%d/%d = %.2f%%,",n,max_iter,float(n*100.f)/float(max_iter));
           fflush(fpprogress);
           fflush(fplog);
-          fprintf(fplog, "loss: %f\n", trloss);
+          fprintf(fplog, "loss: %f\n", sumloss/float(n));
         }
         cvReleaseMat(&mattemp);
 #endif
@@ -846,6 +848,9 @@ ML_IMPL CvCNNLayer* cvCreateCNNFullConnectLayer(
     if( a <= 0 || s <= 0 || init_learn_rate <= 0)
         CV_ERROR( CV_StsBadArg, "Incorrect parameters" );
 
+    fprintf(stderr,"FullConnectLayer: input (%d), output (%d)\n",
+            n_inputs,n_outputs);
+    
     CV_CALL(layer = (CvCNNFullConnectLayer*)icvCreateCNNLayer( ICV_CNN_FULLCONNECT_LAYER,
         sizeof(CvCNNFullConnectLayer), n_inputs, 1, 1, n_outputs, 1, 1,
         init_learn_rate, learn_rate_decrease_type,
@@ -996,7 +1001,7 @@ static void icvCNNSubSamplingForward( CvCNNLayer* _layer,
     cvZero( layer->sumX );
     cvZero( layer->exp2ssumWX );
     
-#if 0
+#if 1
     for( ky = 0; ky < stride_size; ky++ ){
     for( kx = 0; kx < stride_size; kx++ ){
       float* Xplane = X->data.fl;
@@ -1081,6 +1086,7 @@ static void icvCNNFullConnectForward( CvCNNLayer* _layer, const CvMat* X, CvMat*
     CV_ASSERT(X->cols == 1 && X->rows == layer->n_input_planes);
     CV_ASSERT(Y->cols == 1 && Y->rows == layer->n_output_planes);
 
+    // bias on last column vector
     CV_CALL(cvGetSubRect( weights, &sub_weights,
                           cvRect(0, 0, weights->cols-1, weights->rows )));
     CV_CALL(cvGetCol( weights, &bias, weights->cols-1));
@@ -1118,9 +1124,10 @@ static void icvCNNFullConnectForward( CvCNNLayer* _layer, const CvMat* X, CvMat*
 
 		//(1.7159*tanh(0.66666667*x))
 		CV_CALL( cvGEMM(&sub_weights, X, 1/*2*layer->s*/, &bias, 1/*2*layer->s*/, layer->exp2ssumWX));
-		for (i = 0; i < Y->rows; i++) {
-			Y->data.fl[i] = SIG( layer->exp2ssumWX->data.fl[ i ] );
-		}
+ 		// for (i = 0; i < Y->rows; i++) {
+		// 	Y->data.fl[i] = SIG( layer->exp2ssumWX->data.fl[ i ] );
+		// }
+    cvSigmoid(layer->exp2ssumWX,Y);
 #endif
     }__END__;
 }

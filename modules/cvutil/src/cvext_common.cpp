@@ -829,3 +829,23 @@ CVStatus cvCurveFittingLS(
   return CV_StsOk;
 }
 
+void cvSigmoid(CvMat * src, CvMat * dst, int islogit, float a, float b)
+{
+  CV_FUNCNAME("cvSigmoid");
+  int ii,elemsize=src->rows*src->cols;
+  __CV_BEGIN__
+  {
+  CV_ASSERT(src->rows==dst->rows);
+  CV_ASSERT(src->cols==dst->cols);
+  if (CV_MAT_TYPE(src->type)==CV_32F){
+    float * srcptr = src->data.fl;
+    float * dstptr = dst->data.fl;
+    for (ii=0;ii<elemsize;ii++){
+      dstptr[ii] = a*tanh(b*srcptr[ii]);
+    }
+  }else{
+    CV_ERROR(CV_StsBadArg,"Unsupported data type");
+  }
+  }
+  __CV_END__
+}

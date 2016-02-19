@@ -94,7 +94,7 @@ int main(int argc, char * argv[])
   // cvReleaseMat(&sample);
   // }
 
-  ConvNN * cnn = new ConvNN(28,28,4,4,.05/*alpha*/,200/*maxiter*/);
+  ConvNN * cnn = new ConvNN(28,28,84,10,0.05/*alpha*/,200/*maxiter*/);
   cnn->createCNN();
   cnn->trainNN(training,response,testing,expected);
   cnn->writeCNNParams(pretrained_filename);
@@ -103,16 +103,26 @@ int main(int argc, char * argv[])
   cnnio->init(3,1,1,cnn);
   
   CvMat * result = cvCreateMat(10,1,CV_32F);
-  for (int i=0;i<10;i++){
+  CvMat * sorted = cvCreateMat(result->rows,result->cols,CV_32F);
+  CvMat * indices = cvCreateMat(result->rows,result->cols,CV_32S);
+  int testCount = 100;int top1=0,top3=0;
+  for (int i=0;i<testCount;i++){
     CvMat testing_stub;
     cvGetSubRect(testing,&testing_stub,cvRect(0,i,nr*nc,1));
-    // icvCNNModelPredict(cnn->m_cnn,&testing_stub,result);
-    double minval,maxval;CvPoint minloc,maxloc;
-    cvMinMaxLoc(result,&minval,&maxval,&minloc,&maxloc);
-    fprintf(stderr,"class label: %d, expect: %d\n",maxloc.y,expected->data.ptr[i]);
-    cvPrintf(stderr,"%f,",result);
+    cnn->m_cnn->predict(cnn->m_cnn,&testing_stub,result);
+    cvSort(result,sorted,indices,CV_SORT_DESCENDING|CV_SORT_EVERY_COLUMN);
+    int t1=indices->data.i[0],t2=indices->data.i[1],t3=indices->data.i[2];
+    int ex1 = expected->data.ptr[i];
+    fprintf(stderr,"label: [%d,%d,%d], expect: %d\n",t1,t2,t3,ex1);
+    if (t1==ex1){top1++;}
+    if (t1==ex1 || t2==ex1 || t3==ex1){top3++;}
   }
+  fprintf(stderr,"top-1: %.0f%%, top-3: %.0f%%\n",
+          float(top1*100.f)/float(testCount),
+          float(top3*100.f)/float(testCount));
   cvReleaseMat(&result);
+  cvReleaseMat(&sorted);
+  cvReleaseMat(&indices);
 
   cvReleaseMat(&training);
 

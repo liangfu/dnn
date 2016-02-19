@@ -47,7 +47,7 @@ public:
    * Saved the CNN model in this variable.
    */
 	CvCNNStatModel * m_cnn ;	
-	CvCNNStatModel * cnn_train;
+	// CvCNNStatModel * cnn_train;
   int            m_clipHeight, m_clipWidth;
   int            m_nNode, m_connectNode;
   int            m_max_iter;
