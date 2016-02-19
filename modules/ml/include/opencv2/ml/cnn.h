@@ -247,10 +247,12 @@ typedef struct CvCNNSubSamplingLayer
     float s;
     // exp2ssumWX = exp(2<s>*(bias+w*(x1+...+x4))), where x1,...x4 are some elements of X
     // - is the vector used in computing of the activation function in backward
-    CvMat* exp2ssumWX;
+    CvMat * exp2ssumWX;
     // (x1+x2+x3+x4), where x1,...x4 are some elements of X
     // - is the vector used in computing of the activation function in backward
-    CvMat* sumX;
+    CvMat * sumX;
+    // location where max pooling values are taken from
+    CvMat * mask;
 }CvCNNSubSamplingLayer;
 
 // Structure of the last layer.

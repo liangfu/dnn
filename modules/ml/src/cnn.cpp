@@ -329,9 +329,17 @@ static void icvTrainCNNetwork( CvCNNetwork* network,
 #if 0
           // visualize sample images
           CvMat * imgY =
-              cvCreateMat(layer->output_height,layer->output_width,CV_32F);
-          memcpy(imgY->data.ptr,X[k+1]->data.ptr,
-                 sizeof(float)*layer->output_height*layer->output_width);
+              cvCreateMat(layer->output_height,layer->output_width*layer->n_output_planes,CV_32F);
+          // memcpy(imgY->data.ptr,X[k+1]->data.ptr,
+          //        sizeof(float)*layer->output_height*layer->output_width*
+          //        layer->n_output_planes);
+          for (int ii=0;ii<layer->n_output_planes;ii++){
+          for (int jj=0;jj<layer->output_height;jj++){
+            memcpy(imgY->data.ptr+imgY->step*jj+(4*layer->output_width)*ii,
+                   X[k+1]->data.ptr+(4*layer->output_height*layer->output_width)*ii+(4*layer->output_width)*jj,
+                   4*layer->output_width);
+          }
+          }
           fprintf(stderr,"%dx%d,",imgY->cols,imgY->rows);
           cvShowImageEx("Test",imgY,CV_CM_GRAY);cvWaitKey();
           cvReleaseMat(&imgY);
@@ -805,9 +813,12 @@ ML_IMPL CvCNNLayer* cvCreateCNNSubSamplingLayer(
         cvCreateMat( n_output_planes*output_width*output_height, 1, CV_32FC1 ));
     CV_CALL(layer->exp2ssumWX =
         cvCreateMat( n_output_planes*output_width*output_height, 1, CV_32FC1 ));
-
+    CV_CALL(layer->mask =
+        cvCreateMat(n_output_planes*output_width*output_height, 1, CV_32S));
+    
     cvZero( layer->sumX );
     cvZero( layer->exp2ssumWX );
+    cvZero( layer->mask );
 
     CV_CALL(layer->weights = cvCreateMat( n_output_planes, 2, CV_32FC1 ));
     if( weights )
@@ -996,8 +1007,8 @@ static void icvCNNSubSamplingForward( CvCNNLayer* _layer,
     CV_ASSERT((layer->exp2ssumWX->cols == 1) &&
               (layer->exp2ssumWX->rows == nplanes*Ysize));
 
-    // update inner variable layer->exp2ssumWX,
-    // which will be used in back-propagation
+    // update inner variable layer->exp2ssumWX, which will be used
+    // in back-propagation
     cvZero( layer->sumX );
     cvZero( layer->exp2ssumWX );
     
@@ -1044,8 +1055,12 @@ static void icvCNNSubSamplingForward( CvCNNLayer* _layer,
 #else
     float * xptr = X->data.fl;
     float * yptr = Y->data.fl;
+    int * mptr = layer->mask->data.i;
     CV_ASSERT(Xheight==Yheight*stride_size);
     CV_ASSERT(Xwidth ==Ywidth *stride_size);
+    CV_ASSERT(Y->rows==layer->mask->rows);
+    CV_ASSERT(Y->cols==layer->mask->cols);
+    CV_ASSERT(CV_MAT_TYPE(layer->mask->type)==CV_32S);
     for( ni = 0; ni < nplanes; ni++ ){
       for( yy = 0; yy < Yheight; yy++ ){
       for( xx = 0; xx < Ywidth; xx++ ){
@@ -1060,9 +1075,11 @@ static void icvCNNSubSamplingForward( CvCNNLayer* _layer,
         }
         }
         yptr[xx] = maxval;
+        mptr[xx] = maxloc;
       }
       xptr += Xwidth*stride_size;
       yptr += Ywidth;
+      mptr += Ywidth;
       }
     }
 #endif
@@ -1627,8 +1644,9 @@ static void icvCNNSubSamplingRelease( CvCNNLayer** p_layer )
     if( !ICV_IS_CNN_SUBSAMPLING_LAYER(layer) )
         CV_ERROR( CV_StsBadArg, "Invalid layer" );
 
-    cvReleaseMat( &layer->exp2ssumWX );
-    cvReleaseMat( &layer->weights );
+    if (layer->mask      ){cvReleaseMat( &layer->mask       ); layer->mask      =0;}
+    if (layer->exp2ssumWX){cvReleaseMat( &layer->exp2ssumWX ); layer->exp2ssumWX=0;}
+    if (layer->weights   ){cvReleaseMat( &layer->weights    ); layer->weights   =0;}
     cvFree( p_layer );
 
     __END__;
