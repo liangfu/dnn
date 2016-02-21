@@ -181,17 +181,17 @@ typedef void (CV_CDECL *CvCNNetworkRelease)
     float init_learn_rate;                                          \
     /* Dynamics of learning rate decreasing */                      \
     int learn_rate_decrease_type;                                   \
-    /* Dynamics of DELTAw increasing */						        \
-    int delta_w_increase_type;									    \
-    /* samples used in training */						        \
-    int nsamples;									    \
-    /* max iterations in training */						        \
-    int max_iter;									    \
+    /* Dynamics of DELTAw increasing */                             \
+    int delta_w_increase_type;                                      \
+    /* samples used in training */                                  \
+    int nsamples;                                                   \
+    /* max iterations in training */                                \
+    int max_iter;                                                   \
     /* Trainable weights of the layer (including bias) */           \
     /* i-th row is a set of weights of the i-th output plane */     \
     CvMat* weights;                                                 \
-	/*used the follow variable to store the last time diag hessian*/\
-	CvMat* hessian_diag;											\
+    /*used the follow variable to store the last time diag hessian*/  \
+    CvMat* hessian_diag;                                              \
                                                                     \
     CvCNNLayerForward  forward;                                     \
     CvCNNLayerBackward backward;                                    \

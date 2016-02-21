@@ -1,40 +1,43 @@
-/*M///////////////////////////////////////////////////////////////////////////////////////
+/*M////////////////////////////////////////////////////////////////////////
 //
 //  IMPORTANT: READ BEFORE DOWNLOADING, COPYING, INSTALLING OR USING.
 //
-//  By downloading, copying, installing or using the software you agree to this license.
-//  If you do not agree to this license, do not download, install,
-//  copy or use the software.
-//
+//  By downloading, copying, installing or using the software you agree to
+//  this license. If you do not agree to this license, do not download,
+//  install, copy or use the software.
 //
 //                        Intel License Agreement
 //
 // Copyright (C) 2000, Intel Corporation, all rights reserved.
 // Third party copyrights are property of their respective owners.
 //
-// Redistribution and use in source and binary forms, with or without modification,
-// are permitted provided that the following conditions are met:
+// Redistribution and use in source and binary forms, with or without
+// modification, are permitted provided that the following conditions
+// are met:
 //
-//   * Redistribution's of source code must retain the above copyright notice,
-//     this list of conditions and the following disclaimer.
+//  * Redistribution's of source code must retain the above copyright notice,
+//    this list of conditions and the following disclaimer.
 //
-//   * Redistribution's in binary form must reproduce the above copyright notice,
-//     this list of conditions and the following disclaimer in the documentation
-//     and/or other materials provided with the distribution.
+//  * Redistribution's in binary form must reproduce the above copyright
+//    notice, this list of conditions and the following disclaimer in the
+//    documentation and/or other materials provided with the distribution.
 //
-//   * The name of Intel Corporation may not be used to endorse or promote products
-//     derived from this software without specific prior written permission.
+//  * The name of Intel Corporation may not be used to endorse or promote
+//    products derived from this software without specific prior written
+//    permission.
 //
-// This software is provided by the copyright holders and contributors "as is" and
-// any express or implied warranties, including, but not limited to, the implied
-// warranties of merchantability and fitness for a particular purpose are disclaimed.
-// In no event shall the Intel Corporation or contributors be liable for any direct,
-// indirect, incidental, special, exemplary, or consequential damages
-// (including, but not limited to, procurement of substitute goods or services;
+// This software is provided by the copyright holders and contributors
+// "as is" and any express or implied warranties, including, but not
+// limited to, the implied warranties of merchantability and fitness for
+// a particular purpose are disclaimed. In no event shall the
+// Intel Corporation or contributors be liable for any direct, indirect,
+// incidental, special, exemplary, or consequential damages (including,
+// but not limited to, procurement of substitute goods or services;
 // loss of use, data, or profits; or business interruption) however caused
 // and on any theory of liability, whether in contract, strict liability,
 // or tort (including negligence or otherwise) arising in any way out of
-// the use of this software, even if advised of the possibility of such damage.
+// the use of this software, even if advised of the possibility of such
+// damage.
 //
 //M*/
 
@@ -50,10 +53,10 @@
 // derivative of the sigmoid
 #define DSIG(p) (0.66666667/1.7159*(1.7159+(p))*(1.7159-(p)))  
 
-/****************************************************************************************\
-*                         Auxilary functions declarations                                *
-\****************************************************************************************/
-/*---------------------- functions for the CNN classifier ------------------------------*/
+/*************************************************************************\
+ *               Auxilary functions declarations                         *
+\*************************************************************************/
+/*------------ functions for the CNN classifier --------------------*/
 static float icvCNNModelPredict(
         const CvCNNStatModel* cnn_model,
         const CvMat* image,
@@ -75,7 +78,7 @@ static void icvTrainCNNetwork( CvCNNetwork* network,
                                int max_iter,
                                int start_iter );
 
-/*------------------------- functions for the CNN network ------------------------------*/
+/*-------------- functions for the CNN network -------------------------*/
 static void icvCNNetworkAddLayer( CvCNNetwork* network, CvCNNLayer* layer );
 static void icvCNNetworkRelease( CvCNNetwork** network );
 
@@ -84,89 +87,91 @@ static void icvCNNetworkRelease( CvCNNetwork** network );
    length(X)==<n_input_planes>*<input_height>*<input_width>,
    length(Y)==<n_output_planes>*<output_height>*<output_width>.
 */
-/*------------------------ functions for convolutional layer ---------------------------*/
+/*--------------- functions for convolutional layer --------------------*/
 static void icvCNNConvolutionRelease( CvCNNLayer** p_layer );
 
-static void icvCNNConvolutionForward( CvCNNLayer* layer, const CvMat* X, CvMat* Y );
+static void icvCNNConvolutionForward( CvCNNLayer* layer,
+                                      const CvMat* X, CvMat* Y );
 
 static void icvCNNConvolutionBackward( CvCNNLayer*  layer, int t,
     const CvMat* X, const CvMat* dE_dY, CvMat* dE_dX );
 
-/*------------------------ functions for sub-sampling layer ----------------------------*/
+/*------------------ functions for sub-sampling layer -------------------*/
 static void icvCNNSubSamplingRelease( CvCNNLayer** p_layer );
 
-static void icvCNNSubSamplingForward( CvCNNLayer* layer, const CvMat* X, CvMat* Y );
+static void icvCNNSubSamplingForward( CvCNNLayer* layer,
+                                      const CvMat* X, CvMat* Y );
 
 static void icvCNNSubSamplingBackward( CvCNNLayer*  layer, int t,
     const CvMat* X, const CvMat* dE_dY, CvMat* dE_dX );
 
-/*------------------------ functions for full connected layer --------------------------*/
+/*---------- functions for full connected layer -----------------------*/
 static void icvCNNFullConnectRelease( CvCNNLayer** p_layer );
 
-static void icvCNNFullConnectForward( CvCNNLayer* layer, const CvMat* X, CvMat* Y );
+static void icvCNNFullConnectForward( CvCNNLayer* layer,
+                                      const CvMat* X, CvMat* Y );
 
 static void icvCNNFullConnectBackward( CvCNNLayer* layer, int,
     const CvMat*, const CvMat* dE_dY, CvMat* dE_dX );
 
-/****************************************************************************************\
-*                             Functions implementations                                  *
-\****************************************************************************************/
+/**************************************************************************\
+ *                 Functions implementations                              *
+\**************************************************************************/
 
-#define ICV_CHECK_CNN_NETWORK(network)                                                  \
-{                                                                                       \
-    CvCNNLayer* first_layer, *layer, *last_layer;                                       \
-    int n_layers, i;                                                                    \
-    if( !network )                                                                      \
-        CV_ERROR( CV_StsNullPtr,                                                        \
-        "Null <network> pointer. Network must be created by user." );                   \
-    n_layers = network->n_layers;                                                       \
-    first_layer = last_layer = network->layers;                                         \
-    for( i = 0, layer = first_layer; i < n_layers && layer; i++ )                       \
-    {                                                                                   \
-        if( !ICV_IS_CNN_LAYER(layer) )                                                  \
-            CV_ERROR( CV_StsNullPtr, "Invalid network" );                               \
-        last_layer = layer;                                                             \
-        layer = layer->next_layer;                                                      \
-    }                                                                                   \
-                                                                                        \
-    if( i == 0 || i != n_layers || first_layer->prev_layer || layer )                   \
-        CV_ERROR( CV_StsNullPtr, "Invalid network" );                                   \
-                                                                                        \
-    if( first_layer->n_input_planes != 1 )                                              \
-        CV_ERROR( CV_StsBadArg, "First layer must contain only one input plane" );      \
-                                                                                        \
-    if( img_size != first_layer->input_height*first_layer->input_width )                \
-        CV_ERROR( CV_StsBadArg, "Invalid input sizes of the first layer" );             \
-                                                                                        \
-    if( params->etalons->cols != last_layer->n_output_planes*                           \
-        last_layer->output_height*last_layer->output_width )                            \
-        CV_ERROR( CV_StsBadArg, "Invalid output sizes of the last layer" );             \
+static void icvCheckCNNetwork(CvCNNetwork * network,
+                              CvCNNStatModelParams * params,
+                              int img_size,
+                              char * cvFuncName)  
+{                                              
+  CvCNNLayer* first_layer, *layer, *last_layer;
+  int n_layers, i;                             
+  if( !network )                               
+    CV_ERROR( CV_StsNullPtr,                   
+              "Null <network> pointer. Network must be created by user." ); 
+  n_layers = network->n_layers;                                    
+  first_layer = last_layer = network->layers;                      
+  for( i = 0, layer = first_layer; i < n_layers && layer; i++ ) {
+    if( !ICV_IS_CNN_LAYER(layer) )                                 
+      CV_ERROR( CV_StsNullPtr, "Invalid network" );                
+    last_layer = layer;                                            
+    layer = layer->next_layer;                                     
+  }                                                                
+  if( i == 0 || i != n_layers || first_layer->prev_layer || layer )
+    CV_ERROR( CV_StsNullPtr, "Invalid network" );                  
+  if( first_layer->n_input_planes != 1 )                           
+    CV_ERROR( CV_StsBadArg, "First layer must contain only one input plane" );  if( img_size != first_layer->input_height*first_layer->input_width ) 
+                                                                                  CV_ERROR( CV_StsBadArg, "Invalid input sizes of the first layer" );
+  if( params->etalons->cols != last_layer->n_output_planes*            
+      last_layer->output_height*last_layer->output_width )             
+    CV_ERROR( CV_StsBadArg, "Invalid output sizes of the last layer" );
 }
 
-#define ICV_CHECK_CNN_MODEL_PARAMS(params)                              \
-  {                                                                     \
-    if( !params )                                                       \
-      CV_ERROR( CV_StsNullPtr, "Null <params> pointer" );               \
-                                                                        \
-    if( !ICV_IS_MAT_OF_TYPE(params->etalons, CV_32FC1) )                \
-      CV_ERROR( CV_StsBadArg, "<etalons> must be CV_32FC1 type" );      \
-    if( params->etalons->rows != cnn_model->cls_labels->cols )          \
-      CV_ERROR( CV_StsBadArg, "Invalid <etalons> size" );               \
-                                                                        \
-    if( params->grad_estim_type != CV_CNN_GRAD_ESTIM_RANDOM &&          \
-        params->grad_estim_type != CV_CNN_GRAD_ESTIM_BY_WORST_IMG )     \
-      CV_ERROR( CV_StsBadArg, "Invalid <grad_estim_type>" );            \
-                                                                        \
-    if( params->start_iter < 0 )                                        \
-      CV_ERROR( CV_StsBadArg, "Parameter <start_iter> must be positive or zero" ); \
-                                                                        \
-    if( params->max_iter < 1 )                                          \
-      params->max_iter = 1;                                             \
-  }
+static void icvCheckCNNModelParams(CvCNNStatModelParams * params,
+                                   CvCNNStatModel * cnn_model,
+                                   char * cvFuncName)
+{                                                                 
+  if( !params )                                                   
+    CV_ERROR( CV_StsNullPtr, "Null <params> pointer" );           
+                                                                    
+  if( !ICV_IS_MAT_OF_TYPE(params->etalons, CV_32FC1) )            
+    CV_ERROR( CV_StsBadArg, "<etalons> must be CV_32FC1 type" );  
+  if( params->etalons->rows != cnn_model->cls_labels->cols )      
+    CV_ERROR( CV_StsBadArg, "Invalid <etalons> size" );           
+                                                                    
+  if( params->grad_estim_type != CV_CNN_GRAD_ESTIM_RANDOM &&      
+      params->grad_estim_type != CV_CNN_GRAD_ESTIM_BY_WORST_IMG ) 
+    CV_ERROR( CV_StsBadArg, "Invalid <grad_estim_type>" );        
+                                                                    
+  if( params->start_iter < 0 )                                    
+    CV_ERROR( CV_StsBadArg, "Parameter <start_iter> must be positive or zero" ); 
+                              
+  if( params->max_iter < 1 )
+    params->max_iter = 1;   
+}
 
-/****************************************************************************************\
-*                              Classifier functions                                      *
-\****************************************************************************************/
+/********************************************************************\
+ *                    Classifier functions                          *
+\********************************************************************/
 
 ML_IMPL CvCNNStatModel*	cvCreateCNNStatModel(int flag, int size)// ,
     // CvCNNStatModelRelease release,
@@ -222,8 +227,10 @@ cvTrainCNNClassifier( const CvMat* _train_data, int tflag,
         &n_images, &img_size, &img_size, &responses,
         &cnn_model->cls_labels, 0 ));
 
-    ICV_CHECK_CNN_MODEL_PARAMS(params);
-    ICV_CHECK_CNN_NETWORK(params->network);
+    // ICV_CHECK_CNN_MODEL_PARAMS(params);
+    // ICV_CHECK_CNN_NETWORK(params->network);
+    icvCheckCNNModelParams(params,cnn_model,cvFuncName);
+    icvCheckCNNetwork(params->network,params,img_size,cvFuncName);
 
     cnn_model->network = params->network;
     // CV_CALL(cnn_model->etalons = (CvMat*)cvClone( params->etalons ));
@@ -245,7 +252,7 @@ cvTrainCNNClassifier( const CvMat* _train_data, int tflag,
     return (CvCNNStatModel*)cnn_model;
 }
 
-/****************************************************************************************/
+/*************************************************************************/
 static void icvTrainCNNetwork( CvCNNetwork* network,
                                const float** images,
                                const CvMat* responses,
@@ -326,18 +333,16 @@ static void icvTrainCNNetwork( CvCNNetwork* network,
         for( k = 0, layer = first_layer; k < n_layers - 1; k++, layer = layer->next_layer ){
           CV_CALL(layer->forward( layer, X[k], X[k+1] ));
 
-#if 0
+#if 1
           // visualize sample images
-          CvMat * imgY =
-              cvCreateMat(layer->output_height,layer->output_width*layer->n_output_planes,CV_32F);
-          // memcpy(imgY->data.ptr,X[k+1]->data.ptr,
-          //        sizeof(float)*layer->output_height*layer->output_width*
-          //        layer->n_output_planes);
-          for (int ii=0;ii<layer->n_output_planes;ii++){
-          for (int jj=0;jj<layer->output_height;jj++){
-            memcpy(imgY->data.ptr+imgY->step*jj+(4*layer->output_width)*ii,
-                   X[k+1]->data.ptr+(4*layer->output_height*layer->output_width)*ii+(4*layer->output_width)*jj,
-                   4*layer->output_width);
+          int hh = layer->output_height;
+          int ww = layer->output_width;
+          int nplanes = layer->n_output_planes;
+          CvMat * imgY = cvCreateMat(hh,ww*nplanes,CV_32F);
+          for (int ii=0;ii<nplanes;ii++){
+          for (int jj=0;jj<hh;jj++){
+            memcpy(imgY->data.ptr+imgY->step*jj+(4*ww)*ii,
+                   X[k+1]->data.ptr+(4*hh*ww)*ii+(4*ww)*jj,4*ww);
           }
           }
           fprintf(stderr,"%dx%d,",imgY->cols,imgY->rows);
@@ -393,7 +398,7 @@ static void icvTrainCNNetwork( CvCNNetwork* network,
     cvFree( &dE_dX );
 }
 
-/****************************************************************************************/
+/*************************************************************************/
 static float icvCNNModelPredict( const CvCNNStatModel* model,
                                  const CvMat* _image,
                                  CvMat* probs )
@@ -501,7 +506,8 @@ static void icvCNNModelUpdate(
         &n_images, &img_size, &img_size, &responses,
         &cls_labels, 0, 0 ));
 
-    ICV_CHECK_CNN_MODEL_PARAMS(params);
+    // ICV_CHECK_CNN_MODEL_PARAMS(params);
+    icvCheckCNNModelParams(params,cnn_model,cvFuncName);
 
     // Number of classes must be the same as when classifiers was created
     if( !CV_ARE_SIZES_EQ(cls_labels, cnn_model->cls_labels) )
@@ -522,7 +528,7 @@ static void icvCNNModelUpdate(
     cvReleaseMat( &responses );
 }
 
-/****************************************************************************************/
+/*************************************************************************/
 static void icvCNNModelRelease( CvCNNStatModel** cnn_model )
 {
     CV_FUNCNAME("icvCNNModelRelease");
@@ -544,9 +550,9 @@ static void icvCNNModelRelease( CvCNNStatModel** cnn_model )
 
 }
 
-/****************************************************************************************\
-*                                 Network functions                                      *
-\****************************************************************************************/
+/************************************************************************ \
+ *                       Network functions                              *
+\************************************************************************/
 ML_IMPL CvCNNetwork* cvCreateCNNetwork( CvCNNLayer* first_layer )
 {
     CvCNNetwork* network = 0;
@@ -574,7 +580,7 @@ ML_IMPL CvCNNetwork* cvCreateCNNetwork( CvCNNLayer* first_layer )
 
 }
 
-/****************************************************************************************/
+/***********************************************************************/
 static void icvCNNetworkAddLayer( CvCNNetwork* network, CvCNNLayer* layer )
 {
     CV_FUNCNAME( "icvCNNetworkAddLayer" );
@@ -615,7 +621,7 @@ static void icvCNNetworkAddLayer( CvCNNetwork* network, CvCNNLayer* layer )
     __END__;
 }
 
-/****************************************************************************************/
+/*************************************************************************/
 static void icvCNNetworkRelease( CvCNNetwork** network_pptr )
 {
     CV_FUNCNAME( "icvReleaseCNNetwork" );
@@ -651,9 +657,9 @@ static void icvCNNetworkRelease( CvCNNetwork** network_pptr )
     __END__;
 }
 
-/****************************************************************************************\
-*                                  Layer functions                                       *
-\****************************************************************************************/
+/*************************************************************************\
+ *                        Layer functions                                *
+\*************************************************************************/
 static CvCNNLayer* icvCreateCNNLayer( int layer_type, int header_size,
     int n_input_planes, int input_height, int input_width,
     int n_output_planes, int output_height, int output_width,
@@ -710,7 +716,7 @@ static CvCNNLayer* icvCreateCNNLayer( int layer_type, int header_size,
     return layer;
 }
 
-/****************************************************************************************/
+/*************************************************************************/
 ML_IMPL CvCNNLayer* cvCreateCNNConvolutionLayer(
     int n_input_planes, int input_height, int input_width,
     int n_output_planes, int K,
@@ -901,9 +907,9 @@ ML_IMPL CvCNNLayer* cvCreateCNNFullConnectLayer(
 }
 
 
-/****************************************************************************************\
-*                           Layer FORWARD functions                                      *
-\****************************************************************************************/
+/*************************************************************************\
+ *                 Layer FORWARD functions                               *
+\*************************************************************************/
 static void icvCNNConvolutionForward( CvCNNLayer* _layer,
                                       const CvMat* X,
                                       CvMat* Y )
@@ -1012,7 +1018,7 @@ static void icvCNNSubSamplingForward( CvCNNLayer* _layer,
     cvZero( layer->sumX );
     cvZero( layer->exp2ssumWX );
     
-#if 1
+#if 0
     for( ky = 0; ky < stride_size; ky++ ){
     for( kx = 0; kx < stride_size; kx++ ){
       float* Xplane = X->data.fl;
@@ -1149,9 +1155,9 @@ static void icvCNNFullConnectForward( CvCNNLayer* _layer, const CvMat* X, CvMat*
     }__END__;
 }
 
-/****************************************************************************************\
-*                           Layer BACKWARD functions                                     *
-\****************************************************************************************/
+/*************************************************************************\
+*                           Layer BACKWARD functions                      *
+\*************************************************************************/
 
 /* <dE_dY>, <dE_dX> should be row-vectors.
    Function computes partial derivatives <dE_dX>
@@ -1269,7 +1275,7 @@ static void icvCNNConvolutionBackward(
 
 /****************************************************************************************/
 static void icvCNNSubSamplingBackward(
-    CvCNNLayer* _layer, int t, const CvMat*, const CvMat* dE_dY, CvMat* dE_dX )
+    CvCNNLayer* _layer, int t, const CvMat* X, const CvMat* dE_dY, CvMat* dE_dX )
 {
     // derivative of activation function
     CvMat* dY_dX_elems = 0; // elements of matrix dY_dX
@@ -1293,6 +1299,7 @@ static void icvCNNSubSamplingBackward(
     const int k_max   = layer->n_output_planes * Yheight;
 
     int k, i, j, m;
+#if 0
     float* dY_dX_current_elem = 0, *dE_dX_start = 0, *dE_dW_data = 0, *w = 0;
     CvMat dy_dw0, dy_dw1;
     CvMat activ_func_der, sumX_row;
@@ -1324,21 +1331,23 @@ static void icvCNNSubSamplingBackward(
     cvGetCols( &dy_dw0, &dy_dw0_sub_row, 0, Ysize );
     cvGetCols( &dy_dw1, &dy_dw1_sub_row, 0, Ysize );
     dE_dW_data = dE_dW->data.fl;
-    for( i = 0; i < layer->n_output_planes; i++ )
-    {
-        *dE_dW_data++ = (float)cvDotProduct( &dE_dY_sub_row, &dy_dw0_sub_row );
-        *dE_dW_data++ = (float)cvDotProduct( &dE_dY_sub_row, &dy_dw1_sub_row );
-
-        dE_dY_sub_row.data.fl += Ysize;
-        dy_dw0_sub_row.data.fl += Ysize;
-        dy_dw1_sub_row.data.fl += Ysize;
+    for( i = 0; i < layer->n_output_planes; i++ ){
+      *dE_dW_data++ = (float)cvDotProduct( &dE_dY_sub_row, &dy_dw0_sub_row );
+      *dE_dW_data++ = (float)cvDotProduct( &dE_dY_sub_row, &dy_dw1_sub_row );
+      
+      dE_dY_sub_row.data.fl += Ysize;
+      dy_dw0_sub_row.data.fl += Ysize;
+      dy_dw1_sub_row.data.fl += Ysize;
     }
 
     // compute <dY_dX> = layer->weights*<dY_dX>
     w = layer->weights->data.fl;
     cvGetRows( dY_dX_elems, &dY_dX_sub_col, 0, Ysize );
-    for( i = 0; i < layer->n_input_planes; i++, w++, dY_dX_sub_col.data.fl += Ysize )
-        CV_CALL(cvConvertScale( &dY_dX_sub_col, &dY_dX_sub_col, (float)*w ));
+    for( i = 0; i < layer->n_input_planes;
+         i++, w++, dY_dX_sub_col.data.fl += Ysize )
+    {
+      CV_CALL(cvConvertScale( &dY_dX_sub_col, &dY_dX_sub_col, (float)*w ));
+    }
 
     // compute <dE_dX>
     CV_CALL(cvReshape( dY_dX_elems, dY_dX_elems, 0, 1 ));
@@ -1346,40 +1355,67 @@ static void icvCNNSubSamplingBackward(
 
     dY_dX_current_elem = dY_dX_elems->data.fl;
     dE_dX_start = dE_dX->data.fl;
-    for( k = 0; k < k_max; k++ )
-    {
-        for( i = 0; i < Ywidth; i++, dY_dX_current_elem++ )
-        {
-            float* dE_dX_current_elem = dE_dX_start;
-            for( j = 0; j < scale; j++, dE_dX_current_elem += Xwidth - scale )
-            {
-                for( m = 0; m < scale; m++, dE_dX_current_elem++ )
-                    *dE_dX_current_elem = *dY_dX_current_elem;
-            }
-            dE_dX_start += scale;
+    for( k = 0; k < k_max; k++ ){
+      for( i = 0; i < Ywidth; i++, dY_dX_current_elem++ ) {
+        float* dE_dX_current_elem = dE_dX_start;
+        for( j = 0; j < scale; j++, dE_dX_current_elem += Xwidth - scale ){
+          for( m = 0; m < scale; m++, dE_dX_current_elem++ ){
+            *dE_dX_current_elem = *dY_dX_current_elem;
+          }
         }
-        dE_dX_start += Xwidth * (scale - 1);
+        dE_dX_start += scale;
+      }
+      dE_dX_start += Xwidth * (scale - 1);
     }
 
     // update weights
     {
-        CvMat dE_dW_mat, *weights = layer->weights;
-        float eta;
-        if( layer->learn_rate_decrease_type == CV_CNN_LEARN_RATE_DECREASE_LOG_INV )
-            eta = -layer->init_learn_rate/logf(1+(float)t);
-        else if( layer->learn_rate_decrease_type == CV_CNN_LEARN_RATE_DECREASE_SQRT_INV )
-            eta = -layer->init_learn_rate/sqrtf((float)t);
-        else
-            eta = -layer->init_learn_rate/(float)t;
-        cvReshape( dE_dW, &dE_dW_mat, 0, weights->rows );
-        cvScaleAdd( &dE_dW_mat, cvRealScalar(eta), weights, weights );
+      CvMat dE_dW_mat, *weights = layer->weights;
+      float eta;
+      if( layer->learn_rate_decrease_type == CV_CNN_LEARN_RATE_DECREASE_LOG_INV ) {
+        eta = -layer->init_learn_rate/logf(1+(float)t);
+      }else if( layer->learn_rate_decrease_type == CV_CNN_LEARN_RATE_DECREASE_SQRT_INV ){
+        eta = -layer->init_learn_rate/sqrtf((float)t);
+      }else{
+        eta = -layer->init_learn_rate/(float)t;
+      }
+      cvReshape( dE_dW, &dE_dW_mat, 0, weights->rows );
+      cvScaleAdd( &dE_dW_mat, cvRealScalar(eta), weights, weights );
     }
-
+#else
+    CV_ASSERT(CV_MAT_TYPE(layer->mask->type)==CV_32S);
+    float * dxptr = dE_dX->data.fl;
+    float * dyptr = dE_dY->data.fl;
+    int * mptr = layer->mask->data.i;
+    int nplanes = layer->n_output_planes;
+    int stride_size = layer->sub_samp_scale;
+    for( int ni = 0; ni < nplanes; ni++ ){
+      for( int yy = 0; yy < Yheight; yy++ ){
+      for( int xx = 0; xx < Ywidth; xx++ ){
+        // float maxval = *xptr;
+        // int maxloc = 0;
+        // for( ky = 0; ky < stride_size; ky++ ){
+        // for( kx = 0; kx < stride_size; kx++ ){
+        //   if ((xptr+stride_size*xx+Xwidth*ky)[kx]>maxval) {
+        //     maxval = (xptr+stride_size*xx+Xwidth*ky)[kx];
+        //     maxloc = ky*stride_size + kx;
+        //   }
+        // }
+        // }
+        // yptr[xx] = maxval;
+        // mptr[xx] = maxloc;
+      }
+      dxptr += Xwidth*stride_size;
+      dyptr += Ywidth;
+      mptr += Ywidth;
+      }
+    }
+#endif
     }__END__;
 
-    cvReleaseMat( &dY_dX_elems );
-    cvReleaseMat( &dY_dW_elems );
-    cvReleaseMat( &dE_dW );
+    if (dY_dX_elems){cvReleaseMat( &dY_dX_elems );dY_dX_elems=0;}
+    if (dY_dW_elems){cvReleaseMat( &dY_dW_elems );dY_dW_elems=0;}
+    if (dE_dW      ){cvReleaseMat( &dE_dW       );dE_dW      =0;}
 }
 
 /****************************************************************************************/
@@ -1599,9 +1635,9 @@ static void icvCNNFullConnectBackward( CvCNNLayer* _layer,
     cvReleaseMat( &dE_dW );
 }
 
-/****************************************************************************************\
-*                           Layer RELEASE functions                                      *
-\****************************************************************************************/
+/*************************************************************************\
+*                           Layer RELEASE functions                       *
+\*************************************************************************/
 static void icvCNNConvolutionRelease( CvCNNLayer** p_layer )
 {
     CV_FUNCNAME("icvCNNConvolutionRelease");
@@ -1677,15 +1713,15 @@ static void icvCNNFullConnectRelease( CvCNNLayer** p_layer )
     __END__;
 }
 
-/****************************************************************************************\
-*                              Read/Write CNN classifier                                 *
-\****************************************************************************************/
+/*************************************************************************\
+*                              Read/Write CNN classifier                  *
+\*************************************************************************/
 static int icvIsCNNModel( const void* ptr )
 {
     return CV_IS_CNN(ptr);
 }
 
-/****************************************************************************************/
+/*************************************************************************/
 static void icvReleaseCNNModel( void** ptr )
 {
     CV_FUNCNAME("icvReleaseCNNModel");
