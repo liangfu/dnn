@@ -1199,6 +1199,8 @@ static void icvCNNConvolutionBackward(
     const int Y_plane_width  = layer->output_width;
     const int Y_plane_size   = Y_plane_height*Y_plane_width;
 
+    const int batch_size = X->cols;
+
     int no, ni, yy, xx, ky, kx;
     int X_idx = 0, Y_idx = 0;
 
@@ -1254,7 +1256,10 @@ static void icvCNNConvolutionBackward(
       }
     }
 
-    CV_CALL(cvMatMul( dE_dY, dY_dW, dE_dW ));
+    CvMat * dE_dW_ = cvCreateMat( batch_size, dY_dW->cols, CV_32FC1 );
+    CV_CALL(cvMatMul( dE_dY, dY_dW, dE_dW_ ));
+    cvReduce(dE_dW_,dE_dW,CV_REDUCE_SUM);
+    cvReleaseMat(&dE_dW_);
     CV_CALL(cvMatMul( dE_dY, dY_dX, dE_dX ));
 
     // update weights
@@ -1490,13 +1495,24 @@ static void icvCNNFullConnectBackward( CvCNNLayer* _layer,
         cvRect(0, 0, weights->cols-1, weights->rows) ));
     CV_CALL(cvMatMul( dE_dY_activ_func_der, &sub_weights, dE_dX ));
 
+    CV_ASSERT( dE_dY_activ_func_der->rows == batch_size &&
+               dE_dY_activ_func_der->cols == n_outputs);
     cvTranspose(X,Xrow); // cvReshape( X, &Xrow, 0, 1 );
-    dE_dY_activ_func_der_data = dE_dY_activ_func_der->data.fl;
-    Xtemplate = cvMat( batch_size, n_inputs, CV_32FC1, dE_dW->data.fl );
-    for( i = 0; i < n_outputs; i++, Xtemplate.data.fl += n_inputs + 1 ){
-      CV_CALL(cvConvertScale( Xrow, &Xtemplate, *dE_dY_activ_func_der_data ));
-      Xtemplate.data.fl[n_inputs] = *dE_dY_activ_func_der_data++;
+    // dE_dY_activ_func_der_data = dE_dY_activ_func_der->data.fl;
+    // Xtemplate = cvMat( batch_size, n_inputs, CV_32FC1, dE_dW->data.fl );
+    cvZero(dE_dW);
+    for (int k = 0; k < batch_size; k++){
+    float * derptr = dE_dY_activ_func_der->data.fl+n_inputs*k;
+    float * xptr = Xrow->data.fl+n_outputs*k;
+    float * dwptr = dE_dW->data.fl;
+    for( i = 0; i < n_outputs; i++ ){
+      for( int j = 0; j < n_inputs; j++ ){
+        dwptr[j] += xptr[j] * derptr[i] ;
+      }
+      dwptr[n_inputs] += derptr[i]; // bias term
+      dwptr += n_inputs + 1;
     }
+    } // for each sample
 
     // 2) update weights
     {
