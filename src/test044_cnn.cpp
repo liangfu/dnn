@@ -94,8 +94,9 @@ int main(int argc, char * argv[])
   // cvReleaseMat(&sample);
   // }
 
-  ConvNN * cnn = new ConvNN(28,28,84,10,0.05/*alpha*/,200/*maxiter*/);
+  ConvNN * cnn = new ConvNN(28,28,84,10,0.05/*alpha*/,20000/*maxiter*/);
   cnn->createCNN();
+CV_TIMER_START();
   cnn->trainNN(training,response,testing,expected);
   cnn->writeCNNParams(pretrained_filename);
 
@@ -106,7 +107,7 @@ int main(int argc, char * argv[])
   CvMat * sorted = cvCreateMat(result->rows,result->cols,CV_32F);
   CvMat * indices = cvCreateMat(result->rows,result->cols,CV_32S);
   int testCount = 1000;int top1=0,top3=0;
-  CvRNG rng = cvRNG(-2);
+  CvRNG rng = cvRNG(-1);
   for (int ii=0;ii<testCount;ii++){
     CvMat testing_stub; int idx = cvRandInt(&rng)%testing->rows;
     cvGetSubRect(testing,&testing_stub,cvRect(0,idx,nr*nc,1));
@@ -114,12 +115,13 @@ int main(int argc, char * argv[])
     cvSort(result,sorted,indices,CV_SORT_DESCENDING|CV_SORT_EVERY_COLUMN);
     int t1=indices->data.i[0],t2=indices->data.i[1],t3=indices->data.i[2];
     int ex1 = expected->data.ptr[idx];
-    fprintf(stderr,"label: [%d,%d,%d], expect: %d\n",t1,t2,t3,ex1);
+    // fprintf(stderr,"label: [%d,%d,%d], expect: %d\n",t1,t2,t3,ex1);
     if (t1==ex1){top1++;}
     if (t1==ex1 || t2==ex1 || t3==ex1){top3++;}
   }
   fprintf(stderr,"top-1: %.1f%%, top-3: %.1f%%\n",
     float(top1*100.f)/float(testCount),float(top3*100.f)/float(testCount));
+CV_TIMER_SHOW();
   cvReleaseMat(&result);
   cvReleaseMat(&sorted);
   cvReleaseMat(&indices);
