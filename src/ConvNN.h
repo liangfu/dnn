@@ -24,7 +24,7 @@ class ConvNN
 public:
 	ConvNN(void);
 	ConvNN(int height, int width, int node, int cNode,
-         double alpha, int maxiter);
+         double alpha, int maxiter, int batch_size);
 	~ConvNN(void);
 
   /** \brief Create CNN models
@@ -52,6 +52,7 @@ public:
   int            m_nNode, m_connectNode;
   int            m_max_iter;
 	double         m_learningRate;
+  int            m_batch_size;
 
   /** \brief Load CNN parameters from a file
    * a normal member loading the parameters of CNN from a file.

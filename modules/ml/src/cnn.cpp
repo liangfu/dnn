@@ -76,7 +76,8 @@ static void icvTrainCNNetwork( CvCNNetwork* network,
                                const CvMat* etalons,
                                int grad_estim_type,
                                int max_iter,
-                               int start_iter );
+                               int start_iter,
+                               int batch_size);
 
 /*-------------- functions for the CNN network -------------------------*/
 static void icvCNNetworkAddLayer( CvCNNetwork* network, CvCNNLayer* layer );
@@ -213,7 +214,7 @@ ML_IMPL CvCNNStatModel*	cvCreateCNNStatModel(int flag, int size)// ,
 ML_IMPL CvCNNStatModel*
 cvTrainCNNClassifier( const CvMat* _train_data, int tflag,
             const CvMat* _responses,
-            const CvCNNStatModelParams* _params,
+            const CvCNNStatModelParams* _params, 
             const CvMat*, const CvMat* _sample_idx, const CvMat*, const CvMat* )
 {
   CvCNNStatModel* cnn_model    = 0;
@@ -248,7 +249,7 @@ cvTrainCNNClassifier( const CvMat* _train_data, int tflag,
 
   CV_CALL( icvTrainCNNetwork( cnn_model->network, out_train_data, responses,
                               cnn_model->etalons, params->grad_estim_type, 
-                              params->max_iter, params->start_iter ));
+                              params->max_iter, params->start_iter, params->batch_size ));
   __END__;
 
   if( cvGetErrStatus() < 0 && cnn_model ){
@@ -264,7 +265,7 @@ cvTrainCNNClassifier( const CvMat* _train_data, int tflag,
 static void icvTrainCNNetwork( CvCNNetwork* network,
                                const float** images, const CvMat* responses,
                                const CvMat* etalons,
-                               int grad_estim_type, int max_iter, int start_iter )
+                               int grad_estim_type, int max_iter, int start_iter, int batch_size )
 {
   CvMat** X     = 0;
   CvMat** dE_dX = 0;
@@ -279,7 +280,6 @@ static void icvTrainCNNetwork( CvCNNetwork* network,
   const int img_width  = first_layer->input_width;
   const int img_size   = img_width*img_height;
   const int n_images   = responses->cols;
-  const int batch_size = 2;
   CvMat image = cvMat( batch_size, img_size, CV_32FC1 );
   CvCNNLayer* layer;
   int n;
@@ -504,7 +504,7 @@ static void icvCNNModelUpdate(
 
     CV_CALL( icvTrainCNNetwork( cnn_model->network, out_train_data, responses,
         cnn_model->etalons, params->grad_estim_type, params->max_iter,
-        params->start_iter ));
+        params->start_iter, params->batch_size ));
 
     __END__;
 

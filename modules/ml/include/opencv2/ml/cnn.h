@@ -293,6 +293,7 @@ typedef struct CvCNNStatModelParams
   int max_iter;
   int start_iter;
   int grad_estim_type;
+  int batch_size;
 }CvCNNStatModelParams;
 
 // this macro is added by lxts on jun/22/2008
@@ -362,7 +363,7 @@ CVAPI(CvCNNetwork*) cvCreateCNNetwork( CvCNNLayer* first_layer );
 CVAPI(CvCNNStatModel*) cvTrainCNNClassifier(
             const CvMat* train_data, int tflag,
             const CvMat* responses,
-            const CvCNNStatModelParams* params,
+            const CvCNNStatModelParams* params, 
             const CvMat* CV_DEFAULT(0),
             const CvMat* sample_idx CV_DEFAULT(0),
             const CvMat* CV_DEFAULT(0), const CvMat* CV_DEFAULT(0) );

@@ -94,7 +94,7 @@ int main(int argc, char * argv[])
   // cvReleaseMat(&sample);
   // }
 
-  ConvNN * cnn = new ConvNN(28,28,84,10,0.05/*alpha*/,20000/*maxiter*/);
+  ConvNN * cnn = new ConvNN(28,28,84,10,0.05/*alpha*/,2000/*maxiter*/,1/*batch_size*/);
   cnn->createCNN();
 CV_TIMER_START();
   cnn->trainNN(training,response,testing,expected);
