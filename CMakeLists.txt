@@ -26,6 +26,11 @@ add_subdirectory(modules/cvutil)
 # add_subdirectory(modules/latentssvm-v0.12)
 
 # find_package(OpenCV REQUIRED opencv_core opencv_highgui)
+find_package( OpenMP )
+if( OPENMP_FOUND )
+  set( CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${OpenMP_C_FLAGS}" )
+  set( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}" )
+ENDIF(OPENMP_FOUND)
 
 # Set your files and resources here
 set( Srcs 
@@ -153,7 +158,15 @@ include_directories(
 # target_link_libraries(test043_optflow cxcore cvutil cv video highgui )
 
 add_executable(test044_cnn src/test044_cnn.cpp src/ConvNN.cpp)
-target_link_libraries(test044_cnn cxcore cvutil cv highgui ml ${FFMPEG_LIBRARIES}) # video 
+if( OPENMP_FOUND )
+	IF(WIN32)
+	target_link_libraries(test044_cnn cxcore cvutil cv highgui ml ${FFMPEG_LIBRARIES}) # video
+	ELSE(WIN32)
+	target_link_libraries(test044_cnn cxcore cvutil cv highgui ml ${FFMPEG_LIBRARIES} gomp) # video
+	endif(WIN32)
+else( OPENMP_FOUND )
+	target_link_libraries(test044_cnn cxcore cvutil cv highgui ml ${FFMPEG_LIBRARIES}) # video 
+endif( OPENMP_FOUND )
 
 # add_executable(test045latentssvm src/test045_latentssvm.cpp)
 # target_link_libraries(test045latentssvm cxcore cvutil cv video highgui ml latentssvm )
