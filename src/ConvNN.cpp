@@ -131,7 +131,7 @@ void ConvNN::createCNN()/*(int nSample, float maxIter,
   // 20 @ 14x14
   sub_samp_size=2;
 	CV_CALL(layer = cvCreateCNNSubSamplingLayer(
-      n_output_planes, output_height, output_width, sub_samp_size,a,s,m_batch_size,
+      n_output_planes, output_height, output_width, sub_samp_size,a,s,
       init_learn_rate, learn_type, NULL));
 	CV_CALL(m_cnn->network->add_layer( m_cnn->network, layer ));
 
@@ -153,7 +153,7 @@ void ConvNN::createCNN()/*(int nSample, float maxIter,
 
   sub_samp_size=2;
 	CV_CALL(layer = cvCreateCNNSubSamplingLayer(
-      n_output_planes, output_height, output_width, sub_samp_size,a,s,m_batch_size,
+      n_output_planes, output_height, output_width, sub_samp_size,a,s,
       init_learn_rate, learn_type, NULL));
 	CV_CALL(m_cnn->network->add_layer( m_cnn->network, layer ));
 
@@ -166,7 +166,7 @@ void ConvNN::createCNN()/*(int nSample, float maxIter,
 	a = 1;
 	s = 1;
 	CV_CALL(layer = cvCreateCNNFullConnectLayer(
-      n_input_planes, n_output_planes, a, s, m_batch_size,
+      n_input_planes, n_output_planes, a, s, 
       init_learn_rate, learn_type, NULL ));
 	CV_CALL(m_cnn->network->add_layer( m_cnn->network, layer ));
 
@@ -176,7 +176,7 @@ void ConvNN::createCNN()/*(int nSample, float maxIter,
 	a = 1;
 	s = 1;
 	CV_CALL(layer = cvCreateCNNFullConnectLayer(
-      n_input_planes, n_output_planes, a, s, m_batch_size,
+      n_input_planes, n_output_planes, a, s, 
       init_learn_rate, learn_type, NULL ));
 	CV_CALL(m_cnn->network->add_layer( m_cnn->network, layer ));
 

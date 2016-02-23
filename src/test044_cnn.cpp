@@ -3,6 +3,10 @@
 #include "cxcore.h"
 #include "cvext.h"
 
+#ifdef _OPENMP
+#include <omp.h>
+#endif
+
 #include "ConvNN.h"
 
 int ReverseInt (int i)
@@ -66,6 +70,12 @@ CvMat * read_Mnist_Labels(char * filename)
 int main(int argc, char * argv[])
 {
   // if (argc<2){fprintf(stderr,"Error: input training data is required!\n");return 1;}
+#ifdef _OPENMP
+  const int max_threads = MAX(1.,std::ceil(float(omp_get_max_threads())*.5));
+#else
+  const int max_threads = 1;
+#endif
+  fprintf(stderr, "MAX_THREADS=%d\n",max_threads);
 
   const char * training_filename = "../data/mnist/train-images-idx3-ubyte";
   const char * response_filename = "../data/mnist/train-labels-idx1-ubyte";
@@ -98,7 +108,7 @@ int main(int argc, char * argv[])
                             84,10, // full connect nodes
                             0.05, // learning rate
                             2000, // maxiter
-                            2     // batch_size
+                            1     // batch_size
                             );
   cnn->createCNN();
 CV_TIMER_START();
@@ -108,6 +118,7 @@ CV_TIMER_START();
   CNNIO * cnnio = new CNNIO();
   cnnio->init(3,1,1,cnn);
   
+#if 1
   CvMat * result = cvCreateMat(10,1,CV_32F);
   CvMat * sorted = cvCreateMat(result->rows,result->cols,CV_32F);
   CvMat * indices = cvCreateMat(result->rows,result->cols,CV_32S);
@@ -124,12 +135,39 @@ CV_TIMER_START();
     if (t1==ex1){top1++;}
     if (t1==ex1 || t2==ex1 || t3==ex1){top3++;}
   }
-  fprintf(stderr,"top-1: %.1f%%, top-3: %.1f%%\n",
-    float(top1*100.f)/float(testCount),float(top3*100.f)/float(testCount));
-CV_TIMER_SHOW();
   cvReleaseMat(&result);
   cvReleaseMat(&sorted);
   cvReleaseMat(&indices);
+#else
+  int testCount = testing->rows;
+  CvMat * result = cvCreateMat(10,testCount,CV_32F);
+  CvMat * sorted = cvCreateMat(result->rows,result->cols,CV_32F);
+  CvMat * indices = cvCreateMat(result->rows,result->cols,CV_32S);
+  CvMat * indtop1 = cvCreateMat(1,result->cols,CV_32S);
+  CvMat * expectedmat = cvCreateMat(1,result->cols,CV_32S);
+  CvMat * indtop1res = cvCreateMat(1,result->cols,CV_8U);
+  int top1=0,top3=0;
+  cnn->m_cnn->predict(cnn->m_cnn,testing,result);
+  cvSort(result,sorted,indices,CV_SORT_DESCENDING|CV_SORT_EVERY_COLUMN);
+  cvGetRow(indices,indtop1,0);
+  assert( expected->rows*expected->cols == expectedmat->rows*expectedmat->cols );
+  assert( CV_MAT_TYPE(expected->type) == CV_8U && CV_MAT_TYPE(expectedmat->type) == CV_32S );
+  for (int ii=0;ii<expected->rows*expected->cols;ii++){
+    expectedmat->data.i[ii]=expected->data.ptr[ii];
+  }
+  cvCmp(indtop1,expectedmat,indtop1res,CV_CMP_EQ);
+  top1=cvSum(indtop1res).val[0]/255.f;
+  cvReleaseMat(&result);
+  cvReleaseMat(&sorted);
+  cvReleaseMat(&indices);
+  cvReleaseMat(&indtop1);
+  cvReleaseMat(&expectedmat);
+  cvReleaseMat(&indtop1res);
+#endif
+
+  fprintf(stderr,"top-1: %.1f%%, top-3: %.1f%%\n",
+    float(top1*100.f)/float(testCount),float(top3*100.f)/float(testCount));
+CV_TIMER_SHOW();
 
   cvReleaseMat(&training);
 

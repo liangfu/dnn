@@ -344,7 +344,7 @@ CVAPI(CvCNNLayer*) cvCreateCNNConvolutionLayer(
 
 CVAPI(CvCNNLayer*) cvCreateCNNSubSamplingLayer(
     int n_input_planes, int input_height, int input_width,
-    int sub_samp_scale, float a, float s, int batch_size,
+    int sub_samp_scale, float a, float s, 
     float init_learn_rate, int learn_rate_decrease_type, CvMat* weights );
 // cvCreateCNNSubSamplingLayer(
 //     int n_input_planes, int input_height, int input_width,
@@ -352,7 +352,7 @@ CVAPI(CvCNNLayer*) cvCreateCNNSubSamplingLayer(
 //     float init_learn_rate, int learn_rate_decrease_type, int delta_w_increase_type,  int nsamples, int max_iter, CvMat* weights CV_DEFAULT(0) );
 
 CVAPI(CvCNNLayer*) cvCreateCNNFullConnectLayer(
-    int n_inputs, int n_outputs, float a, float s, int batch_size,
+    int n_inputs, int n_outputs, float a, float s, 
     float init_learn_rate, int learn_rate_decrease_type, CvMat* weights );
 // cvCreateCNNFullConnectLayer( 
 //     int n_inputs, int n_outputs, float a, float s,
