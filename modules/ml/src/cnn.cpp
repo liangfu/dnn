@@ -341,9 +341,9 @@ static void icvTrainCNNetwork( CvCNNetwork* network,
 
     for( k = 0, layer = first_layer; k < n_layers - 1; k++, layer = layer->next_layer ){
       CV_CALL(layer->forward( layer, X[k], X[k+1] ));
-      icvVisualizeCNNLayer(layer, X[k+1]);
+      // icvVisualizeCNNLayer(layer, X[k+1]);
     }
-    fprintf(stderr,"\n");
+    // fprintf(stderr,"\n");
     CV_CALL(layer->forward( layer, X[k], X[k+1] ));
 
     // 2) Compute the gradient
@@ -1064,52 +1064,17 @@ icvCNNSubSamplingForward( CvCNNLayer* _layer, const CvMat* X, CvMat* Y )
 
   CV_CALL(layer->mask = cvCreateMat(Ysize*nplanes, batch_size, CV_32S));
   
-  // update inner variable layer->exp2ssumWX, which will be used
-  // in back-propagation
+  // update inner variable used in back-propagation
   cvZero( layer->sumX );
   cvZero( layer->exp2ssumWX );
   cvZero( layer->mask );
   
-#if 0
-  for( ky = 0; ky < stride_size; ky++ ){
-  for( kx = 0; kx < stride_size; kx++ ){
-    float* Xplane = X->data.fl;
-    sumX_data = layer->sumX->data.fl;
-    for( ni = 0; ni < nplanes; ni++, Xplane += Xsize ){
-    for( yy = 0; yy < Yheight; yy++ ){
-    for( xx = 0; xx < Ywidth; xx++, sumX_data++ ){
-      *sumX_data += Xplane[((yy+ky)*Xwidth+(xx+kx))];
-    }
-    }
-    }
-  }
-  }
-  
-  w = layer->weights->data.fl;
-  cvGetRows( layer->sumX, &sumX_sub_col, 0, Ysize );
-  cvGetRows( layer->exp2ssumWX, &exp2ssumWX_sub_col, 0, Ysize );
-  for( ni = 0; ni < nplanes; ni++, w += 2 ){
-    CV_CALL(cvConvertScale( &sumX_sub_col, &exp2ssumWX_sub_col, w[0], w[1] ));
-    sumX_sub_col.data.fl += Ysize;
-    exp2ssumWX_sub_col.data.fl += Ysize;
-  }
-
-  CV_CALL(cvScale( layer->exp2ssumWX, layer->exp2ssumWX, 2.0*layer->s ));
-  CV_CALL(cvExp( layer->exp2ssumWX, layer->exp2ssumWX ));
-  CV_CALL(cvMinS( layer->exp2ssumWX, FLT_MAX, layer->exp2ssumWX ));
-  for ( int ii = 0; ii < layer->exp2ssumWX->rows; ii++ ){
-    if ( layer->exp2ssumWX->data.fl[ii] == FLT_MAX ){ cvSetErrStatus( 1 ); }
-  }
-  
-  // compute the output variable Y == ( a - 2a/(layer->exp2ssumWX + 1))
-  CV_CALL(cvAddS( layer->exp2ssumWX, cvRealScalar(1), Y ));
-  CV_CALL(cvDiv( 0, Y, Y, -2.0*layer->a ));
-  CV_CALL(cvAddS( Y, cvRealScalar(layer->a), Y ));
-#else
   int * mptr = layer->mask->data.i;
+
   CV_ASSERT(Xheight==Yheight*stride_size && Xwidth ==Ywidth *stride_size);
   CV_ASSERT(Y->rows==layer->mask->rows && Y->cols==layer->mask->cols);
   CV_ASSERT(CV_MAT_TYPE(layer->mask->type)==CV_32S);
+
   for( int si = 0; si < nsamples; si++ ){
   float * xptr = X->data.fl+Xsize*nplanes*si;
   float * yptr = Y->data.fl+Ysize*nplanes*si;
@@ -1135,7 +1100,7 @@ icvCNNSubSamplingForward( CvCNNLayer* _layer, const CvMat* X, CvMat* Y )
     } // yy
   } // ni
   } // si
-#endif
+
   }__END__;
 }
 
@@ -1149,8 +1114,8 @@ static void icvCNNFullConnectForward( CvCNNLayer* _layer, const CvMat* X, CvMat*
 
   {__BEGIN__;
 #if 1
-  CvCNNFullConnectLayer* layer = (CvCNNFullConnectLayer*)_layer;
-  CvMat* weights = layer->weights;
+  CvCNNFullConnectLayer * layer = (CvCNNFullConnectLayer*)_layer;
+  CvMat * weights = layer->weights;
   CvMat sub_weights, biascol;
   int n_outputs = Y->rows;
   int batch_size = X->cols;
@@ -1159,8 +1124,8 @@ static void icvCNNFullConnectForward( CvCNNLayer* _layer, const CvMat* X, CvMat*
   CV_ASSERT(Y->cols == batch_size && Y->rows == layer->n_output_planes);
 
   // bias on last column vector
-  CV_CALL(cvGetSubRect( weights, &sub_weights,
-                        cvRect(0, 0, weights->cols-1, weights->rows )));
+  CvRect roi = cvRect(0, 0, weights->cols-1, weights->rows );
+  CV_CALL(cvGetSubRect( weights, &sub_weights, roi));
   CV_CALL(cvGetCol( weights, &biascol, weights->cols-1));
   CV_ASSERT(CV_MAT_TYPE(biascol.type)==CV_32F);
   CvMat * bias = cvCreateMat(biascol.rows,batch_size,CV_32F);
@@ -1173,8 +1138,8 @@ static void icvCNNFullConnectForward( CvCNNLayer* _layer, const CvMat* X, CvMat*
   CV_CALL(cvGEMM( &sub_weights, X, 2*layer->s, bias, 2*layer->s, layer->exp2ssumWX ));
   CV_CALL(cvExp( layer->exp2ssumWX, layer->exp2ssumWX ));
   CV_CALL(cvMinS( layer->exp2ssumWX, FLT_MAX, layer->exp2ssumWX ));
-  for( int ii = 0; ii < layer->exp2ssumWX->rows; ii++ ){
-    if( layer->exp2ssumWX->data.fl[ii] == FLT_MAX ){ cvSetErrStatus( 1 ); }
+  for ( int ii = 0; ii < layer->exp2ssumWX->rows; ii++ ){
+    if ( layer->exp2ssumWX->data.fl[ii] == FLT_MAX ){ cvSetErrStatus( 1 ); }
   }
 
   // compute the output variable Y == ( a - 2a/(layer->exp2ssumWX + 1))
@@ -1217,113 +1182,102 @@ static void icvCNNFullConnectForward( CvCNNLayer* _layer, const CvMat* X, CvMat*
 static void icvCNNConvolutionBackward(
     CvCNNLayer* _layer, int t, const CvMat* X, const CvMat* dE_dY, CvMat* dE_dX )
 {
-    CvMat* dY_dX = 0;
-    CvMat* dY_dW = 0;
-    CvMat* dE_dW = 0;
+  CvMat* dY_dX = 0;
+  CvMat* dY_dW = 0;
+  CvMat* dE_dW = 0;
 
-    CV_FUNCNAME("icvCNNConvolutionBackward");
+  CV_FUNCNAME("icvCNNConvolutionBackward");
 
-    if( !ICV_IS_CNN_CONVOLUTION_LAYER(_layer) )
-        CV_ERROR( CV_StsBadArg, "Invalid layer" );
+  if( !ICV_IS_CNN_CONVOLUTION_LAYER(_layer) )
+    CV_ERROR( CV_StsBadArg, "Invalid layer" );
 
-    {__BEGIN__;
+  {__BEGIN__;
 
-    const CvCNNConvolutionLayer* layer = (CvCNNConvolutionLayer*) _layer;
+  const CvCNNConvolutionLayer* layer = (CvCNNConvolutionLayer*) _layer;
+  
+  const int K = layer->K;
 
-    const int K = layer->K;
+  const int n_X_planes     = layer->n_input_planes;
+  const int X_plane_height = layer->input_height;
+  const int X_plane_width  = layer->input_width;
+  const int X_plane_size   = X_plane_height*X_plane_width;
 
-    const int n_X_planes     = layer->n_input_planes;
-    const int X_plane_height = layer->input_height;
-    const int X_plane_width  = layer->input_width;
-    const int X_plane_size   = X_plane_height*X_plane_width;
+  const int n_Y_planes     = layer->n_output_planes;
+  const int Y_plane_height = layer->output_height;
+  const int Y_plane_width  = layer->output_width;
+  const int Y_plane_size   = Y_plane_height*Y_plane_width;
 
-    const int n_Y_planes     = layer->n_output_planes;
-    const int Y_plane_height = layer->output_height;
-    const int Y_plane_width  = layer->output_width;
-    const int Y_plane_size   = Y_plane_height*Y_plane_width;
+  const int batch_size = X->cols;
 
-    const int batch_size = X->cols;
+  int no, ni, yy, xx, ky, kx;
+  int X_idx = 0, Y_idx = 0;
 
-    int no, ni, yy, xx, ky, kx;
-    int X_idx = 0, Y_idx = 0;
+  float *X_plane = 0, *w = 0;
 
-    float *X_plane = 0, *w = 0;
+  CvMat* weights = layer->weights;
 
-    CvMat* weights = layer->weights;
+  CV_ASSERT( t >= 1 );
+  CV_ASSERT( n_Y_planes == weights->rows );
 
-    CV_ASSERT( t >= 1 );
-    CV_ASSERT( n_Y_planes == weights->rows );
+  dY_dX = cvCreateMat( n_Y_planes*Y_plane_size, X->rows, CV_32FC1 );
+  dY_dW = cvCreateMat( dY_dX->rows, weights->cols*weights->rows, CV_32FC1 );
+  dE_dW = cvCreateMat( 1, dY_dW->cols, CV_32FC1 );
 
-    dY_dX = cvCreateMat( n_Y_planes*Y_plane_size, X->rows, CV_32FC1 );
-    dY_dW = cvCreateMat( dY_dX->rows, weights->cols*weights->rows, CV_32FC1 );
-    dE_dW = cvCreateMat( 1, dY_dW->cols, CV_32FC1 );
+  cvZero( dY_dX );
+  cvZero( dY_dW );
 
-    cvZero( dY_dX );
-    cvZero( dY_dW );
-
-    // compute gradient of the loss function with respect to X and W
-    for( no = 0; no < n_Y_planes; no++, Y_idx += Y_plane_size )
-    {
-      w = weights->data.fl + no*(K*K+1);
-      X_idx = 0;
-      X_plane = X->data.fl;
-      for( ni = 0; ni < n_X_planes; ni++, X_plane += X_plane_size )
-      {
-        if( layer->connect_mask->data.ptr[ni*n_Y_planes+no] )
-        {
-// #pragma omp parallel for
-          for( yy = 0; yy < X_plane_height - K + 1; yy++ )
-          {
-            for( xx = 0; xx < X_plane_width - K + 1; xx++ )
-            {
-              for( ky = 0; ky < K; ky++ )
-              {
-                for( kx = 0; kx < K; kx++ )
-                {
-                  CV_MAT_ELEM(*dY_dX, float, Y_idx+yy*Y_plane_width+xx,
-                              X_idx+(yy+ky)*X_plane_width+(xx+kx)) = w[ky*K+kx];
-
-                  // dY_dWi, i=1,...,K*K
-                  CV_MAT_ELEM(*dY_dW, float, Y_idx+yy*Y_plane_width+xx,
-                              no*(K*K+1)+ky*K+kx) +=
-                    X_plane[(yy+ky)*X_plane_width+(xx+kx)];
-                }
-              }
-              // dY_dW(K*K+1)==1 because W(K*K+1) is bias
-              CV_MAT_ELEM(*dY_dW, float, Y_idx+yy*Y_plane_width+xx,
-                          no*(K*K+1)+K*K) += 1;
-            }
+  // compute gradient of the loss function with respect to X and W
+  for( no = 0; no < n_Y_planes; no++, Y_idx += Y_plane_size ){
+    w = weights->data.fl + no*(K*K+1);
+    X_idx = 0;
+    X_plane = X->data.fl;
+    for( ni = 0; ni < n_X_planes; ni++, X_plane += X_plane_size ){
+      if( layer->connect_mask->data.ptr[ni*n_Y_planes+no] ){
+        for( yy = 0; yy < X_plane_height - K + 1; yy++ ){
+        for( xx = 0; xx < X_plane_width - K + 1; xx++ ){
+          for( ky = 0; ky < K; ky++ ){
+          for( kx = 0; kx < K; kx++ ){
+            CV_MAT_ELEM(*dY_dX, float, Y_idx+yy*Y_plane_width+xx,
+                        X_idx+(yy+ky)*X_plane_width+(xx+kx)) = w[ky*K+kx];
+            // dY_dWi, i=1,...,K*K
+            CV_MAT_ELEM(*dY_dW, float, Y_idx+yy*Y_plane_width+xx,no*(K*K+1)+ky*K+kx) += 
+              X_plane[(yy+ky)*X_plane_width+(xx+kx)];
           }
+          }
+          // dY_dW(K*K+1)==1 because W(K*K+1) is bias
+          CV_MAT_ELEM(*dY_dW, float, Y_idx+yy*Y_plane_width+xx,no*(K*K+1)+K*K) += 1;
         }
-        X_idx += X_plane_size;
+        }
       }
+      X_idx += X_plane_size;
     }
+  }
 
-    CvMat * dE_dW_ = cvCreateMat( batch_size, dY_dW->cols, CV_32FC1 );
-    CV_CALL(cvMatMul( dE_dY, dY_dW, dE_dW_ ));
-    cvReduce(dE_dW_,dE_dW,CV_REDUCE_SUM);
-    cvReleaseMat(&dE_dW_);
-    CV_CALL(cvMatMul( dE_dY, dY_dX, dE_dX ));
+  CvMat * dE_dW_ = cvCreateMat( batch_size, dY_dW->cols, CV_32FC1 );
+  CV_CALL(cvMatMul( dE_dY, dY_dW, dE_dW_ ));
+  cvReduce(dE_dW_,dE_dW,CV_REDUCE_SUM);
+  cvReleaseMat(&dE_dW_);
+  CV_CALL(cvMatMul( dE_dY, dY_dX, dE_dX ));
 
-    // update weights
-    {
-        CvMat dE_dW_mat;
-        float eta;
-        if( layer->learn_rate_decrease_type == CV_CNN_LEARN_RATE_DECREASE_LOG_INV )
-            eta = -layer->init_learn_rate/logf(1+(float)t);
-        else if( layer->learn_rate_decrease_type == CV_CNN_LEARN_RATE_DECREASE_SQRT_INV )
-            eta = -layer->init_learn_rate/sqrtf((float)t);
-        else
-            eta = -layer->init_learn_rate/(float)t;
-        cvReshape( dE_dW, &dE_dW_mat, 0, weights->rows );
-        cvScaleAdd( &dE_dW_mat, cvRealScalar(eta), weights, weights );
-    }
+  // update weights
+  {
+    CvMat dE_dW_mat;
+    float eta;
+    if( layer->learn_rate_decrease_type == CV_CNN_LEARN_RATE_DECREASE_LOG_INV )
+      eta = -layer->init_learn_rate/logf(1+(float)t);
+    else if( layer->learn_rate_decrease_type == CV_CNN_LEARN_RATE_DECREASE_SQRT_INV )
+      eta = -layer->init_learn_rate/sqrtf((float)t);
+    else
+      eta = -layer->init_learn_rate/(float)t;
+    cvReshape( dE_dW, &dE_dW_mat, 0, weights->rows );
+    cvScaleAdd( &dE_dW_mat, cvRealScalar(eta), weights, weights );
+  }
 
-    }__END__;
+  }__END__;
 
-    cvReleaseMat( &dY_dX );
-    cvReleaseMat( &dY_dW );
-    cvReleaseMat( &dE_dW );
+  cvReleaseMat( &dY_dX );
+  cvReleaseMat( &dY_dW );
+  cvReleaseMat( &dE_dW );
 }
 
 /****************************************************************************************/
@@ -1354,116 +1308,24 @@ static void icvCNNSubSamplingBackward(
     const int k_max   = layer->n_output_planes * Yheight;
 
     int k, i, j, m;
-#if 0
-    float* dY_dX_current_elem = 0, *dE_dX_start = 0, *dE_dW_data = 0, *w = 0;
-    CvMat dy_dw0, dy_dw1;
-    CvMat activ_func_der, sumX_row;
-    CvMat dE_dY_sub_row, dY_dX_sub_col, dy_dw0_sub_row, dy_dw1_sub_row;
 
-    CV_CALL(dY_dX_elems = cvCreateMat( layer->sumX->rows, 1, CV_32FC1 ));
-    CV_CALL(dY_dW_elems = cvCreateMat( 2, layer->sumX->rows, CV_32FC1 ));
-    CV_CALL(dE_dW = cvCreateMat( 1, 2*layer->n_output_planes, CV_32FC1 ));
-
-    // compute derivative of activ.func.
-    // ==<dY_dX_elems> = 4as*(layer->exp2ssumWX)/(layer->exp2ssumWX + 1)^2
-    CV_CALL(cvAddS( layer->exp2ssumWX, cvRealScalar(1), dY_dX_elems ));
-    CV_CALL(cvPow( dY_dX_elems, dY_dX_elems, -2.0 ));
-    CV_CALL(cvMul( dY_dX_elems, layer->exp2ssumWX, dY_dX_elems, 4.0*layer->a*layer->s ));
-
-    // compute <dE_dW>
-    // a) compute <dY_dW_elems>
-    cvReshape( dY_dX_elems, &activ_func_der, 0, 1 );
-    cvGetRow( dY_dW_elems, &dy_dw0, 0 );
-    cvGetRow( dY_dW_elems, &dy_dw1, 1 );
-    CV_CALL(cvCopy( &activ_func_der, &dy_dw0 ));
-    CV_CALL(cvCopy( &activ_func_der, &dy_dw1 ));
-
-    cvReshape( layer->sumX, &sumX_row, 0, 1 );
-    cvMul( &dy_dw0, &sumX_row, &dy_dw0 );
-
-    // b) compute <dE_dW> = <dE_dY>*<dY_dW_elems>
-    cvGetCols( dE_dY, &dE_dY_sub_row, 0, Ysize );
-    cvGetCols( &dy_dw0, &dy_dw0_sub_row, 0, Ysize );
-    cvGetCols( &dy_dw1, &dy_dw1_sub_row, 0, Ysize );
-    dE_dW_data = dE_dW->data.fl;
-    for( i = 0; i < layer->n_output_planes; i++ ){
-      *dE_dW_data++ = (float)cvDotProduct( &dE_dY_sub_row, &dy_dw0_sub_row );
-      *dE_dW_data++ = (float)cvDotProduct( &dE_dY_sub_row, &dy_dw1_sub_row );
-      
-      dE_dY_sub_row.data.fl += Ysize;
-      dy_dw0_sub_row.data.fl += Ysize;
-      dy_dw1_sub_row.data.fl += Ysize;
-    }
-
-    // compute <dY_dX> = layer->weights*<dY_dX>
-    w = layer->weights->data.fl;
-    cvGetRows( dY_dX_elems, &dY_dX_sub_col, 0, Ysize );
-    for( i = 0; i < layer->n_input_planes;
-         i++, w++, dY_dX_sub_col.data.fl += Ysize )
-    {
-      CV_CALL(cvConvertScale( &dY_dX_sub_col, &dY_dX_sub_col, (float)*w ));
-    }
-
-    // compute <dE_dX>
-    CV_CALL(cvReshape( dY_dX_elems, dY_dX_elems, 0, 1 ));
-    CV_CALL(cvMul( dY_dX_elems, dE_dY, dY_dX_elems ));
-
-    dY_dX_current_elem = dY_dX_elems->data.fl;
-    dE_dX_start = dE_dX->data.fl;
-    for( k = 0; k < k_max; k++ ){
-      for( i = 0; i < Ywidth; i++, dY_dX_current_elem++ ) {
-        float* dE_dX_current_elem = dE_dX_start;
-        for( j = 0; j < scale; j++, dE_dX_current_elem += Xwidth - scale ){
-          for( m = 0; m < scale; m++, dE_dX_current_elem++ ){
-            *dE_dX_current_elem = *dY_dX_current_elem;
-          }
-        }
-        dE_dX_start += scale;
-      }
-      dE_dX_start += Xwidth * (scale - 1);
-    }
-
-    // update weights
-    {
-      CvMat dE_dW_mat, *weights = layer->weights;
-      float eta;
-      if( layer->learn_rate_decrease_type == CV_CNN_LEARN_RATE_DECREASE_LOG_INV ) {
-        eta = -layer->init_learn_rate/logf(1+(float)t);
-      }else if( layer->learn_rate_decrease_type == CV_CNN_LEARN_RATE_DECREASE_SQRT_INV ){
-        eta = -layer->init_learn_rate/sqrtf((float)t);
-      }else{
-        eta = -layer->init_learn_rate/(float)t;
-      }
-      cvReshape( dE_dW, &dE_dW_mat, 0, weights->rows );
-      cvScaleAdd( &dE_dW_mat, cvRealScalar(eta), weights, weights );
-    }
-#else
     CV_ASSERT(CV_MAT_TYPE(layer->mask->type)==CV_32S);
     CV_ASSERT(dE_dX->rows*dE_dX->cols==X->rows*X->cols);
+
     float * dxptr = dE_dX->data.fl;
     float * dyptr = dE_dY->data.fl;
     int * mptr = layer->mask->data.i;
     int nplanes = layer->n_output_planes;
     int stride_size = layer->sub_samp_scale;
+
     cvZero(dE_dX);
     for( int ni = 0; ni < nplanes; ni++ ){
       for( int yy = 0; yy < Yheight; yy++ ){
       for( int xx = 0; xx < Ywidth; xx++ ){
-        // float maxval = *xptr;
         int maxloc = mptr[xx];
         int ky = maxloc / stride_size;
         int kx = maxloc % stride_size;
         (dxptr+stride_size*xx+Xwidth*ky)[kx]=1;
-        // for( ky = 0; ky < stride_size; ky++ ){
-        // for( kx = 0; kx < stride_size; kx++ ){
-        //   if ((xptr+stride_size*xx+Xwidth*ky)[kx]>maxval) {
-        //     maxval = (xptr+stride_size*xx+Xwidth*ky)[kx];
-        //     maxloc = ky*stride_size + kx;
-        //   }
-        // }
-        // }
-        // yptr[xx] = maxval;
-        // mptr[xx] = maxloc;
       }
       dxptr += Xwidth*stride_size;
       dyptr += Ywidth;
@@ -1471,7 +1333,7 @@ static void icvCNNSubSamplingBackward(
       }
       if (layer->mask){cvReleaseMat(&layer->mask);layer->mask=0;}
     }
-#endif
+
     }__END__;
 
     if (dY_dX_elems){cvReleaseMat( &dY_dX_elems );dY_dX_elems=0;}
