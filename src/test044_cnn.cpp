@@ -108,7 +108,7 @@ int main(int argc, char * argv[])
                             84,10, // full connect nodes
                             0.05, // learning rate
                             2000, // maxiter
-                            1     // batch_size
+                            2     // batch_size
                             );
   cnn->createCNN();
 CV_TIMER_START();
