@@ -337,6 +337,7 @@ static void icvTrainCNNetwork( CvCNNetwork* network,
     for ( k = 0; k < batch_size; k++ ){
       memcpy(image->data.fl+img_size*k,images[worst_img_idx->data.i[k]],sizeof(float)*img_size);
     }
+    CV_CALL(cvScale( image, image, 1./255.f ));
     CV_CALL(cvTranspose( image, X[0] ));
 
     for( k = 0, layer = first_layer; k < n_layers - 1; k++, layer = layer->next_layer ){
@@ -427,7 +428,7 @@ static float icvCNNModelPredict( const CvCNNStatModel* model,
   CV_ASSERT(_image->cols==img_size && nsamples==_image->rows);
   if (!img_data){img_data = (float*)cvAlloc(img_size*nsamples*sizeof(float));}
   CvMat imghdr = cvMat(_image->rows,_image->cols,CV_32F,img_data);
-  cvConvert(_image,&imghdr);
+  cvScale(_image,&imghdr,1./255.f);
 #endif
 
   CV_CALL(X = (CvMat**)cvAlloc( (n_layers+1)*sizeof(CvMat*) ));
@@ -1023,7 +1024,7 @@ icvCNNConvolutionForward( CvCNNLayer* _layer, const CvMat* X, CvMat* Y )
       } // ni
     } // no
     } // si
-    cvTranspose(Yt,Y);
+    cvTranspose(Yt,Y); cvScale(Y,Y,1.f/float(K*K));
     cvReleaseMat(&Xt);
     cvReleaseMat(&Yt);
   }__END__;
@@ -1138,9 +1139,11 @@ static void icvCNNFullConnectForward( CvCNNLayer* _layer, const CvMat* X, CvMat*
   CV_CALL(cvGEMM( &sub_weights, X, 2*layer->s, bias, 2*layer->s, layer->exp2ssumWX ));
   CV_CALL(cvExp( layer->exp2ssumWX, layer->exp2ssumWX ));
   CV_CALL(cvMinS( layer->exp2ssumWX, FLT_MAX, layer->exp2ssumWX ));
-  for ( int ii = 0; ii < layer->exp2ssumWX->rows; ii++ ){
-    if ( layer->exp2ssumWX->data.fl[ii] == FLT_MAX ){ cvSetErrStatus( 1 ); }
-  }
+
+  // check numerical stability
+  // for ( int ii = 0; ii < layer->exp2ssumWX->rows; ii++ ){
+  //   CV_ASSERT ( layer->exp2ssumWX->data.fl[ii] != FLT_MAX );
+  // }
 
   // compute the output variable Y == ( a - 2a/(layer->exp2ssumWX + 1))
   CV_CALL(cvAddS( layer->exp2ssumWX, cvRealScalar(1), Y ));
