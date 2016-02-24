@@ -415,8 +415,9 @@ void ConvNN::trainNN(CvMat *trainingData, CvMat *responseMat,
 	params.etalons = cvCreateMat( 10, m_nNode, CV_32FC1 );
 	for(i=0;i<params.etalons->rows;i++){
 	for(j=0;j<params.etalons->cols;j++){
-		cvmSet(params.etalons,i,j,(double)-1.0);
-  }
+      cvmSet(params.etalons,i,j,(double)-1.0);
+      // cvmSet(params.etalons,i,j,(double)0);
+    }
 	cvmSet(params.etalons,i,i,(double)1.0);
 	}
 
