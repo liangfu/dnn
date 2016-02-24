@@ -493,7 +493,7 @@ static float icvCNNModelPredict( const CvCNNStatModel* model,
     CvMat * sum = cvCreateMat(1,probs->cols,CV_32F);
     CvMat * invsum = cvCreateMat(1,probs->cols,CV_32F);
     CvMat * invsum_repmat = cvCreateMat(nclasses,probs->cols,CV_32F);
-    cvReduce(probs,sum,CV_REDUCE_SUM);
+    cvReduce(probs,sum,-1,CV_REDUCE_SUM);
     cvDiv(0,sum,invsum);
     cvRepeat(invsum,invsum_repmat);
     cvMul(probs,invsum_repmat,probs);
@@ -829,7 +829,7 @@ ML_IMPL CvCNNLayer* cvCreateCNNConvolutionLayer(
     for (int ii=0;ii<layer->weights->rows;ii++){ CV_MAT_ELEM(*layer->weights,float,ii,K*K)=0; }
     CvMat * sum = cvCreateMat(n_output_planes,1,CV_32F);
     CvMat * sumrep = cvCreateMat(n_output_planes,layer->weights->cols,CV_32F);
-    cvReduce(layer->weights,sum,1,CV_REDUCE_SUM); cvScale(sum,sum,invKK);
+    cvReduce(layer->weights,sum,-1,CV_REDUCE_SUM); cvScale(sum,sum,invKK);
     cvRepeat(sum,sumrep);
     cvSub(layer->weights,sumrep,layer->weights);
     cvReleaseMat(&sum);
@@ -1285,7 +1285,7 @@ static void icvCNNConvolutionBackward(
 
   CvMat * dE_dW_ = cvCreateMat( batch_size, dY_dW->cols, CV_32FC1 );
   CV_CALL(cvMatMul( dE_dY, dY_dW, dE_dW_ ));
-  cvReduce(dE_dW_,dE_dW,CV_REDUCE_SUM);
+  cvReduce(dE_dW_,dE_dW,-1,CV_REDUCE_SUM);
   cvReleaseMat(&dE_dW_);
   CV_CALL(cvMatMul( dE_dY, dY_dX, dE_dX ));
 
