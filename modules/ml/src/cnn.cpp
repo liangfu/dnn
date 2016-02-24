@@ -428,6 +428,7 @@ static float icvCNNModelPredict( const CvCNNStatModel* model,
   CV_ASSERT(_image->cols==img_size && nsamples==_image->rows);
   if (!img_data){img_data = (float*)cvAlloc(img_size*nsamples*sizeof(float));}
   CvMat imghdr = cvMat(_image->rows,_image->cols,CV_32F,img_data);
+  CV_ASSERT(CV_MAT_TYPE(_image->type)==CV_8U);
   cvScale(_image,&imghdr,1./255.f);
 #endif
 
