@@ -344,7 +344,7 @@ static void icvTrainCNNetwork( CvCNNetwork* network,
     CV_CALL(cvTranspose( image, X[0] ));
 
     for ( k = 0, layer = first_layer; k < n_layers - 1; k++, layer = layer->next_layer )
-#if 0
+#if 1
     {CV_CALL(layer->forward( layer, X[k], X[k+1] ));}
     CV_CALL(layer->forward( layer, X[k], X[k+1] ));
 #else
@@ -367,7 +367,7 @@ static void icvTrainCNNetwork( CvCNNetwork* network,
     cvSub( dE_dX[n_layers], etalon, dE_dX[n_layers] );
 
     // 3) Update weights by the gradient descent
-    for ( k = n_layers; k > 0; k--, layer = layer->prev_layer ){
+    for ( k = n_layers; k > 4; k--, layer = layer->prev_layer ){
       CV_CALL(layer->backward( layer, n + start_iter, X[k-1], dE_dX[k], dE_dX[k-1] ));
     }
 
@@ -962,6 +962,8 @@ ML_IMPL CvCNNLayer* cvCreateCNNFullConnectLayer(
   } else {
     CvRNG rng = cvRNG( 0xFFFFFFFF );
     cvRandArr( &rng, layer->weights, CV_RAND_UNI, cvRealScalar(-1), cvRealScalar(1) );
+    // initialize bias to zero
+    for (int ii=0;ii<n_outputs;ii++){ CV_MAT_ELEM(*layer->weights,float,ii,n_inputs)=0; }
   }
 
   __END__;
@@ -1160,16 +1162,16 @@ static void icvCNNFullConnectForward( CvCNNLayer* _layer, const CvMat* X, CvMat*
   CV_CALL(layer->exp2ssumWX = cvCreateMat( n_outputs, batch_size, CV_32FC1 ));
   cvZero( layer->exp2ssumWX );
 
-#if 0
+#if 1
   // update inner variable layer->exp2ssumWX, which will be used in Back-Propagation
   CV_CALL(cvGEMM( &sub_weights, X, 2*layer->s, bias, 2*layer->s, layer->exp2ssumWX ));
   CV_CALL(cvExp( layer->exp2ssumWX, layer->exp2ssumWX ));
   CV_CALL(cvMinS( layer->exp2ssumWX, FLT_MAX, layer->exp2ssumWX ));
 
   // check numerical stability
-  for ( int ii = 0; ii < layer->exp2ssumWX->rows; ii++ ){
-    CV_ASSERT ( layer->exp2ssumWX->data.fl[ii] != FLT_MAX );
-  }
+  // for ( int ii = 0; ii < layer->exp2ssumWX->rows; ii++ ){
+  //   CV_ASSERT ( layer->exp2ssumWX->data.fl[ii] != FLT_MAX );
+  // }
 
   // compute the output variable Y == ( a - 2a/(expWX + 1))
   CV_CALL(cvAddS( layer->exp2ssumWX, cvRealScalar(1), Y ));
@@ -1451,8 +1453,16 @@ static void icvCNNFullConnectBackward( CvCNNLayer* _layer,
   cvPow(dE_dY_afder,dE_dY_afder,2.);
   cvSubRS(dE_dY_afder,cvScalar(1),dE_dY_afder);
 
-  CvRect roi = cvRect(0, 0, weights->cols-1, weights->rows);
-  CV_CALL(cvGetSubRect( weights, &sub_weights, roi ));
+  CvRect roi_b = cvRect(weights->cols-1, 0, 1, weights->rows);
+  CvMat sub_bias;
+  CvMat * sub_bias_rep = cvCreateMat( n_outputs, batch_size, CV_32FC1 );
+  CV_CALL(cvGetSubRect( weights, &sub_bias, roi_b ));
+  cvRepeat(&sub_bias,sub_bias_rep);
+  CV_CALL(cvSub( dE_dY_afder, sub_bias_rep, dE_dY_afder ));
+  cvReleaseMat(&sub_bias_rep);
+  
+  CvRect roi_w = cvRect(0, 0, weights->cols-1, weights->rows);
+  CV_CALL(cvGetSubRect( weights, &sub_weights, roi_w ));
   CV_CALL(cvGEMM( dE_dY_afder, &sub_weights, 1, 0, 1, dE_dX, CV_GEMM_A_T));
 #endif
 
