@@ -107,8 +107,8 @@ int main(int argc, char * argv[])
   ConvNN * cnn = new ConvNN(28,28, // input image size
                             84,10, // full connect nodes
                             0.05,  // learning rate
-                            2000,  // maxiter
-                            1      // batch_size
+                            1000,  // maxiter
+                            20      // batch_size
                             );
   cnn->createCNN();
 CV_TIMER_START();
@@ -119,10 +119,12 @@ CV_TIMER_START();
   cnnio->init(3,1,1,cnn);
   
 #if 1
+  // testing = training;
+  // expected = response;
   CvMat * result = cvCreateMat(10,1,CV_32F);
   CvMat * sorted = cvCreateMat(result->rows,result->cols,CV_32F);
   CvMat * indices = cvCreateMat(result->rows,result->cols,CV_32S);
-  int testCount = 2000;int top1=0,top3=0;
+  int testCount = 1000;int top1=0,top3=0;
   CvRNG rng = cvRNG(-1);
   for (int ii=0;ii<testCount;ii++){
     CvMat testing_stub; int idx = cvRandInt(&rng)%testing->rows;
