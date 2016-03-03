@@ -409,31 +409,37 @@ void ConvNN::LoadCNNParams(string inFile/*string inFile, int nSample, float maxI
 void ConvNN::trainNN(CvMat *trainingData, CvMat *responseMat,
                      CvMat *testingData, CvMat *expectedMat)
 {
-	int i, j;	
+  int i, j;	
 
-	CvCNNStatModelParams params;
-	params.cls_labels = cvCreateMat( 10, 10, CV_32FC1 );
+  CvCNNStatModelParams params;
+  params.cls_labels = cvCreateMat( 10, 10, CV_32FC1 );
 
-	params.etalons = cvCreateMat( 10, m_nNode, CV_32FC1 );
-	for(i=0;i<params.etalons->rows;i++){
-	for(j=0;j<params.etalons->cols;j++){
-      cvmSet(params.etalons,i,j,(double)-1.0);
-      // cvmSet(params.etalons,i,j,(double)0);
-    }
-	cvmSet(params.etalons,i,i,(double)1.0);
-	}
+  params.etalons = cvCreateMat( 10, m_nNode, CV_32FC1 );
+  for(i=0;i<params.etalons->rows;i++){
+  for(j=0;j<params.etalons->cols;j++){
+    cvmSet(params.etalons,i,j,(double)-1.0);
+    // cvmSet(params.etalons,i,j,(double)0);
+  }
+  cvmSet(params.etalons,i,i,(double)1.0);
+  }
 
   cvSet(params.cls_labels,cvScalar(1));
-	// for(i=0;i<params.cls_labels->rows;i++){
-	// for(j=0;j<params.cls_labels->cols;j++){
-	// 	cvmSet(params.cls_labels,i,j,(double)1.0);
+  // for(i=0;i<params.cls_labels->rows;i++){
+  // for(j=0;j<params.cls_labels->cols;j++){
+  // 	cvmSet(params.cls_labels,i,j,(double)1.0);
   // }
-	// }
-	params.network = m_cnn->network;
-	params.start_iter=0;
-	params.max_iter=m_max_iter;
-    params.batch_size = m_batch_size;
-	params.grad_estim_type=CV_CNN_GRAD_ESTIM_RANDOM;//CV_CNN_GRAD_ESTIM_BY_WORST_IMG;
+  // }
+  params.network = m_cnn->network;
+  params.start_iter=0;
+  params.max_iter=m_max_iter;
+  params.batch_size = m_batch_size;
+  params.grad_estim_type=CV_CNN_GRAD_ESTIM_RANDOM;//CV_CNN_GRAD_ESTIM_BY_WORST_IMG;
+
+  // CvMat * trainingData_scaled = cvCreateMat(trainingData->rows,trainingData->cols,CV_32F);
+  // CvMat * testingData_scaled = cvCreateMat(testingData->rows,testingData->cols,CV_32F);
+  // cvSubS(trainingData,cvScalar(-127.5f),trainingData_scaled);
+  // cvScale(trainingData,trainingData_scaled,10./127.5f);
+  // cvScale(testingData,testingData_scaled,1./255.f);
 
   if (CV_MAT_TYPE(responseMat->type)!=CV_32S){
     CvMat * tmp = cvCreateMat(responseMat->rows,responseMat->cols,CV_32S);
@@ -443,7 +449,9 @@ void ConvNN::trainNN(CvMat *trainingData, CvMat *responseMat,
   }else{
     m_cnn = cvTrainCNNClassifier( trainingData, CV_ROW_SAMPLE,responseMat,&params,0,0,0,0);
   }
-  
+
+  // cvReleaseMat(&trainingData_scaled);
+  // cvReleaseMat(&testingData_scaled);
 }
 
 void ConvNN::predictNN(CvMat *trainingData, CvMat **responseMat)
