@@ -202,9 +202,11 @@ void ConvNN::writeCNNParams(string outFile)
   
 	layer=(CvCNNConvolutionLayer*)m_cnn->network->layers;
   cvWrite(fs,"conv1",layer->weights);
-  cvWrite(fs,"pool1",layer->next_layer->weights);
+  // cvWrite(fs,"pool1",layer->next_layer->weights);
   cvWrite(fs,"conv2",layer->next_layer->next_layer->weights);
-  cvWrite(fs,"pool2",layer->next_layer->next_layer->next_layer->weights);
+  // cvWrite(fs,"pool2",layer->next_layer->next_layer->next_layer->weights);
+  cvWrite(fs,"softmax1",layer->next_layer->next_layer->next_layer->next_layer->weights);
+  cvWrite(fs,"softmax2",layer->next_layer->next_layer->next_layer->next_layer->next_layer->weights);
 
 	// layer=(CvCNNConvolutionLayer*)m_cnn->network->layers;
   // fprintf(fpweights,"weights of 1st layer weight size: %d,%d\n",layer->weights->rows,layer->weights->cols);

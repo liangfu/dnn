@@ -107,7 +107,7 @@ int main(int argc, char * argv[])
   ConvNN * cnn = new ConvNN(28,28, // input image size
                             84,10, // full connect nodes
                             0.05,  // learning rate
-                            2000,  // maxiter
+                            500,  // maxiter
                             20      // batch_size
                             );
   cnn->createCNN();
@@ -118,7 +118,7 @@ CV_TIMER_START();
   CNNIO * cnnio = new CNNIO();
   cnnio->init(3,1,1,cnn);
   
-  int nsamples = MIN(2000,testing->rows);
+  int nsamples = MIN(5000,testing->rows);
   CvMat * samples = cvCreateMat(nsamples,testing->cols,CV_32F);
   CvMat * result = cvCreateMat(10,nsamples,CV_32F);
   CvMat * sorted = cvCreateMat(result->rows,result->cols,CV_32F);
