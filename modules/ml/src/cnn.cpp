@@ -251,8 +251,8 @@ cvTrainCNNClassifier( const CvMat* _train_data, int tflag,
   // normalize image value range
   double minval, maxval;
   cvMinMaxLoc(train_data,&minval,&maxval,0,0);
-  cvAddS(train_data,cvScalar(-minval),train_data);
-  cvScale(train_data,train_data,(maxval-minval)*.5f);
+  cvSubS(train_data,cvScalar(minval),train_data);
+  cvScale(train_data,train_data,1./((maxval-minval)*.5f));
   cvAddS(train_data,cvScalar(-1.f),train_data);
 
   // ICV_CHECK_CNN_MODEL_PARAMS(params);
@@ -480,7 +480,7 @@ static float icvCNNModelPredict( const CvCNNStatModel* model,
   double minval, maxval;
   cvMinMaxLoc(&imghdr,&minval,&maxval,0,0);
   cvAddS(&imghdr,cvScalar(-minval),&imghdr);
-  cvScale(&imghdr,&imghdr,(maxval-minval)*.5f);
+  cvScale(&imghdr,&imghdr,1./((maxval-minval)*.5f));
   cvAddS(&imghdr,cvScalar(-1.f),&imghdr);
 
   CV_CALL(X = (CvMat**)cvAlloc( (n_layers+1)*sizeof(CvMat*) ));
@@ -1416,10 +1416,6 @@ static void icvCNNFullConnectBackward( CvCNNLayer* _layer,
   CvMat* weights = layer->weights;
   CvMat sub_weights, Xtemplate, exp2ssumWXrow;
   int batch_size = X->cols;
-  CvMat * Xrow = cvCreateMat(X->cols,X->rows,CV_32F);
-  CvMat sub_bias;
-  // CvMat * weightsT = cvCreateMat( n_inputs, n_outputs, CV_32FC1 );
-  CvMat * bias = cvCreateMat( n_outputs, batch_size, CV_32FC1 );
   CvMat * dE_dY_T = cvCreateMat(n_outputs, batch_size, CV_32F);
 
   CV_ASSERT(X->cols == batch_size && X->rows == n_inputs);
@@ -1437,37 +1433,24 @@ static void icvCNNFullConnectBackward( CvCNNLayer* _layer,
   cvMul(dE_dY_afder,dE_dY_T,dE_dY_afder);
 
   // compute dE_dX=dE_dY_afder*W
-  CV_CALL(cvGetCol( weights, &sub_bias, weights->cols-1 )); cvRepeat(&sub_bias,bias);
   CV_CALL(cvGetCols( weights, &sub_weights, 0, weights->cols-1 ));
-  // cvSub(dE_dY_afder, bias, dE_dY_afder);
   CV_CALL(cvGEMM( dE_dY_afder, &sub_weights, 1, 0, 1, dE_dX, CV_GEMM_A_T));
-
+  
   // compute dE_dW=dE_dY*X
   cvZero(dE_dW);
-#if 0
   CV_ASSERT( dE_dY->rows == batch_size && dE_dY->cols == n_outputs );
-  cvTranspose(X,Xrow);
-  for (int k = 0; k < batch_size; k++){
-    float * xptr = Xrow->data.fl+n_inputs*k;
-    float * dwptr = dE_dW->data.fl;
-    for ( i = 0; i < n_outputs; i++ ){
-    for ( int j = 0; j < n_inputs; j++ ){
-      dwptr[j] += xptr[j] * CV_MAT_ELEM(*dE_dY,float,k,i);
-    }
-    dwptr[n_inputs] += CV_MAT_ELEM(*dE_dY,float,k,i); // bias term
-    dwptr += n_inputs + 1;
-    }
-  } // for each sample
-#else
   CvMat dE_dW_hdr = cvMat(n_outputs,n_inputs+1,CV_32F,dE_dW->data.fl);
-  CvMat dE_dW_submat;
-  cvGetCols(&dE_dW_hdr,&dE_dW_submat,0,n_inputs);
-  cvGEMM(dE_dY,X,1,0,1,&dE_dW_submat,CV_GEMM_A_T|CV_GEMM_B_T);
-#endif
+  CvMat * Xcol = cvCreateMat(X->rows+1,X->cols,CV_32F); 
+  CvMat Xcol_submat;
+  cvSet(Xcol,cvScalar(1)); // all ones on last row
+  cvGetRows(Xcol,&Xcol_submat,0,X->rows);
+  cvCopy(X,&Xcol_submat);
+  cvGEMM(dE_dY,Xcol,1,0,1,&dE_dW_hdr,CV_GEMM_A_T|CV_GEMM_B_T);
+  cvReleaseMat(&Xcol);
 
   // 2) update weights
   {
-    CvMat dE_dW_mat; float eta;
+    float eta;
     if ( layer->learn_rate_decrease_type == CV_CNN_LEARN_RATE_DECREASE_LOG_INV ){
       eta = -layer->init_learn_rate/logf(1+(float)t);
     }else if ( layer->learn_rate_decrease_type == CV_CNN_LEARN_RATE_DECREASE_SQRT_INV ){
@@ -1475,13 +1458,10 @@ static void icvCNNFullConnectBackward( CvCNNLayer* _layer,
     }else{
       eta = -layer->init_learn_rate/(float)t;
     }
-    cvReshape( dE_dW, &dE_dW_mat, 0, n_outputs );
-    cvScaleAdd( &dE_dW_mat, cvRealScalar(eta), weights, weights );
+    cvScaleAdd( &dE_dW_hdr, cvRealScalar(eta), weights, weights );
   }
   
   cvReleaseMat(&dE_dY_T);
-  cvReleaseMat(&bias);
-  if (Xrow) { cvReleaseMat(&Xrow); Xrow=0; }
   if (layer->exp2ssumWX){ cvReleaseMat(&layer->exp2ssumWX);layer->exp2ssumWX=0; }
   }__END__;
 
