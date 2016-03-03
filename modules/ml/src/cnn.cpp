@@ -349,7 +349,7 @@ static void icvTrainCNNetwork( CvCNNetwork* network,
     {CV_CALL(layer->forward( layer, X[k], X[k+1] ));}
     CV_CALL(layer->forward( layer, X[k], X[k+1] ));
 #else
-    { if (k==4){cvScale(X[k],X[k],1./255.);}
+    { // if (k==4){cvScale(X[k],X[k],1./255.);}
       CV_CALL(layer->forward( layer, X[k], X[k+1] ));
       if (n>int(max_iter*.9)&&k==0){icvVisualizeCNNLayer(layer, X[k+1]);}
     }
@@ -468,6 +468,7 @@ static float icvCNNModelPredict( const CvCNNStatModel* model,
   CV_ASSERT(_image->cols==img_size && nsamples==_image->rows);
   if (!img_data){img_data = (float*)cvAlloc(img_size*nsamples*sizeof(float));}
   CvMat imghdr = cvMat(_image->rows,_image->cols,CV_32F,img_data);
+  cvCopy(_image,&imghdr);
 #endif
 
   CV_CALL(X = (CvMat**)cvAlloc( (n_layers+1)*sizeof(CvMat*) ));
@@ -481,55 +482,18 @@ static float icvCNNModelPredict( const CvCNNStatModel* model,
 
   image = cvMat( nsamples, img_size, CV_32FC1, img_data );
   cvTranspose( &image, X[0] );
-  for ( k = 0, layer = first_layer; k < n_layers; k++, layer = layer->next_layer ) {
-    if (k==4){cvScale(X[k],X[k],1./255.);}
-    CV_CALL(layer->forward( layer, X[k], X[k+1] ));
-  }
-
-#if 0
-  probs_data = probs ? probs->data.fl : 0;
-  etalon = cvMat( cnn_model->etalons->cols, 1, CV_32FC1, cnn_model->etalons->data.fl );
-  for ( i = 0; i < nclasses; i++, etalon.data.fl += cnn_model->etalons->cols ){
-    loss = (float)cvNorm( X[n_layers], &etalon );
-    if ( loss < min_loss ){ min_loss = loss; best_etal_idx = i; }
-    if ( probs ) { *probs_data++ = -loss; }
-  }
-  if ( probs ){
-    cvExp( probs, probs );
-    CvScalar sum = cvSum( probs );
-    cvConvertScale( probs, probs, 1./sum.val[0] );
-  }
+  for ( k = 0, layer = first_layer; k < n_layers; k++, layer = layer->next_layer ) 
+#if 1
+    {CV_CALL(layer->forward( layer, X[k], X[k+1] ));}
 #else
-  // input:  X[n_layers],cnn_model->etalons
-  // output: probs
-  CvMat * Xcol = cvCreateMat(nclasses,1,CV_32F);
-  for ( int sidx = 0; sidx < nsamples; sidx++ ) {
-    cvGetCol(X[n_layers],Xcol,sidx);
-    etalon = cvMat( cnn_model->etalons->cols, 1, CV_32F, cnn_model->etalons->data.fl );
-    min_loss = FLT_MAX;
-    for ( i = 0; i < nclasses; i++ ){
-      loss = (float)cvNorm( Xcol, &etalon );
-      if ( loss < min_loss ){ min_loss = loss; best_etal_idx = i; }
-      if ( probs ){ CV_MAT_ELEM(*probs,float,i,sidx) = -loss; }
-      etalon.data.fl += cnn_model->etalons->cols;
+    { // if (k==4){cvScale(X[k],X[k],1./255.);}
+      CV_CALL(layer->forward( layer, X[k], X[k+1] ));
+      icvVisualizeCNNLayer(layer, X[k+1]);
     }
-  }
-  cvReleaseMat(&Xcol);
-
-  if ( probs ){
-    cvExp( probs, probs );
-    CvMat * sum = cvCreateMat(1,probs->cols,CV_32F);
-    CvMat * invsum = cvCreateMat(1,probs->cols,CV_32F);
-    CvMat * invsum_repmat = cvCreateMat(nclasses,probs->cols,CV_32F);
-    cvReduce(probs,sum,-1,CV_REDUCE_SUM);
-    cvDiv(0,sum,invsum);
-    cvRepeat(invsum,invsum_repmat);
-    cvMul(probs,invsum_repmat,probs);
-    cvReleaseMat(&sum);
-    cvReleaseMat(&invsum);
-    cvReleaseMat(&invsum_repmat);
-  }
+    fprintf(stderr,"\n");
 #endif
+
+  cvCopy(X[n_layers],probs);
 
   __END__;
 

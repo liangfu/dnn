@@ -107,7 +107,7 @@ int main(int argc, char * argv[])
   ConvNN * cnn = new ConvNN(28,28, // input image size
                             84,10, // full connect nodes
                             0.05,  // learning rate
-                            1000,  // maxiter
+                            2000,  // maxiter
                             20      // batch_size
                             );
   cnn->createCNN();
@@ -118,57 +118,44 @@ CV_TIMER_START();
   CNNIO * cnnio = new CNNIO();
   cnnio->init(3,1,1,cnn);
   
-#if 1
-  // testing = training;
-  // expected = response;
-  CvMat * result = cvCreateMat(10,1,CV_32F);
-  CvMat * sorted = cvCreateMat(result->rows,result->cols,CV_32F);
-  CvMat * indices = cvCreateMat(result->rows,result->cols,CV_32S);
-  int testCount = 1000;int top1=0,top3=0;
-  CvRNG rng = cvRNG(-1);
-  for (int ii=0;ii<testCount;ii++){
-    CvMat testing_stub; int idx = cvRandInt(&rng)%testing->rows;
-    cvGetSubRect(testing,&testing_stub,cvRect(0,idx,nr*nc,1));
-    cnn->m_cnn->predict(cnn->m_cnn,&testing_stub,result);
-    cvSort(result,sorted,indices,CV_SORT_DESCENDING|CV_SORT_EVERY_COLUMN);
-    int t1=indices->data.i[0],t2=indices->data.i[1],t3=indices->data.i[2];
-    int ex1 = expected->data.ptr[idx];
-    // fprintf(stderr,"label: [%d,%d,%d], expect: %d\n",t1,t2,t3,ex1);
-    if (t1==ex1){top1++;}
-    if (t1==ex1 || t2==ex1 || t3==ex1){top3++;}
-  }
-  cvReleaseMat(&result);
-  cvReleaseMat(&sorted);
-  cvReleaseMat(&indices);
-#else
-  int testCount = testing->rows;
-  CvMat * result = cvCreateMat(10,testCount,CV_32F);
+  int nsamples = MIN(2000,testing->rows);
+  CvMat * samples = cvCreateMat(nsamples,testing->cols,CV_32F);
+  CvMat * result = cvCreateMat(10,nsamples,CV_32F);
   CvMat * sorted = cvCreateMat(result->rows,result->cols,CV_32F);
   CvMat * indices = cvCreateMat(result->rows,result->cols,CV_32S);
   CvMat * indtop1 = cvCreateMat(1,result->cols,CV_32S);
-  CvMat * expectedmat = cvCreateMat(1,result->cols,CV_32S);
+  CvMat * expected_submat = cvCreateMat(nsamples,1,CV_8U);
+  CvMat * expected_converted = cvCreateMat(nsamples,1,CV_32S);
+  CvMat * expected_transposed = cvCreateMat(1,result->cols,CV_32S);
   CvMat * indtop1res = cvCreateMat(1,result->cols,CV_8U);
-  int top1=0,top3=0;
-  cnn->m_cnn->predict(cnn->m_cnn,testing,result);
+  // testing data
+  cvGetRows(testing,samples,0,nsamples);
+  cnn->m_cnn->predict(cnn->m_cnn,samples,result);
   cvSort(result,sorted,indices,CV_SORT_DESCENDING|CV_SORT_EVERY_COLUMN);
   cvGetRow(indices,indtop1,0);
-  assert( expected->rows*expected->cols == expectedmat->rows*expectedmat->cols );
-  assert( CV_MAT_TYPE(expected->type) == CV_8U && CV_MAT_TYPE(expectedmat->type) == CV_32S );
-  for (int ii=0;ii<expected->rows*expected->cols;ii++){
-    expectedmat->data.i[ii]=expected->data.ptr[ii];
-  }
-  cvCmp(indtop1,expectedmat,indtop1res,CV_CMP_EQ);
-  top1=cvSum(indtop1res).val[0]/255.f;
+  // expected data
+  cvGetRows(expected,expected_submat,0,nsamples);
+  cvConvert(expected_submat,expected_converted);
+  cvTranspose(expected_converted,expected_transposed);
+  cvCmp(indtop1,expected_transposed,indtop1res,CV_CMP_EQ);
+#if 0
+  fprintf(stderr,"expected:\n\t");
+  cvPrintf(stderr,"%d,",expected_transposed);
+  fprintf(stderr,"result:\n\t");
+  cvPrintf(stderr,"%d,",indtop1);
+#endif
+  float top1=cvSum(indtop1res).val[0]/255.f;
+  cvReleaseMat(&samples);
   cvReleaseMat(&result);
   cvReleaseMat(&sorted);
   cvReleaseMat(&indices);
   cvReleaseMat(&indtop1);
-  cvReleaseMat(&expectedmat);
+  cvReleaseMat(&expected_submat);
+  cvReleaseMat(&expected_converted);
+  cvReleaseMat(&expected_transposed);
   cvReleaseMat(&indtop1res);
-#endif
 
-  fprintf(stderr,"top-1: %.1f%%, top-3: %.1f%%\n",
-    float(top1*100.f)/float(testCount),float(top3*100.f)/float(testCount));
+  fprintf(stderr,"top-1: %.1f%%\n",float(top1*100.f)/float(nsamples));
 CV_TIMER_SHOW();
 
   cvReleaseMat(&training);
