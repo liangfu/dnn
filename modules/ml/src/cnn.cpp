@@ -252,7 +252,7 @@ cvTrainCNNClassifier( const CvMat* _train_data, int tflag,
   double minval, maxval;
   cvMinMaxLoc(train_data,&minval,&maxval,0,0);
   cvSubS(train_data,cvScalar(minval),train_data);
-  cvScale(train_data,train_data,1./((maxval-minval)*.5f));
+  cvScale(train_data,train_data,10./((maxval-minval)*.5f));
   cvAddS(train_data,cvScalar(-1.f),train_data);
 
   // ICV_CHECK_CNN_MODEL_PARAMS(params);
@@ -480,7 +480,7 @@ static float icvCNNModelPredict( const CvCNNStatModel* model,
   double minval, maxval;
   cvMinMaxLoc(&imghdr,&minval,&maxval,0,0);
   cvAddS(&imghdr,cvScalar(-minval),&imghdr);
-  cvScale(&imghdr,&imghdr,1./((maxval-minval)*.5f));
+  cvScale(&imghdr,&imghdr,10./((maxval-minval)*.5f));
   cvAddS(&imghdr,cvScalar(-1.f),&imghdr);
 
   CV_CALL(X = (CvMat**)cvAlloc( (n_layers+1)*sizeof(CvMat*) ));
