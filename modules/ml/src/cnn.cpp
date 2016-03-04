@@ -969,7 +969,8 @@ ML_IMPL CvCNNLayer* cvCreateCNNFullConnectLayer(
     CV_CALL(cvCopy( weights, layer->weights ));
   } else {
     CvRNG rng = cvRNG( 0xFFFFFFFF );
-    cvRandArr( &rng, layer->weights, CV_RAND_UNI, cvRealScalar(-1), cvRealScalar(1) );
+    cvRandArr( &rng, layer->weights, CV_RAND_UNI, 
+               cvScalar(-1.f/sqrt(n_inputs)), cvScalar(1.f/sqrt(n_inputs)) );
     // initialize bias to zero
     for (int ii=0;ii<n_outputs;ii++){ CV_MAT_ELEM(*layer->weights,float,ii,n_inputs)=0; }
   }
