@@ -364,7 +364,7 @@ static void icvTrainCNNetwork( CvCNNetwork* network,
     cvSub( dE_dX[n_layers], etalon, dE_dX[n_layers] );
 
     // 3) Update weights by the gradient descent
-    for ( k = n_layers; k > 4; k--, layer = layer->prev_layer )
+    for ( k = n_layers; k > 0; k--, layer = layer->prev_layer )
 #if 1
     { // if (n>50&&k==4){break;}
       CV_CALL(layer->backward( layer, n + start_iter, X[k-1], dE_dX[k], dE_dX[k-1] ));}
@@ -1282,6 +1282,7 @@ static void icvCNNConvolutionBackward(
     } // no
   } // si
   cvReleaseMat(&Xt);
+  cvScale(dY_dW,dY_dW,1.f/float(batch_size));
 
   // dE_dW = sum( dE_dY * dY_dW )
   CvMat * dE_dW_ = cvCreateMat( batch_size, dY_dW->cols, CV_32FC1 );

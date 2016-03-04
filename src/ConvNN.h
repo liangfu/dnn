@@ -58,7 +58,7 @@ public:
    * a normal member loading the parameters of CNN from a file.
    * @param inFile the file containing the CNN parameter info.
    */
-	void LoadCNNParams(string inFile);
+	void readCNNParams(string inFile);
 
   /** \brief Train a CNN model
    * a normal member to train the CNN.

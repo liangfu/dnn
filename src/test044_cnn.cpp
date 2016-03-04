@@ -81,7 +81,6 @@ int main(int argc, char * argv[])
   const char * response_filename = "../data/mnist/train-labels-idx1-ubyte";
   const char * testing_filename = "../data/mnist/t10k-images-idx3-ubyte";
   const char * expected_filename = "../data/mnist/t10k-labels-idx1-ubyte";
-
   const char * pretrained_filename = "../data/mnist/pretrained.xml";
 
   fprintf(stderr,"Loading MNIST Images ...\n");
@@ -95,25 +94,20 @@ int main(int argc, char * argv[])
   assert(training->cols==nr*nc);
   fprintf(stderr,"%d Images in %dx%d Loaded!\n",training->rows,nr,nc);
 
-  // cvPrintf(stderr,"%d,",response,cvRect(0,0,1,10));
-  // {
-  // CvMat * sample = cvCreateMat(nr,nc,CV_32F);
-  // memcpy(sample->data.ptr,training->data.ptr,sizeof(float)*nr*nc);
-  // cvShowImageEx("Test",sample);
-  // cvWaitKey();
-  // cvReleaseMat(&sample);
-  // }
-
   ConvNN * cnn = new ConvNN(28,28, // input image size
                             84,10, // full connect nodes
                             0.05,  // learning rate
-                            500,  // maxiter
-                            20      // batch_size
+                            5000,  // maxiter
+                            4      // batch_size
                             );
   cnn->createCNN();
 CV_TIMER_START();
+#if 1
   cnn->trainNN(training,response,testing,expected);
   cnn->writeCNNParams(pretrained_filename);
+#else
+  cnn->readCNNParams(pretrained_filename);
+#endif
 
   CNNIO * cnnio = new CNNIO();
   cnnio->init(3,1,1,cnn);
