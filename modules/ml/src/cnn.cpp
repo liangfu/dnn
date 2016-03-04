@@ -49,9 +49,9 @@
 #include "cvext.h"
 
 // sigmoid function
-#define SIG(p) (1.7159*tanh(0.66666667*p))
+// #define SIG(p) (1.7159*tanh(0.66666667*p))
 // derivative of the sigmoid
-#define DSIG(p) (0.66666667/1.7159*(1.7159+(p))*(1.7159-(p)))  
+// #define DSIG(p) (0.66666667/1.7159*(1.7159+(p))*(1.7159-(p)))  
 
 /*************************************************************************\
  *               Auxilary functions declarations                         *
@@ -118,6 +118,7 @@ static void icvCNNFullConnectBackward( CvCNNLayer* layer, int,
 
 /*---------------------- math utility functions -----------------------*/
 static void cvTanh(CvMat * src, CvMat * dst, float a=1, float b=1);
+static void cvSigmoid(CvMat * src, CvMat * dst, float a=1, float b=1);
 static float icvEvalAccuracy(CvMat * result, CvMat * mattemp);
 
 /**************************************************************************\
@@ -381,7 +382,7 @@ static void icvTrainCNNetwork( CvCNNetwork* network,
     // log and progress
     CvMat * mattemp = cvCreateMat(etalon->cols,etalon->rows,CV_MAT_TYPE(etalon->type));
     cvTranspose(etalon, mattemp);
-    float trloss = (float) cvNorm(X[n_layers], mattemp);
+    float trloss = cvNorm(X[n_layers], mattemp)/float(batch_size);
     float top1 = icvEvalAccuracy(X[n_layers], mattemp);
     static double sumloss = 0; sumloss += trloss;
     static double sumacc  = 0; sumacc  += top1;
@@ -935,7 +936,7 @@ ML_IMPL CvCNNLayer* cvCreateCNNSubSamplingLayer(
 /*************************************************************************/
 ML_IMPL CvCNNLayer* cvCreateCNNFullConnectLayer(
     int n_inputs, int n_outputs, float a, float s, 
-    float init_learn_rate, int learn_rate_decrease_type, CvMat* weights )
+    float init_learn_rate, int learn_rate_decrease_type, int activation_type, CvMat* weights )
 {
   CvCNNFullConnectLayer* layer = 0;
 
@@ -957,6 +958,7 @@ ML_IMPL CvCNNLayer* cvCreateCNNFullConnectLayer(
   layer->a = a;
   layer->s = s;
   layer->exp2ssumWX = 0;
+  layer->activation_type = activation_type;//CV_CNN_HYPERBOLIC;
 
   CV_CALL(layer->weights = cvCreateMat( n_outputs, n_inputs+1, CV_32FC1 ));
   if ( weights ){
@@ -1173,7 +1175,15 @@ static void icvCNNFullConnectForward( CvCNNLayer* _layer, const CvMat* X, CvMat*
 
   // update inner variables used in back-propagation
   CV_CALL(cvGEMM( &sub_weights, X, 1, bias, 1, layer->exp2ssumWX ));
-  CV_CALL(cvTanh( layer->exp2ssumWX, Y ));
+  if (layer->activation_type==CV_CNN_NONE){
+    // do nothing
+  }else if (layer->activation_type==CV_CNN_HYPERBOLIC){
+    CV_CALL(cvTanh( layer->exp2ssumWX, Y ));
+  }else if (layer->activation_type==CV_CNN_LOGISTIC){
+    CV_CALL(cvSigmoid( layer->exp2ssumWX, Y ));
+  }else if (layer->activation_type==CV_CNN_RELU){
+    CV_CALL(cvMaxS( layer->exp2ssumWX, 0, Y ));
+  }else{assert(false);}
 
   //// check numerical stability
   // CV_CALL(cvMinS( layer->exp2ssumWX, FLT_MAX, layer->exp2ssumWX ));
@@ -1428,9 +1438,23 @@ static void icvCNNFullConnectBackward( CvCNNLayer* _layer,
   CV_CALL(dE_dW = cvCreateMat( 1, weights->rows*weights->cols, CV_32FC1 ));
 
   // compute (tanh'(WX))*dE_dY
-  cvTanh(layer->exp2ssumWX,dE_dY_afder);
-  cvPow(dE_dY_afder,dE_dY_afder,2.);
-  cvSubRS(dE_dY_afder,cvScalar(1),dE_dY_afder);
+  if (layer->activation_type==CV_CNN_NONE){
+  }else if (layer->activation_type==CV_CNN_HYPERBOLIC){
+    cvTanh(layer->exp2ssumWX,dE_dY_afder);
+    cvPow(dE_dY_afder,dE_dY_afder,2.);
+    cvSubRS(dE_dY_afder,cvScalar(1),dE_dY_afder);
+  }else if (layer->activation_type==CV_CNN_LOGISTIC){
+    cvSigmoid(layer->exp2ssumWX,dE_dY_afder);
+    CvMat * dE_dY_clone = cvCloneMat(dE_dY_afder);
+    cvSubRS(dE_dY_afder,cvScalar(1),dE_dY_afder);
+    cvMul(dE_dY_clone,dE_dY_afder,dE_dY_afder);
+    cvReleaseMat(&dE_dY_clone);
+  }else if (layer->activation_type==CV_CNN_RELU){
+    CvMat * dE_dY_mask = cvCreateMat(dE_dY_afder->rows,dE_dY_afder->cols,CV_8U);
+    cvCmpS(layer->exp2ssumWX,0,dE_dY_mask,CV_CMP_GT);
+    cvScale(dE_dY_mask,dE_dY_afder,1./255.f);
+    cvReleaseMat(&dE_dY_mask);
+  }else{assert(false);}
   cvTranspose(dE_dY,dE_dY_T);
   cvMul(dE_dY_afder,dE_dY_T,dE_dY_afder);
 
@@ -1487,6 +1511,27 @@ void cvTanh(CvMat * src, CvMat * dst, float a, float b)
     float * dstptr = dst->data.fl;
     for (ii=0;ii<elemsize;ii++){
       dstptr[ii] = a*tanh(b*srcptr[ii]);
+    }
+  }else{
+    CV_ERROR(CV_StsBadArg,"Unsupported data type");
+  }
+  }
+  __CV_END__
+}
+
+void cvSigmoid(CvMat * src, CvMat * dst, float a, float b)
+{
+  CV_FUNCNAME("cvSigmoid");
+  int ii,elemsize=src->rows*src->cols;
+  __CV_BEGIN__
+  {
+  CV_ASSERT(src->rows==dst->rows);
+  CV_ASSERT(src->cols==dst->cols);
+  if (CV_MAT_TYPE(src->type)==CV_32F){
+    float * srcptr = src->data.fl;
+    float * dstptr = dst->data.fl;
+    for (ii=0;ii<elemsize;ii++){
+      dstptr[ii] = 1.f/(1.f+exp(-srcptr[ii]));
     }
   }else{
     CV_ERROR(CV_StsBadArg,"Unsupported data type");

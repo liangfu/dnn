@@ -108,6 +108,12 @@
 typedef struct CvCNNLayer CvCNNLayer;
 typedef struct CvCNNetwork CvCNNetwork;
 
+#define CV_CNN_NONE          0
+
+#define CV_CNN_LOGISTIC      1
+#define CV_CNN_HYPERBOLIC    2
+#define CV_CNN_RELU          3
+
 #define CV_CNN_LEARN_RATE_DECREASE_HYPERBOLICALLY  1
 #define CV_CNN_LEARN_RATE_DECREASE_SQRT_INV        2
 #define CV_CNN_LEARN_RATE_DECREASE_LOG_INV         3
@@ -268,6 +274,9 @@ typedef struct CvCNNFullConnectLayer
     // activ.func. = <a>(exp(2<s>WX)-1)/(exp(2<s>WX)+1) == <a> - 2<a>/(<exp2ssumWX> + 1)
     // (activ.func.)' = 4<a><s>exp(2<s>WX)/(exp(2<s>WX)+1)^2
     CvMat* exp2ssumWX;
+    // activation function type,
+    // either CV_CNN_LOGISTIC,CV_CNN_HYPERBOLIC,CV_CNN_RELU or CV_CNN_NONE
+    int activation_type;
 }CvCNNFullConnectLayer;
 
 typedef struct CvCNNetwork
@@ -353,7 +362,7 @@ CVAPI(CvCNNLayer*) cvCreateCNNSubSamplingLayer(
 
 CVAPI(CvCNNLayer*) cvCreateCNNFullConnectLayer(
     int n_inputs, int n_outputs, float a, float s, 
-    float init_learn_rate, int learn_rate_decrease_type, CvMat* weights );
+    float init_learn_rate, int learn_rate_decrease_type, int activation_type, CvMat* weights );
 // cvCreateCNNFullConnectLayer( 
 //     int n_inputs, int n_outputs, float a, float s,
 //     float init_learn_rate, int learning_type, int delta_w_increase_type,  int nsamples, int max_iter,CvMat* weights CV_DEFAULT(0) );

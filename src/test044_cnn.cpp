@@ -97,8 +97,8 @@ int main(int argc, char * argv[])
   ConvNN * cnn = new ConvNN(28,28, // input image size
                             84,10, // full connect nodes
                             0.05,  // learning rate
-                            5000,  // maxiter
-                            4      // batch_size
+                            1000,  // maxiter
+                            2      // batch_size
                             );
   cnn->createCNN();
 CV_TIMER_START();

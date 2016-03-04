@@ -94,7 +94,8 @@ void ConvNN::createCNN()/*(int nSample, float maxIter,
 	int nsamples;
 	int maxiters;
 	int K;
-    int sub_samp_size;
+  int sub_samp_size;
+  int activation_type;
   
 	CvCNNLayer     * layer;
 
@@ -165,9 +166,10 @@ void ConvNN::createCNN()/*(int nSample, float maxIter,
 	init_learn_rate = m_learningRate;
 	a = 1;
 	s = 1;
+  activation_type = CV_CNN_HYPERBOLIC; // CV_CNN_RELU;
 	CV_CALL(layer = cvCreateCNNFullConnectLayer(
       n_input_planes, n_output_planes, a, s, 
-      init_learn_rate, learn_type, NULL ));
+      init_learn_rate, learn_type, activation_type, NULL ));
 	CV_CALL(m_cnn->network->add_layer( m_cnn->network, layer ));
 
 	n_input_planes  = m_connectNode;
@@ -175,9 +177,10 @@ void ConvNN::createCNN()/*(int nSample, float maxIter,
 	init_learn_rate = m_learningRate;
 	a = 1;
 	s = 1;
+  activation_type = CV_CNN_HYPERBOLIC;
 	CV_CALL(layer = cvCreateCNNFullConnectLayer(
       n_input_planes, n_output_planes, a, s, 
-      init_learn_rate, learn_type, NULL ));
+      init_learn_rate, learn_type, activation_type, NULL ));
 	CV_CALL(m_cnn->network->add_layer( m_cnn->network, layer ));
 
 	__CV_END__;
