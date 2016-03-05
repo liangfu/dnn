@@ -91,35 +91,34 @@ static void icvCNNetworkRelease( CvCNNetwork** network );
 static void icvVisualizeCNNLayer(CvCNNLayer * layer, const CvMat * Y);
 /*--------------- functions for convolutional layer --------------------*/
 static void icvCNNConvolutionRelease( CvCNNLayer** p_layer );
-
-static void icvCNNConvolutionForward( CvCNNLayer* layer,
-                                      const CvMat* X, CvMat* Y );
-
-static void icvCNNConvolutionBackward( CvCNNLayer*  layer, int t,
-    const CvMat* X, const CvMat* dE_dY, CvMat* dE_dX );
+static void icvCNNConvolutionForward( CvCNNLayer* layer, const CvMat* X, CvMat* Y );
+static void icvCNNConvolutionBackward( CvCNNLayer*  layer, int t, const CvMat* X, const CvMat* dE_dY, CvMat* dE_dX );
 
 /*------------------ functions for sub-sampling layer -------------------*/
 static void icvCNNSubSamplingRelease( CvCNNLayer** p_layer );
-
-static void icvCNNSubSamplingForward( CvCNNLayer* layer,
-                                      const CvMat* X, CvMat* Y );
-
-static void icvCNNSubSamplingBackward( CvCNNLayer*  layer, int t,
-    const CvMat* X, const CvMat* dE_dY, CvMat* dE_dX );
+static void icvCNNSubSamplingForward( CvCNNLayer* layer, const CvMat* X, CvMat* Y );
+static void icvCNNSubSamplingBackward( CvCNNLayer*  layer, int t, const CvMat* X, const CvMat* dE_dY, CvMat* dE_dX );
 
 /*---------- functions for full connected layer -----------------------*/
 static void icvCNNFullConnectRelease( CvCNNLayer** p_layer );
+static void icvCNNFullConnectForward( CvCNNLayer* layer, const CvMat* X, CvMat* Y );
+static void icvCNNFullConnectBackward( CvCNNLayer* layer, int t, const CvMat*, const CvMat* dE_dY, CvMat* dE_dX );
 
-static void icvCNNFullConnectForward( CvCNNLayer* layer,
-                                      const CvMat* X, CvMat* Y );
+/*---------- functions for full connected layer -----------------------*/
+static void icvCNNRecurrentRelease( CvCNNLayer** p_layer );
+static void icvCNNRecurrentForward( CvCNNLayer* layer, const CvMat* X, CvMat* Y );
+static void icvCNNRecurrentBackward( CvCNNLayer* layer, int t, const CvMat*, const CvMat* dE_dY, CvMat* dE_dX );
 
-static void icvCNNFullConnectBackward( CvCNNLayer* layer, int,
-    const CvMat*, const CvMat* dE_dY, CvMat* dE_dX );
+/*--------------------------- utility functions -----------------------*/
+static float icvEvalAccuracy(CvMat * result, CvMat * expected);
 
-/*---------------------- math utility functions -----------------------*/
-static void cvTanh(CvMat * src, CvMat * dst, float a=1, float b=1);
-static void cvSigmoid(CvMat * src, CvMat * dst, float a=1, float b=1);
-static float icvEvalAccuracy(CvMat * result, CvMat * mattemp);
+/*------------------------ activation functions -----------------------*/
+static void cvTanh(CvMat * src, CvMat * dst);
+static void cvTanhDer(CvMat * src, CvMat * dst);
+static void cvSigmoid(CvMat * src, CvMat * dst);
+static void cvSigmoidDer(CvMat * src, CvMat * dst);
+static void cvReLU(CvMat * src, CvMat * dst){cvMaxS( src, 0, dst );}
+static void cvReLUDer(CvMat * src, CvMat * dst);
 
 /**************************************************************************\
  *                 Functions implementations                              *
@@ -1182,7 +1181,7 @@ static void icvCNNFullConnectForward( CvCNNLayer* _layer, const CvMat* X, CvMat*
   }else if (layer->activation_type==CV_CNN_LOGISTIC){
     CV_CALL(cvSigmoid( layer->exp2ssumWX, Y ));
   }else if (layer->activation_type==CV_CNN_RELU){
-    CV_CALL(cvMaxS( layer->exp2ssumWX, 0, Y ));
+    CV_CALL(cvReLU( layer->exp2ssumWX, Y ));
   }else{assert(false);}
 
   //// check numerical stability
@@ -1440,20 +1439,23 @@ static void icvCNNFullConnectBackward( CvCNNLayer* _layer,
   // compute (tanh'(WX))*dE_dY
   if (layer->activation_type==CV_CNN_NONE){
   }else if (layer->activation_type==CV_CNN_HYPERBOLIC){
-    cvTanh(layer->exp2ssumWX,dE_dY_afder);
-    cvPow(dE_dY_afder,dE_dY_afder,2.);
-    cvSubRS(dE_dY_afder,cvScalar(1),dE_dY_afder);
+    // cvTanh(layer->exp2ssumWX,dE_dY_afder);
+    // cvPow(dE_dY_afder,dE_dY_afder,2.);
+    // cvSubRS(dE_dY_afder,cvScalar(1),dE_dY_afder);
+    cvTanhDer(layer->exp2ssumWX,dE_dY_afder);
   }else if (layer->activation_type==CV_CNN_LOGISTIC){
-    cvSigmoid(layer->exp2ssumWX,dE_dY_afder);
-    CvMat * dE_dY_clone = cvCloneMat(dE_dY_afder);
-    cvSubRS(dE_dY_afder,cvScalar(1),dE_dY_afder);
-    cvMul(dE_dY_clone,dE_dY_afder,dE_dY_afder);
-    cvReleaseMat(&dE_dY_clone);
+    // cvSigmoid(layer->exp2ssumWX,dE_dY_afder);
+    // CvMat * dE_dY_clone = cvCloneMat(dE_dY_afder);
+    // cvSubRS(dE_dY_afder,cvScalar(1),dE_dY_afder);
+    // cvMul(dE_dY_clone,dE_dY_afder,dE_dY_afder);
+    // cvReleaseMat(&dE_dY_clone);
+    cvSigmoidDer(layer->exp2ssumWX,dE_dY_afder);
   }else if (layer->activation_type==CV_CNN_RELU){
-    CvMat * dE_dY_mask = cvCreateMat(dE_dY_afder->rows,dE_dY_afder->cols,CV_8U);
-    cvCmpS(layer->exp2ssumWX,0,dE_dY_mask,CV_CMP_GT);
-    cvScale(dE_dY_mask,dE_dY_afder,1./255.f);
-    cvReleaseMat(&dE_dY_mask);
+    // CvMat * dE_dY_mask = cvCreateMat(dE_dY_afder->rows,dE_dY_afder->cols,CV_8U);
+    // cvCmpS(layer->exp2ssumWX,0,dE_dY_mask,CV_CMP_GT);
+    // cvScale(dE_dY_mask,dE_dY_afder,1./255.f);
+    // cvReleaseMat(&dE_dY_mask);
+    cvReLUDer(layer->exp2ssumWX,dE_dY_afder);
   }else{assert(false);}
   cvTranspose(dE_dY,dE_dY_T);
   cvMul(dE_dY_afder,dE_dY_T,dE_dY_afder);
@@ -1498,7 +1500,7 @@ static void icvCNNFullConnectBackward( CvCNNLayer* _layer,
 /*************************************************************************\
  *                           Utility functions                           *
 \*************************************************************************/
-void cvTanh(CvMat * src, CvMat * dst, float a, float b)
+void cvTanh(CvMat * src, CvMat * dst)
 {
   CV_FUNCNAME("cvTanh");
   int ii,elemsize=src->rows*src->cols;
@@ -1510,7 +1512,7 @@ void cvTanh(CvMat * src, CvMat * dst, float a, float b)
     float * srcptr = src->data.fl;
     float * dstptr = dst->data.fl;
     for (ii=0;ii<elemsize;ii++){
-      dstptr[ii] = a*tanh(b*srcptr[ii]);
+      dstptr[ii] = tanh(srcptr[ii]);
     }
   }else{
     CV_ERROR(CV_StsBadArg,"Unsupported data type");
@@ -1519,7 +1521,29 @@ void cvTanh(CvMat * src, CvMat * dst, float a, float b)
   __CV_END__
 }
 
-void cvSigmoid(CvMat * src, CvMat * dst, float a, float b)
+void cvTanhDer(CvMat * src, CvMat * dst) {
+  // cvTanh(src,dst);
+  // cvPow(dst,dst,2.);
+  // cvSubRS(dst,cvScalar(1),dst);
+  CV_FUNCNAME("cvTanh");
+  int ii,elemsize=src->rows*src->cols;
+  __CV_BEGIN__
+  {
+  CV_ASSERT(src->rows==dst->rows && src->cols==dst->cols);
+  if (CV_MAT_TYPE(src->type)==CV_32F){
+    float * srcptr = src->data.fl;
+    float * dstptr = dst->data.fl;
+    for (ii=0;ii<elemsize;ii++){
+      dstptr[ii] = 1.f-pow(tanh(srcptr[ii]),2);
+    }
+  }else{
+    CV_ERROR(CV_StsBadArg,"Unsupported data type");
+  }
+  }
+  __CV_END__
+}
+
+void cvSigmoid(CvMat * src, CvMat * dst)
 {
   CV_FUNCNAME("cvSigmoid");
   int ii,elemsize=src->rows*src->cols;
@@ -1540,6 +1564,33 @@ void cvSigmoid(CvMat * src, CvMat * dst, float a, float b)
   __CV_END__
 }
 
+void cvSigmoidDer(CvMat * src, CvMat * dst) {
+  cvSigmoid(src,dst);
+  CvMat * tmp = cvCloneMat(dst);
+  cvSubRS(dst,cvScalar(1),dst);
+  cvMul(tmp,dst,dst);
+  cvReleaseMat(&tmp);
+}
+
+void cvReLUDer(CvMat * src, CvMat * dst) {
+  CV_FUNCNAME("cvReLUDer");
+  int ii,elemsize=src->rows*src->cols;
+  __CV_BEGIN__
+  {
+  CV_ASSERT(src->rows==dst->rows && src->cols==dst->cols);
+  if (CV_MAT_TYPE(src->type)==CV_32F){
+    float * srcptr = src->data.fl;
+    float * dstptr = dst->data.fl;
+    for (ii=0;ii<elemsize;ii++){
+      if (srcptr[ii]>0){dstptr[ii] = 1.f;}else {dstptr[ii] = 0.f;}
+    }
+  }else{
+    CV_ERROR(CV_StsBadArg,"Unsupported data type");
+  }
+  }
+  __CV_END__
+}
+  
 /*************************************************************************\
 *                           Layer RELEASE functions                       *
 \*************************************************************************/

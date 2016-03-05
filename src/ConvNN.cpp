@@ -166,7 +166,7 @@ void ConvNN::createCNN()/*(int nSample, float maxIter,
 	init_learn_rate = m_learningRate;
 	a = 1;
 	s = 1;
-  activation_type = CV_CNN_HYPERBOLIC; // CV_CNN_RELU;
+  activation_type = CV_CNN_RELU;
 	CV_CALL(layer = cvCreateCNNFullConnectLayer(
       n_input_planes, n_output_planes, a, s, 
       init_learn_rate, learn_type, activation_type, NULL ));
