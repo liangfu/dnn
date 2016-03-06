@@ -1,4 +1,4 @@
-#include "ConvNN.h"
+#include "dram.h"
 // #include "global.h"
 // #include "ml.h"
 
@@ -6,55 +6,14 @@
 
 using namespace std;
 
-CNNIO::CNNIO(void)
-{
-  output = NULL;
-  fpredict =NULL;
-}
-
-
-CNNIO::~CNNIO(void)
-{
-  if(output != NULL) {
-    for(int k=0; k< 5; k++) {
-      cvReleaseMat(&output[k]);
-    }
-    cvFree(output);
-  }
-}
-
-void CNNIO::init(int outNode, int width, int height, ConvNN *CNN)
-{
-  output = (CvMat**)cvAlloc( (outNode+1)*sizeof(CvMat*) );
-  memset( output, 0, (outNode+1)*sizeof(CvMat*) );
-  output[0] = cvCreateMat( height*width,1,CV_32FC1 );
-  CvCNNLayer * layer;
-
-  int k,i;
-  int n_layers = CNN->m_cnn->network->n_layers;
-
-  for( k = 0, layer = CNN->m_cnn->network->layers; k < n_layers; 
-       k++, layer = layer->next_layer ) {
-    output[k+1] = cvCreateMat( layer->n_output_planes*layer->output_height*
-                               layer->output_width, 1, CV_32FC1 );
-  }
-
-  CNN->m_cnn->cls_labels = cvCreateMat(1,NNODE,CV_32FC1);
-  for(i=0;i<NNODE;i++) {
-    CNN->m_cnn->cls_labels->data.i[i]=i;
-  }
-}
-
-
-
-ConvNN::ConvNN(void)
+DRAM::DRAM(void)
 {
   m_cnn = 0;
   // cnn_train = 0;
   m_batch_size = 1;
 }
 
-ConvNN::ConvNN(int height, int width, int cNode,int node, 
+DRAM::DRAM(int height, int width, int cNode,int node, 
                double alpha, int maxiter, int batch_size)
 {
   m_clipHeight = height;
@@ -66,7 +25,7 @@ ConvNN::ConvNN(int height, int width, int cNode,int node,
   m_batch_size = batch_size;
 }
 
-ConvNN::~ConvNN(void)
+DRAM::~DRAM(void)
 {
   if( cvGetErrStatus() < 0 ) {
     if( m_cnn ) { m_cnn->release( (CvCNNStatModel**)&m_cnn ); }
@@ -74,7 +33,7 @@ ConvNN::~ConvNN(void)
   }
 }
 
-void ConvNN::createCNN()
+void DRAM::createNetwork()
 {
   CvMat* connect_mask = 0;
   float a,s;
@@ -83,7 +42,6 @@ void ConvNN::createCNN()
   int learn_type;
   int delta_w_increase_type;
   float init_learn_rate;
-  int nsamples;
   int maxiters;
   int K;
   int sub_samp_size;
@@ -96,18 +54,15 @@ void ConvNN::createCNN()
   input_width     = m_clipWidth;
   n_output_planes = 6;
   K = 5;
-  output_height   = input_height-K+1; // (m_clipHeight-3)/2;//
-  output_width    = input_width-K+1; // (m_clipWidth-3)/2;//
+  output_height   = input_height-K+1;
+  output_width    = input_width-K+1;
   init_learn_rate = m_learningRate;
   learn_type = CV_CNN_LEARN_RATE_DECREASE_SQRT_INV;//CV_CNN_LEARN_RATE_DECREASE_HYPERBOLICALLY;
-  // delta_w_increase_type = CV_CNN_DELTA_W_INCREASE_LM;//CV_CNN_DELTA_W_INCREASE_FIRSTORDER;
   delta_w_increase_type = CV_CNN_DELTA_W_INCREASE_FIRSTORDER;//CV_CNN_DELTA_W_INCREASE_LM;
-  nsamples = 1;//NSAMPLES;
-  maxiters = m_max_iter;//MAX_ITER;
-  a = 1;
-  s = 1;
+  maxiters = m_max_iter;
+  a = 1; s = 1;
 
-  CV_FUNCNAME("CNNTrainThread_Simard");
+  CV_FUNCNAME("createNetwork");
   __CV_BEGIN__;
 
   CV_CALL(m_cnn = (CvCNNStatModel*)cvCreateCNNStatModel(
@@ -127,12 +82,12 @@ void ConvNN::createCNN()
   CV_CALL(m_cnn->network->add_layer( m_cnn->network, layer ));
 
   n_input_planes  = n_output_planes;
-  input_height    = output_height/sub_samp_size;//(m_clipHeight-3)/2;//
-  input_width     = output_width/sub_samp_size;//(m_clipWidth-3)/2;//
+  input_height    = output_height/sub_samp_size;
+  input_width     = output_width/sub_samp_size;
   n_output_planes = 16;
   K = 5;
-  output_height   = input_height-K+1; // (input_height-3)/2;//
-  output_width    = input_width-K+1; // (input_width -3)/2;//
+  output_height   = input_height-K+1;
+  output_width    = input_width-K+1; 
   init_learn_rate = m_learningRate;
 
   // 50 @ 14x14
@@ -147,14 +102,13 @@ void ConvNN::createCNN()
       init_learn_rate, learn_type, NULL));
   CV_CALL(m_cnn->network->add_layer( m_cnn->network, layer ));
 
-  output_height   = output_height/sub_samp_size; // (input_height-3)/2;
-  output_width    = output_width/sub_samp_size; // (input_width -3)/2;
+  output_height   = output_height/sub_samp_size;
+  output_width    = output_width/sub_samp_size; 
   
   n_input_planes  = n_output_planes * output_height* output_width;
   n_output_planes = m_connectNode;
   init_learn_rate = m_learningRate;
-  a = 1;
-  s = 1;
+  a = 1; s = 1;
   activation_type = CV_CNN_RELU;
   CV_CALL(layer = cvCreateCNNFullConnectLayer(
       n_input_planes, n_output_planes, a, s, 
@@ -164,8 +118,7 @@ void ConvNN::createCNN()
   n_input_planes  = m_connectNode;
   n_output_planes = m_nNode;
   init_learn_rate = m_learningRate;
-  a = 1;
-  s = 1;
+  a = 1; s = 1;
   activation_type = CV_CNN_HYPERBOLIC;
   CV_CALL(layer = cvCreateCNNFullConnectLayer(n_input_planes, n_output_planes, a, s, 
       init_learn_rate, learn_type, activation_type, NULL ));
@@ -174,7 +127,7 @@ void ConvNN::createCNN()
   __CV_END__;
 }
 
-void ConvNN::writeCNNParams(string outFile)
+void DRAM::writeNetworkParams(string outFile)
 {
   CvCNNConvolutionLayer * layer;
   CvFileStorage * fs = cvOpenFileStorage(outFile.c_str(),0,CV_STORAGE_WRITE);
@@ -190,7 +143,7 @@ void ConvNN::writeCNNParams(string outFile)
   cvReleaseFileStorage(&fs);
 }
 
-void ConvNN::readCNNParams(string inFile)
+void DRAM::readNetworkParams(string inFile)
 {
   CvCNNConvolutionLayer * layer;
   CvFileStorage * fs = cvOpenFileStorage(inFile.c_str(),0,CV_STORAGE_READ);
@@ -209,8 +162,8 @@ void ConvNN::readCNNParams(string inFile)
   cvReleaseFileStorage(&fs);
 }
 
-void ConvNN::trainNN(CvMat *trainingData, CvMat *responseMat,
-                     CvMat *testingData, CvMat *expectedMat)
+void DRAM::trainNetwork(CvMat *trainingData, CvMat *responseMat,
+                        CvMat *testingData, CvMat *expectedMat)
 {
   int i, j;	
 
@@ -243,7 +196,7 @@ void ConvNN::trainNN(CvMat *trainingData, CvMat *responseMat,
   }
 }
 
-void ConvNN::predictNN(CvMat *trainingData, CvMat **responseMat)
+void DRAM::predictNN(CvMat *trainingData, CvMat **responseMat)
 {
   //icvCNNModelPredict( m_cnn,trainingData, responseMat);
 }

@@ -1,4 +1,4 @@
-/** \file ConvNN.h
+/** \file DRAM.h
     \brief Called by file CovNN.cpp
 
     No Further Details.
@@ -15,17 +15,17 @@
 
 using namespace std;
 
-/** \class ConvNN
- *  \brief ConvNN class
+/** \class DRAM
+ *  \brief DRAM class
  *  see member functions for detail
  */
-class ConvNN
+class DRAM
 {
 public:
-  ConvNN(void);
-  ConvNN(int height, int width, int node, int cNode,
+  DRAM(void);
+  DRAM(int height, int width, int node, int cNode,
          double alpha, int maxiter, int batch_size);
-  ~ConvNN(void);
+  ~DRAM(void);
 
   /** \brief Create CNN models
    * Create CNN models.
@@ -34,13 +34,13 @@ public:
    * @see publicVar()
    * @return The test results
    */
-  void createCNN( );
+  void createNetwork( );
 
   /** \brief Save CNN parameters to a file
    * a normal member to save the CNN parameters to a file.
    * @param outFile the name of the output file.
    */
-  void writeCNNParams(string outFile);
+  void writeNetworkParams(string outFile);
 
   /** \brief CNN models
    * a public variable.
@@ -58,31 +58,17 @@ public:
    * a normal member loading the parameters of CNN from a file.
    * @param inFile the file containing the CNN parameter info.
    */
-  void readCNNParams(string inFile);
+  void readNetworkParams(string inFile);
 
   /** \brief Train a CNN model
    * a normal member to train the CNN.
    * @param trainingData an integer argument.
    * @param responseMat a constant character pointer.
    */
-  void trainNN(CvMat *trainingData, CvMat *responseMat,
-               CvMat *testingData, CvMat *expectedMat);
+  void trainNetwork(CvMat *trainingData, CvMat *responseMat,
+                    CvMat *testingData, CvMat *expectedMat);
 
   void predictNN(CvMat * inputData, CvMat ** resultData);
-};
-
-
-class CNNIO
-{
-  enum {NNODE=10};
-public:
-  CNNIO(void);
-  ~CNNIO(void);
-
-  void init(int outNode, int width, int height, ConvNN *CNN);
-
-  CvMat** output;
-  CvMat * fpredict;
 };
 
 #endif // __CONVNN_H__

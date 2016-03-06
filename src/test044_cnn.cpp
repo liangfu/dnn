@@ -96,8 +96,8 @@ int main(int argc, char * argv[])
 
   ConvNN * cnn = new ConvNN(28,28, // input image size
                             84,10, // full connect nodes
-                            0.05,  // learning rate
-                            1000,  // maxiter
+                            0.06,  // learning rate
+                            90000,  // maxiter
                             2      // batch_size
                             );
   cnn->createCNN();

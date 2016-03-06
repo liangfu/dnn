@@ -1306,12 +1306,11 @@ static void icvCNNConvolutionBackward(
   {
     CvMat dE_dW_mat;
     float eta;
-    // if ( layer->learn_rate_decrease_type == CV_CNN_LEARN_RATE_DECREASE_LOG_INV ) {
-    //   eta = -layer->init_learn_rate/logf(1+(float)t);
-    // } else if ( layer->learn_rate_decrease_type == CV_CNN_LEARN_RATE_DECREASE_SQRT_INV ) {
-    //   eta = -layer->init_learn_rate/sqrtf((float)t);
-    // } else 
-    {
+    if ( layer->learn_rate_decrease_type == CV_CNN_LEARN_RATE_DECREASE_LOG_INV ) {
+      eta = -layer->init_learn_rate/logf(1+(float)t);
+    } else if ( layer->learn_rate_decrease_type == CV_CNN_LEARN_RATE_DECREASE_SQRT_INV ) {
+      eta = -layer->init_learn_rate/sqrtf((float)t);
+    } else {
       eta = -layer->init_learn_rate/(float)t;
     }
     cvReshape( dE_dW, &dE_dW_mat, 0, layer->weights->rows );

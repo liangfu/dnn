@@ -168,6 +168,9 @@ else( OPENMP_FOUND )
 	target_link_libraries(test044_cnn cxcore cvutil cv highgui ml ${FFMPEG_LIBRARIES}) # video 
 endif( OPENMP_FOUND )
 
+add_executable(test046_dram src/test046_dram.cpp src/dram.cpp)
+target_link_libraries(test046_dram cxcore cvutil cv highgui ml ${FFMPEG_LIBRARIES} gomp) # video
+
 # add_executable(test045latentssvm src/test045_latentssvm.cpp)
 # target_link_libraries(test045latentssvm cxcore cvutil cv video highgui ml latentssvm )
 
