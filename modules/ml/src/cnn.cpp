@@ -987,6 +987,61 @@ ML_IMPL CvCNNLayer* cvCreateCNNFullConnectLayer(
   return (CvCNNLayer*)layer;
 }
 
+/*************************************************************************/
+ML_IMPL CvCNNLayer* cvCreateCNNRecurrentLayer(
+    int n_inputs, int n_outputs, 
+    float init_learn_rate, int update_rule, int activation_type, CvMat * weights )
+{
+  CvCNNRecurrentLayer* layer = 0;
+
+  CV_FUNCNAME("cvCreateCNNRecurrentLayer");
+  __BEGIN__;
+
+  if ( init_learn_rate <= 0) {
+    CV_ERROR( CV_StsBadArg, "Incorrect parameters" );
+  }
+
+  fprintf(stderr,"RecurrentLayer: input (%d), output (%d)\n",
+          n_inputs,n_outputs);
+  
+  CV_CALL(layer = (CvCNNRecurrentLayer*)icvCreateCNNLayer( ICV_CNN_FULLCONNECT_LAYER,
+      sizeof(CvCNNRecurrentLayer), n_inputs, 1, 1, n_outputs, 1, 1,
+      init_learn_rate, update_rule,
+      icvCNNRecurrentRelease, icvCNNRecurrentForward, icvCNNRecurrentBackward ));
+
+  layer->WX = 0;
+  layer->Wih = 0;
+  layer->Whh = 0;
+  layer->Who = 0;
+  layer->activation_type = activation_type;//CV_CNN_HYPERBOLIC;
+
+  CV_CALL(layer->weights = cvCreateMat( n_outputs, n_inputs+1, CV_32FC1 ));
+  if ( weights ){
+    if ( !ICV_IS_MAT_OF_TYPE( weights, CV_32FC1 ) ) {
+      CV_ERROR( CV_StsBadSize, "Type of initial weights matrix must be CV_32FC1" );
+    }
+    if ( !CV_ARE_SIZES_EQ( weights, layer->weights ) ) {
+      CV_ERROR( CV_StsBadSize, "Invalid size of initial weights matrix" );
+    }
+    CV_CALL(cvCopy( weights, layer->weights ));
+  } else {
+    CvRNG rng = cvRNG( 0xFFFFFFFF );
+    cvRandArr( &rng, layer->weights, CV_RAND_UNI, 
+               cvScalar(-1.f/sqrt(n_inputs)), cvScalar(1.f/sqrt(n_inputs)) );
+    // initialize bias to zero
+    for (int ii=0;ii<n_outputs;ii++){ CV_MAT_ELEM(*layer->weights,float,ii,n_inputs)=0; }
+  }
+
+  __END__;
+
+  if ( cvGetErrStatus() < 0 && layer ){
+    cvReleaseMat( &layer->WX );
+    cvReleaseMat( &layer->weights );
+    cvFree( &layer );
+  }
+
+  return (CvCNNLayer*)layer;
+}
 
 /*************************************************************************\
  *                 Layer FORWARD functions                               *
@@ -1182,6 +1237,68 @@ static void icvCNNFullConnectForward( CvCNNLayer* _layer, const CvMat* X, CvMat*
     CV_CALL(cvSigmoid( layer->exp2ssumWX, Y ));
   }else if (layer->activation_type==CV_CNN_RELU){
     CV_CALL(cvReLU( layer->exp2ssumWX, Y ));
+  }else{assert(false);}
+
+  //// check numerical stability
+  // CV_CALL(cvMinS( layer->exp2ssumWX, FLT_MAX, layer->exp2ssumWX ));
+  // for ( int ii = 0; ii < layer->exp2ssumWX->rows; ii++ ){
+  //   CV_ASSERT ( layer->exp2ssumWX->data.fl[ii] != FLT_MAX );
+  // }
+
+  //// compute the output variable
+  // CvMat * sum = cvCreateMat(1,batch_size,CV_32F);
+  // CvMat * sumrep = cvCreateMat(n_outputs,batch_size,CV_32F);
+  // cvReduce(layer->exp2ssumWX,sum,-1,CV_REDUCE_SUM);cvRepeat(sum,sumrep);
+  // cvDiv(layer->exp2ssumWX,sumrep,Y);
+  // cvReleaseMat(&sum);
+  // cvReleaseMat(&sumrep);
+
+  if (bias){cvReleaseMat(&bias);bias=0;}
+
+  }__END__;
+}
+
+/****************************************************************************************/
+static void icvCNNRecurrentForward( CvCNNLayer* _layer, const CvMat* X, CvMat* Y )
+{
+  CV_FUNCNAME("icvCNNRecurrentForward");
+
+  if ( !ICV_IS_CNN_FULLCONNECT_LAYER(_layer) ) {
+    CV_ERROR( CV_StsBadArg, "Invalid layer" );
+  }
+
+  {__BEGIN__;
+
+  CvCNNRecurrentLayer * layer = (CvCNNRecurrentLayer*)_layer;
+  CvMat * weights = layer->weights;
+  CvMat sub_weights, biascol;
+  int n_outputs = Y->rows;
+  int batch_size = X->cols;
+
+  CV_ASSERT(X->cols == batch_size && X->rows == layer->n_input_planes);
+  CV_ASSERT(Y->cols == batch_size && Y->rows == layer->n_output_planes);
+
+  // bias on last column vector
+  CvRect roi = cvRect(0, 0, weights->cols-1, weights->rows );
+  CV_CALL(cvGetSubRect( weights, &sub_weights, roi));
+  CV_CALL(cvGetCol( weights, &biascol, weights->cols-1));
+  CV_ASSERT(CV_MAT_TYPE(biascol.type)==CV_32F);
+  CvMat * bias = cvCreateMat(biascol.rows,batch_size,CV_32F);
+  cvRepeat(&biascol,bias);
+  
+  CV_CALL(layer->WX = cvCreateMat( n_outputs, batch_size, CV_32FC1 ));
+  cvZero( layer->WX );
+
+  // update inner variables used in back-propagation
+  CV_CALL(cvGEMM( &sub_weights, X, 1, bias, 1, layer->WX ));
+  if (layer->activation_type==CV_CNN_NONE){
+    // do nothing
+  }else if (layer->activation_type==CV_CNN_HYPERBOLIC){
+    CV_CALL(cvTanh( layer->WX, Y ));
+  }else if (layer->activation_type==CV_CNN_LOGISTIC){
+    CV_CALL(cvSigmoid( layer->WX, Y ));
+  }else if (layer->activation_type==CV_CNN_RELU){
+    CV_CALL(cvReLU( layer->WX, Y ));
   }else{assert(false);}
 
   //// check numerical stability
@@ -1496,6 +1613,111 @@ static void icvCNNFullConnectBackward( CvCNNLayer* _layer,
   cvReleaseMat( &dE_dW );
 }
 
+/****************************************************************************************/
+/* <dE_dY>, <dE_dX> should be row-vectors.
+   Function computes partial derivatives <dE_dX>, <dE_dW>
+   of the loss function with respect to the planes components
+   of the previous layer (X) and the weights of the current layer (W)
+   and updates weights od the current layer by using <dE_dW>.
+   It is a basic function for back propagation method.
+   Input parameter <dE_dY> is the partial derivative of the
+   loss function with respect to the planes components
+   of the current layer. */
+static void icvCNNRecurrentBackward( CvCNNLayer* _layer,
+                                    int t,
+                                    const CvMat* X,
+                                    const CvMat* dE_dY,
+                                    CvMat* dE_dX )
+{
+  CvMat* dE_dY_afder = 0;
+  CvMat* dE_dW = 0;
+
+  CV_FUNCNAME( "icvCNNRecurrentBackward" );
+
+  if ( !ICV_IS_CNN_FULLCONNECT_LAYER(_layer) ) {
+      CV_ERROR( CV_StsBadArg, "Invalid layer" );
+  }
+
+  {__BEGIN__;
+
+  CvCNNRecurrentLayer* layer = (CvCNNRecurrentLayer*)_layer;
+  const int n_outputs = layer->n_output_planes;
+  const int n_inputs  = layer->n_input_planes;
+
+  int i;
+  CvMat* weights = layer->weights;
+  CvMat sub_weights, Xtemplate, exp2ssumWXrow;
+  int batch_size = X->cols;
+  CvMat * dE_dY_T = cvCreateMat(n_outputs, batch_size, CV_32F);
+
+  CV_ASSERT(X->cols == batch_size && X->rows == n_inputs);
+  CV_ASSERT(dE_dY->rows == batch_size && dE_dY->cols == n_outputs );
+  CV_ASSERT(dE_dX->rows == batch_size && dE_dX->cols == n_inputs );
+
+  CV_CALL(dE_dY_afder = cvCreateMat( n_outputs, batch_size, CV_32FC1 ));
+  CV_CALL(dE_dW = cvCreateMat( 1, weights->rows*weights->cols, CV_32FC1 ));
+
+  // compute (tanh'(WX))*dE_dY
+  if (layer->activation_type==CV_CNN_NONE){
+  }else if (layer->activation_type==CV_CNN_HYPERBOLIC){
+    // cvTanh(layer->exp2ssumWX,dE_dY_afder);
+    // cvPow(dE_dY_afder,dE_dY_afder,2.);
+    // cvSubRS(dE_dY_afder,cvScalar(1),dE_dY_afder);
+    cvTanhDer(layer->WX,dE_dY_afder);
+  }else if (layer->activation_type==CV_CNN_LOGISTIC){
+    // cvSigmoid(layer->exp2ssumWX,dE_dY_afder);
+    // CvMat * dE_dY_clone = cvCloneMat(dE_dY_afder);
+    // cvSubRS(dE_dY_afder,cvScalar(1),dE_dY_afder);
+    // cvMul(dE_dY_clone,dE_dY_afder,dE_dY_afder);
+    // cvReleaseMat(&dE_dY_clone);
+    cvSigmoidDer(layer->WX,dE_dY_afder);
+  }else if (layer->activation_type==CV_CNN_RELU){
+    // CvMat * dE_dY_mask = cvCreateMat(dE_dY_afder->rows,dE_dY_afder->cols,CV_8U);
+    // cvCmpS(layer->exp2ssumWX,0,dE_dY_mask,CV_CMP_GT);
+    // cvScale(dE_dY_mask,dE_dY_afder,1./255.f);
+    // cvReleaseMat(&dE_dY_mask);
+    cvReLUDer(layer->WX,dE_dY_afder);
+  }else{assert(false);}
+  cvTranspose(dE_dY,dE_dY_T);
+  cvMul(dE_dY_afder,dE_dY_T,dE_dY_afder);
+
+  // compute dE_dX=dE_dY_afder*W
+  CV_CALL(cvGetCols( weights, &sub_weights, 0, weights->cols-1 ));
+  CV_CALL(cvGEMM( dE_dY_afder, &sub_weights, 1, 0, 1, dE_dX, CV_GEMM_A_T));
+  
+  // compute dE_dW=dE_dY*X
+  cvZero(dE_dW);
+  CV_ASSERT( dE_dY->rows == batch_size && dE_dY->cols == n_outputs );
+  CvMat dE_dW_hdr = cvMat(n_outputs,n_inputs+1,CV_32F,dE_dW->data.fl);
+  CvMat * Xcol = cvCreateMat(X->rows+1,X->cols,CV_32F); 
+  CvMat Xcol_submat;
+  cvSet(Xcol,cvScalar(1)); // all ones on last row
+  cvGetRows(Xcol,&Xcol_submat,0,X->rows);
+  cvCopy(X,&Xcol_submat);
+  cvGEMM(dE_dY,Xcol,1,0,1,&dE_dW_hdr,CV_GEMM_A_T|CV_GEMM_B_T);
+  cvReleaseMat(&Xcol);
+
+  // 2) update weights
+  {
+    float eta;
+    if ( layer->learn_rate_decrease_type == CV_CNN_LEARN_RATE_DECREASE_LOG_INV ){
+      eta = -layer->init_learn_rate/logf(1+(float)t);
+    }else if ( layer->learn_rate_decrease_type == CV_CNN_LEARN_RATE_DECREASE_SQRT_INV ){
+      eta = -layer->init_learn_rate/sqrtf((float)t);
+    }else{
+      eta = -layer->init_learn_rate/(float)t;
+    }
+    cvScaleAdd( &dE_dW_hdr, cvRealScalar(eta), weights, weights );
+  }
+  
+  cvReleaseMat(&dE_dY_T);
+  if (layer->WX){ cvReleaseMat(&layer->WX);layer->WX=0; }
+  }__END__;
+
+  cvReleaseMat( &dE_dY_afder );
+  cvReleaseMat( &dE_dW );
+}
+
 /*************************************************************************\
  *                           Utility functions                           *
 \*************************************************************************/
@@ -1662,6 +1884,31 @@ static void icvCNNFullConnectRelease( CvCNNLayer** p_layer )
         CV_ERROR( CV_StsBadArg, "Invalid layer" );
 
     cvReleaseMat( &layer->exp2ssumWX );
+    cvReleaseMat( &layer->weights );
+    cvFree( p_layer );
+
+    __END__;
+}
+
+/****************************************************************************************/
+static void icvCNNRecurrentRelease( CvCNNLayer** p_layer )
+{
+    CV_FUNCNAME("icvCNNRecurrentRelease");
+    __BEGIN__;
+
+    CvCNNRecurrentLayer* layer = 0;
+
+    if ( !p_layer )
+        CV_ERROR( CV_StsNullPtr, "Null double pointer" );
+
+    layer = *(CvCNNRecurrentLayer**)p_layer;
+
+    if ( !layer )
+        return;
+    if ( !ICV_IS_CNN_RECURRENT_LAYER(layer) )
+        CV_ERROR( CV_StsBadArg, "Invalid layer" );
+
+    cvReleaseMat( &layer->WX );
     cvReleaseMat( &layer->weights );
     cvFree( p_layer );
 

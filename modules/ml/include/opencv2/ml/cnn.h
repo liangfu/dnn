@@ -128,6 +128,7 @@ typedef struct CvCNNetwork CvCNNetwork;
 #define ICV_CNN_CONVOLUTION_LAYER    0x00001111
 #define ICV_CNN_SUBSAMPLING_LAYER    0x00002222
 #define ICV_CNN_FULLCONNECT_LAYER    0x00003333
+#define ICV_CNN_RECURRENT_LAYER      0x00004444
 
 #define CV_IS_CNN(cnn)                                                     \
 	( (cnn)!=NULL )
@@ -147,6 +148,10 @@ typedef struct CvCNNetwork CvCNNetwork;
 #define ICV_IS_CNN_FULLCONNECT_LAYER( layer )                              \
     ( (ICV_IS_CNN_LAYER( layer )) && (((CvCNNLayer*) (layer))->flags       \
         & ~CV_MAGIC_MASK) == ICV_CNN_FULLCONNECT_LAYER )
+
+#define ICV_IS_CNN_RECURRENT_LAYER( layer )                                \
+    ( (ICV_IS_CNN_LAYER( layer )) && (((CvCNNLayer*) (layer))->flags       \
+        & ~CV_MAGIC_MASK) == ICV_CNN_RECURRENT_LAYER )
 
 typedef void (CV_CDECL *CvCNNLayerForward)
     ( CvCNNLayer* layer, const CvMat* input, CvMat* output );
@@ -279,6 +284,18 @@ typedef struct CvCNNFullConnectLayer
     int activation_type;
 }CvCNNFullConnectLayer;
 
+typedef struct CvCNNRecurrentLayer
+{
+  CV_CNN_LAYER_FIELDS();
+  CvMat * WX;
+  CvMat * Wih; // input to hidden
+  CvMat * Whh; // hidden to hidden
+  CvMat * Who; // hidden to output
+  // activation function type,
+  // either CV_CNN_LOGISTIC,CV_CNN_HYPERBOLIC,CV_CNN_RELU or CV_CNN_NONE
+  int activation_type;
+}CvCNNRecurrentLayer;
+
 typedef struct CvCNNetwork
 {
     int n_layers;
@@ -366,6 +383,10 @@ CVAPI(CvCNNLayer*) cvCreateCNNFullConnectLayer(
 // cvCreateCNNFullConnectLayer( 
 //     int n_inputs, int n_outputs, float a, float s,
 //     float init_learn_rate, int learning_type, int delta_w_increase_type,  int nsamples, int max_iter,CvMat* weights CV_DEFAULT(0) );
+
+CVAPI(CvCNNLayer*) cvCreateCNNRecurrentLayer(
+    int n_inputs, int n_outputs, 
+    float init_learn_rate, int update_rule, int activation_type, CvMat* weights );
 
 CVAPI(CvCNNetwork*) cvCreateCNNetwork( CvCNNLayer* first_layer );
 
