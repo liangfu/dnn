@@ -65,8 +65,7 @@ public:
    * @param trainingData an integer argument.
    * @param responseMat a constant character pointer.
    */
-  void trainNetwork(CvMat *trainingData, CvMat *responseMat,
-                    CvMat *testingData, CvMat *expectedMat);
+  void trainNetwork(CvMat *trainingData, CvMat *responseMat);
 
   void predictNN(CvMat * inputData, CvMat ** resultData);
 };

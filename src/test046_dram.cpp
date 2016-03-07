@@ -98,7 +98,7 @@ int main(int argc, char * argv[])
   cnn->createNetwork();
 CV_TIMER_START();
 #if 1
-  cnn->trainNetwork(training,response,testing,expected);
+  cnn->trainNetwork(training,response);
   cnn->writeNetworkParams(pretrained_filename);
 #else
   cnn->readNetworkParams(pretrained_filename);

@@ -228,22 +228,18 @@ void DRAM::readNetworkParams(string inFile)
   cvReleaseFileStorage(&fs);
 }
 
-void DRAM::trainNetwork(CvMat *trainingData, CvMat *responseMat,
-                        CvMat *testingData, CvMat *expectedMat)
+void DRAM::trainNetwork(CvMat *trainingData, CvMat *responseMat)
 {
   int i, j;	
-
   CvCNNStatModelParams params;
-  params.cls_labels = cvCreateMat( 10, 10, CV_32FC1 );
 
+  params.cls_labels = cvCreateMat( 10, 10, CV_32FC1 );
   params.etalons = cvCreateMat( 10, m_nNode, CV_32FC1 );
   for(i=0;i<params.etalons->rows;i++){
   for(j=0;j<params.etalons->cols;j++){
     cvmSet(params.etalons,i,j,(double)-1.0);
+  } cvmSet(params.etalons,i,i,(double)1.0);
   }
-  cvmSet(params.etalons,i,i,(double)1.0);
-  }
-
   cvSet(params.cls_labels,cvScalar(1));
 
   params.network = m_cnn->network;
