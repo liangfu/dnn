@@ -325,7 +325,6 @@ static void icvTrainCNNetwork( CvCNNetwork* network,
     float loss, max_loss = 0;
     int i;
     int nclasses = X[n_layers]->rows;
-    // int worst_img_idx = -1;
     CvMat * worst_img_idx = cvCreateMat(batch_size,1,CV_32S);
     int* right_etal_idx = responses->data.i;
     CvMat * etalon = cvCreateMat(batch_size,nclasses,CV_32F);
@@ -335,13 +334,11 @@ static void icvTrainCNNetwork( CvCNNetwork* network,
 
     // Train network on the worst image
     // 1) Compute the network output on the <image>
-    // image.data.fl = (float*)images[worst_img_idx];
     for ( k = 0; k < batch_size; k++ ){
       memcpy(image->data.fl+img_size*k,
              images->data.fl+images->cols*worst_img_idx->data.i[k],
              sizeof(float)*img_size);
     }
-    // CV_CALL(cvScale( image, image, 1./255.f ));
     CV_CALL(cvTranspose( image, X[0] ));
 
     for ( k = 0, layer = first_layer; k < n_layers - 1; k++, layer = layer->next_layer )
@@ -350,11 +347,9 @@ static void icvTrainCNNetwork( CvCNNetwork* network,
     CV_CALL(layer->forward( layer, X[k], X[k+1] ));
 #else
     { CV_CALL(layer->forward( layer, X[k], X[k+1] ));
-      // if (n>int(max_iter*.9)&&k==0)
       {icvVisualizeCNNLayer(layer, X[k+1]);}
     }
     CV_CALL(layer->forward( layer, X[k], X[k+1] ));
-    // if (n>int(max_iter*.9))
     {icvVisualizeCNNLayer(layer, X[k+1]);fprintf(stderr,"\n");}
 #endif
 
@@ -371,8 +366,7 @@ static void icvTrainCNNetwork( CvCNNetwork* network,
     // 3) Update weights by the gradient descent
     for ( k = n_layers; k > 0; k--, layer = layer->prev_layer )
 #if 1
-    { // if (n>50&&k==4){break;}
-      CV_CALL(layer->backward( layer, n + start_iter, X[k-1], dE_dX[k], dE_dX[k-1] ));}
+    { CV_CALL(layer->backward( layer, n + start_iter, X[k-1], dE_dX[k], dE_dX[k-1] ));}
 #else
     { CV_CALL(layer->backward( layer, n + start_iter, X[k-1], dE_dX[k], dE_dX[k-1] ));
       CvMat * dE_dX_T = cvCreateMat(dE_dX[k]->cols,dE_dX[k]->rows,CV_32F);
@@ -383,7 +377,7 @@ static void icvTrainCNNetwork( CvCNNetwork* network,
 #endif
 
 #if 1        
-    // log and progress
+    // print progress
     CvMat * mattemp = cvCreateMat(etalon->cols,etalon->rows,CV_MAT_TYPE(etalon->type));
     cvTranspose(etalon, mattemp);
     float trloss = cvNorm(X[n_layers], mattemp)/float(batch_size);
@@ -391,7 +385,7 @@ static void icvTrainCNNetwork( CvCNNetwork* network,
     static double sumloss = 0; sumloss += trloss;
     static double sumacc  = 0; sumacc  += top1;
     if (int(float(n*100)/float(max_iter))<int(float((n+1)*100)/float(max_iter))){
-      fprintf(stderr, "%d/%d = %.0f%%,",n,max_iter,float(n*100.f)/float(max_iter));
+      fprintf(stderr, "%d/%d = %.0f%%,",n+1,max_iter,float(n*100.f)/float(max_iter));
       fprintf(stderr, "sumacc: %.1f%%[%.1f%%], sumloss: %f\n", sumacc/float(n),top1,sumloss/float(n));
     }
     cvReleaseMat(&mattemp);
