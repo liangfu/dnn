@@ -104,10 +104,15 @@ static void icvCNNFullConnectRelease( CvCNNLayer** p_layer );
 static void icvCNNFullConnectForward( CvCNNLayer* layer, const CvMat* X, CvMat* Y );
 static void icvCNNFullConnectBackward( CvCNNLayer* layer, int t, const CvMat*, const CvMat* dE_dY, CvMat* dE_dX );
 
-/*---------- functions for full connected layer -----------------------*/
+/*-------------- functions for recurrent layer -----------------------*/
 static void icvCNNRecurrentRelease( CvCNNLayer** p_layer );
 static void icvCNNRecurrentForward( CvCNNLayer* layer, const CvMat* X, CvMat* Y );
 static void icvCNNRecurrentBackward( CvCNNLayer* layer, int t, const CvMat*, const CvMat* dE_dY, CvMat* dE_dX );
+
+/*-------------- functions for image cropping layer ------------------*/
+static void icvCNNImgCroppingRelease( CvCNNLayer** p_layer ){}
+static void icvCNNImgCroppingForward( CvCNNLayer* layer, const CvMat* X, CvMat* Y ){}
+static void icvCNNImgCroppingBackward( CvCNNLayer* layer, int t, const CvMat*, const CvMat* dE_dY, CvMat* dE_dX ){}
 
 /*--------------------------- utility functions -----------------------*/
 static float icvEvalAccuracy(CvMat * result, CvMat * expected);
@@ -1004,7 +1009,7 @@ ML_IMPL CvCNNLayer* cvCreateCNNRecurrentLayer(
   fprintf(stderr,"RecurrentLayer: input (%d), output (%d)\n",
           n_inputs,n_outputs);
   
-  CV_CALL(layer = (CvCNNRecurrentLayer*)icvCreateCNNLayer( ICV_CNN_FULLCONNECT_LAYER,
+  CV_CALL(layer = (CvCNNRecurrentLayer*)icvCreateCNNLayer( ICV_CNN_RECURRENT_LAYER,
       sizeof(CvCNNRecurrentLayer), n_inputs, 1, 1, n_outputs, 1, 1,
       init_learn_rate, update_rule,
       icvCNNRecurrentRelease, icvCNNRecurrentForward, icvCNNRecurrentBackward ));
@@ -1037,6 +1042,59 @@ ML_IMPL CvCNNLayer* cvCreateCNNRecurrentLayer(
   if ( cvGetErrStatus() < 0 && layer ){
     cvReleaseMat( &layer->WX );
     cvReleaseMat( &layer->weights );
+    cvFree( &layer );
+  }
+
+  return (CvCNNLayer*)layer;
+}
+
+CvCNNLayer * cvCreateCNNImgCroppingLayer(
+  int n_input_planes, int input_height, int input_width, CvCNNLayer * image_layer,
+  float init_learn_rate, int update_rule
+)
+{
+  CvCNNImgCroppingLayer* layer = 0;
+  int n_inputs = n_input_planes;
+  int n_outputs = n_input_planes;
+
+  CV_FUNCNAME("cvCreateCNNImgCroppingLayer");
+  __BEGIN__;
+
+  if ( init_learn_rate <= 0) {
+    CV_ERROR( CV_StsBadArg, "Incorrect parameters" );
+  }
+
+  fprintf(stderr,"ImgCroppingLayer: input (%d), output (%d)\n",
+          n_inputs,n_inputs);
+  
+  CV_CALL(layer = (CvCNNImgCroppingLayer*)icvCreateCNNLayer( ICV_CNN_IMGCROPPING_LAYER,
+      sizeof(CvCNNImgCroppingLayer), n_inputs, 1, 1, n_outputs, 1, 1,
+      init_learn_rate, update_rule,
+      icvCNNImgCroppingRelease, icvCNNImgCroppingForward, icvCNNImgCroppingBackward ));
+
+  // layer->WX = 0;
+  // layer->activation_type = CV_CNN_HYPERBOLIC;
+  // CV_CALL(layer->weights = cvCreateMat( n_outputs, n_inputs+1, CV_32FC1 ));
+  // if ( weights ){
+  //   if ( !ICV_IS_MAT_OF_TYPE( weights, CV_32FC1 ) ) {
+  //     CV_ERROR( CV_StsBadSize, "Type of initial weights matrix must be CV_32FC1" );
+  //   }
+  //   if ( !CV_ARE_SIZES_EQ( weights, layer->weights ) ) {
+  //     CV_ERROR( CV_StsBadSize, "Invalid size of initial weights matrix" );
+  //   }
+  //   CV_CALL(cvCopy( weights, layer->weights ));
+  // } else {
+  //   CvRNG rng = cvRNG( 0xFFFFFFFF );
+  //   cvRandArr( &rng, layer->weights, CV_RAND_UNI, 
+  //              cvScalar(-1.f/sqrt(n_inputs)), cvScalar(1.f/sqrt(n_inputs)) );
+  //   for (int ii=0;ii<n_outputs;ii++){ CV_MAT_ELEM(*layer->weights,float,ii,n_inputs)=0; }
+  // }
+
+  __END__;
+
+  if ( cvGetErrStatus() < 0 && layer ){
+    // cvReleaseMat( &layer->WX );
+    // cvReleaseMat( &layer->weights );
     cvFree( &layer );
   }
 

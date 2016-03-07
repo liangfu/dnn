@@ -129,6 +129,7 @@ typedef struct CvCNNetwork CvCNNetwork;
 #define ICV_CNN_SUBSAMPLING_LAYER    0x00002222
 #define ICV_CNN_FULLCONNECT_LAYER    0x00003333
 #define ICV_CNN_RECURRENT_LAYER      0x00004444
+#define ICV_CNN_IMGCROPPING_LAYER    0x00005555
 
 #define CV_IS_CNN(cnn)                                                     \
 	( (cnn)!=NULL )
@@ -152,6 +153,10 @@ typedef struct CvCNNetwork CvCNNetwork;
 #define ICV_IS_CNN_RECURRENT_LAYER( layer )                                \
     ( (ICV_IS_CNN_LAYER( layer )) && (((CvCNNLayer*) (layer))->flags       \
         & ~CV_MAGIC_MASK) == ICV_CNN_RECURRENT_LAYER )
+
+#define ICV_IS_CNN_IMGCROPPING_LAYER( layer )                              \
+    ( (ICV_IS_CNN_LAYER( layer )) && (((CvCNNLayer*) (layer))->flags       \
+        & ~CV_MAGIC_MASK) == ICV_CNN_IMGCROPPING_LAYER )
 
 typedef void (CV_CDECL *CvCNNLayerForward)
     ( CvCNNLayer* layer, const CvMat* input, CvMat* output );
@@ -296,6 +301,15 @@ typedef struct CvCNNRecurrentLayer
   int activation_type;
 }CvCNNRecurrentLayer;
 
+typedef struct CvCNNImgCroppingLayer
+{
+  CV_CNN_LAYER_FIELDS();
+  CvMat * WX;
+  // activation function type,
+  // either CV_CNN_LOGISTIC,CV_CNN_HYPERBOLIC,CV_CNN_RELU or CV_CNN_NONE
+  int activation_type;
+}CvCNNImgCroppingLayer;
+
 typedef struct CvCNNetwork
 {
     int n_layers;
@@ -387,6 +401,10 @@ CVAPI(CvCNNLayer*) cvCreateCNNFullConnectLayer(
 CVAPI(CvCNNLayer*) cvCreateCNNRecurrentLayer(
     int n_inputs, int n_outputs, 
     float init_learn_rate, int update_rule, int activation_type, CvMat* weights );
+
+CVAPI(CvCNNLayer*) cvCreateCNNImgCroppingLayer(
+    int n_input_planes, int input_height, int input_width, CvCNNLayer * image_layer,
+    float init_learn_rate, int update_rule);
 
 CVAPI(CvCNNetwork*) cvCreateCNNetwork( CvCNNLayer* first_layer );
 

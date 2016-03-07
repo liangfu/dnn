@@ -36,31 +36,24 @@ DRAM::~DRAM(void)
 void DRAM::createNetwork()
 {
   CvMat* connect_mask = 0;
-  float a,s;
   int n_input_planes, input_height, input_width;
   int n_output_planes, output_height, output_width;
   int learn_type;
   int delta_w_increase_type;
   float init_learn_rate;
   int maxiters;
-  int K;
+  int K,N,S;
   int sub_samp_size;
   int activation_type;
-  
   CvCNNLayer     * layer;
 
-  n_input_planes  = 1;
-  input_height    = m_clipHeight;
-  input_width     = m_clipWidth;
-  n_output_planes = 6;
-  K = 5;
-  output_height   = input_height-K+1;
-  output_width    = input_width-K+1;
-  init_learn_rate = m_learningRate;
-  learn_type = CV_CNN_LEARN_RATE_DECREASE_SQRT_INV;//CV_CNN_LEARN_RATE_DECREASE_HYPERBOLICALLY;
-  delta_w_increase_type = CV_CNN_DELTA_W_INCREASE_FIRSTORDER;//CV_CNN_DELTA_W_INCREASE_LM;
+  learn_type = CV_CNN_LEARN_RATE_DECREASE_SQRT_INV;
+  delta_w_increase_type = CV_CNN_DELTA_W_INCREASE_FIRSTORDER;
   maxiters = m_max_iter;
-  a = 1; s = 1;
+  init_learn_rate = m_learningRate;
+  K = 5;
+  N=2; // number of glimpse
+  S=2; // number of targets
 
   CV_FUNCNAME("createNetwork");
   __CV_BEGIN__;
@@ -68,16 +61,22 @@ void DRAM::createNetwork()
   CV_CALL(m_cnn = (CvCNNStatModel*)cvCreateCNNStatModel(
     CV_STAT_MODEL_MAGIC_VAL|CV_CNN_MAGIC_VAL, sizeof(CvCNNStatModel)));
 
-  // 20 @ 28x28
+  //-------------------------------------------------------
+  // Context Network
+  //-------------------------------------------------------
+  n_input_planes  = 1;
+  input_height    = m_clipHeight;
+  input_width     = m_clipWidth;
+  n_output_planes = 6;
+  output_height   = input_height-K+1;
+  output_width    = input_width-K+1;
+  sub_samp_size=2;
   CV_CALL(layer = cvCreateCNNConvolutionLayer(
     n_input_planes, input_height, input_width, n_output_planes, K,
     init_learn_rate, learn_type, connect_mask, NULL ));
   CV_CALL(m_cnn->network = cvCreateCNNetwork( layer ));
-
-  // 20 @ 14x14
-  sub_samp_size=2;
   CV_CALL(layer = cvCreateCNNSubSamplingLayer(
-      n_output_planes, output_height, output_width, sub_samp_size,a,s,
+      n_output_planes, output_height, output_width, sub_samp_size,1,1,
       init_learn_rate, learn_type, NULL));
   CV_CALL(m_cnn->network->add_layer( m_cnn->network, layer ));
 
@@ -85,44 +84,111 @@ void DRAM::createNetwork()
   input_height    = output_height/sub_samp_size;
   input_width     = output_width/sub_samp_size;
   n_output_planes = 16;
-  K = 5;
   output_height   = input_height-K+1;
   output_width    = input_width-K+1; 
-  init_learn_rate = m_learningRate;
-
-  // 50 @ 14x14
   CV_CALL(layer = cvCreateCNNConvolutionLayer(
     n_input_planes, input_height, input_width, n_output_planes, K,
     init_learn_rate, learn_type, connect_mask, NULL ));
   CV_CALL(m_cnn->network->add_layer( m_cnn->network, layer ));
-
-  sub_samp_size=2;
   CV_CALL(layer = cvCreateCNNSubSamplingLayer(
-      n_output_planes, output_height, output_width, sub_samp_size,a,s,
+      n_output_planes, output_height, output_width, sub_samp_size,1,1,
+      init_learn_rate, learn_type, NULL));
+  CV_CALL(m_cnn->network->add_layer( m_cnn->network, layer ));
+  output_height   = output_height/sub_samp_size;
+  output_width    = output_width/sub_samp_size; 
+
+  // We assign a fixed number of glimpses, N, for each target. Assuming S targets in
+  // an image, the model would be trained with N × (S + 1) glimpses
+  for (int nn = 0; nn < N; nn++){
+  for (int ss = 0; ss < S; ss++){
+  
+  //-------------------------------------------------------
+  // Recurrent Network II
+  //-------------------------------------------------------
+  n_input_planes  = n_output_planes * output_height* output_width;
+  n_output_planes = 128;
+  activation_type = CV_CNN_RELU;
+  CV_CALL(layer = cvCreateCNNRecurrentLayer(
+      n_input_planes, n_output_planes, 
+      init_learn_rate, learn_type, activation_type, NULL ));
+  CV_CALL(m_cnn->network->add_layer( m_cnn->network, layer ));
+
+  //-------------------------------------------------------
+  // Emission Network
+  //-------------------------------------------------------
+  n_input_planes  = n_output_planes;
+  n_output_planes = 2; // location
+  activation_type = CV_CNN_LOGISTIC;
+  CV_CALL(layer = cvCreateCNNFullConnectLayer(n_input_planes, n_output_planes, 1, 1, 
+      init_learn_rate, learn_type, activation_type, NULL ));
+  CV_CALL(m_cnn->network->add_layer( m_cnn->network, layer ));
+
+  //-------------------------------------------------------
+  // Glimpse Network
+  //-------------------------------------------------------
+  n_input_planes  = 1;
+  input_height    = m_clipHeight;
+  input_width     = m_clipWidth;
+  CV_CALL(layer = cvCreateCNNImgCroppingLayer(
+    n_input_planes, input_height, input_width, m_cnn->network->layers,
+    init_learn_rate, learn_type));
+  CV_CALL(m_cnn->network->add_layer( m_cnn->network, layer ));
+  
+  n_input_planes  = 1;
+  input_height    = m_clipHeight;
+  input_width     = m_clipWidth;
+  n_output_planes = 6;
+  output_height   = input_height-K+1;
+  output_width    = input_width-K+1;
+  sub_samp_size=2;
+  CV_CALL(layer = cvCreateCNNConvolutionLayer(
+    n_input_planes, input_height, input_width, n_output_planes, K,
+    init_learn_rate, learn_type, connect_mask, NULL ));
+  CV_CALL(m_cnn->network->add_layer( m_cnn->network, layer ));
+  CV_CALL(layer = cvCreateCNNSubSamplingLayer(
+      n_output_planes, output_height, output_width, sub_samp_size,1,1,
       init_learn_rate, learn_type, NULL));
   CV_CALL(m_cnn->network->add_layer( m_cnn->network, layer ));
 
+  n_input_planes  = n_output_planes;
+  input_height    = output_height/sub_samp_size;
+  input_width     = output_width/sub_samp_size;
+  n_output_planes = 16;
+  output_height   = input_height-K+1;
+  output_width    = input_width-K+1; 
+  CV_CALL(layer = cvCreateCNNConvolutionLayer(
+    n_input_planes, input_height, input_width, n_output_planes, K,
+    init_learn_rate, learn_type, connect_mask, NULL ));
+  CV_CALL(m_cnn->network->add_layer( m_cnn->network, layer ));
+  CV_CALL(layer = cvCreateCNNSubSamplingLayer(
+      n_output_planes, output_height, output_width, sub_samp_size,1,1,
+      init_learn_rate, learn_type, NULL));
+  CV_CALL(m_cnn->network->add_layer( m_cnn->network, layer ));
   output_height   = output_height/sub_samp_size;
   output_width    = output_width/sub_samp_size; 
   
+  //-------------------------------------------------------
+  // Recurrent Network I
+  //-------------------------------------------------------
   n_input_planes  = n_output_planes * output_height* output_width;
-  n_output_planes = m_connectNode;
-  init_learn_rate = m_learningRate;
-  a = 1; s = 1;
+  n_output_planes = 128;
   activation_type = CV_CNN_RELU;
-  CV_CALL(layer = cvCreateCNNFullConnectLayer(
-      n_input_planes, n_output_planes, a, s, 
+  CV_CALL(layer = cvCreateCNNRecurrentLayer(
+      n_input_planes, n_output_planes, 
       init_learn_rate, learn_type, activation_type, NULL ));
   CV_CALL(m_cnn->network->add_layer( m_cnn->network, layer ));
 
-  n_input_planes  = m_connectNode;
-  n_output_planes = m_nNode;
-  init_learn_rate = m_learningRate;
-  a = 1; s = 1;
-  activation_type = CV_CNN_HYPERBOLIC;
-  CV_CALL(layer = cvCreateCNNFullConnectLayer(n_input_planes, n_output_planes, a, s, 
-      init_learn_rate, learn_type, activation_type, NULL ));
-  CV_CALL(m_cnn->network->add_layer( m_cnn->network, layer ));
+  // if (nn==(N-1)){
+  //   n_input_planes  = n_output_planes;
+  //   n_output_planes = 2;
+  //   activation_type = CV_CNN_LOGISTIC;
+  //   CV_CALL(layer = cvCreateCNNFullConnectLayer(n_input_planes, n_output_planes, 1, 1, 
+  //       init_learn_rate, learn_type, activation_type, NULL ));
+  //   CV_CALL(m_cnn->network->add_layer( m_cnn->network, layer ));
+  // }
+
+  } // ss
+  } // nn
 
   __CV_END__;
 }
