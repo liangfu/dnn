@@ -102,6 +102,7 @@ void DRAM::createNetwork()
   for (int nn = 0; nn < N; nn++){
   for (int ss = 0; ss < S; ss++){
   
+#if 0
   //-------------------------------------------------------
   // Recurrent Network II
   //-------------------------------------------------------
@@ -186,7 +187,7 @@ void DRAM::createNetwork()
   //       init_learn_rate, learn_type, activation_type, NULL ));
   //   CV_CALL(m_cnn->network->add_layer( m_cnn->network, layer ));
   // }
-
+#endif 
   } // ss
   } // nn
 

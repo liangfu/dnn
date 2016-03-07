@@ -635,7 +635,7 @@ static void icvCNNetworkAddLayer( CvCNNetwork* network, CvCNNLayer* layer )
     while( prev_layer->next_layer )
         prev_layer = prev_layer->next_layer;
 
-    if ( ICV_IS_CNN_FULLCONNECT_LAYER(layer) )
+    if ( ICV_IS_CNN_FULLCONNECT_LAYER(layer) || ICV_IS_CNN_RECURRENT_LAYER(layer) )
     {
         if ( layer->n_input_planes != prev_layer->output_width*prev_layer->output_height*
             prev_layer->n_output_planes )

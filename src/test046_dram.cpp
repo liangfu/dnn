@@ -9,22 +9,45 @@
 
 #include "dram.h"
 
-CvMat * icvReadSVHNImages(char * filename)
+CvMat * icvReadSVHNImages(char * filename, CvMat * response)
 {
-  static const int max_samples = 60000;
-  static const int max_strlen = 1000;
+  static const int max_samples = 60;
+  static const int max_strlen = 64*64;
   CvMat * data = cvCreateMat(max_samples,max_strlen,CV_8S);
-  char * datastr = (char*)malloc(max_strlen);
-  int ii;
+  char datastr[1000];
+  int ii; CvMat hdr;
+  CvMat * sample = cvCreateMat(64,64,CV_32F);
+  CvMat * warp = cvCreateMat(2,3,CV_32F);
   for (ii=0;;ii++){
     sprintf(datastr,filename,ii+1);
-    FILE * fp = fopen(datastr,"r");
-    if (!fp || (ii+1)==max_samples){break;}
-    memcpy(data->data.ptr+max_strlen*ii,datastr,max_strlen);
-    fclose(fp);
+    IplImage * img = cvLoadImage(datastr, CV_LOAD_IMAGE_GRAYSCALE);
+    if (!img || (ii+1)==max_samples){break;}
+    CvMat * mat = cvCreateMat(img->height,img->width,CV_32F);
+    cvConvert(img,mat);
+    float xx = CV_MAT_ELEM(*response,int,ii,1);
+    float yy = CV_MAT_ELEM(*response,int,ii,2);
+    float ss = CV_MAT_ELEM(*response,int,ii,3);
+    cvZero(warp);cvZero(sample);
+    warp->data.fl[2]=xx-ss*.5f-ss*.15f;
+    warp->data.fl[5]=yy-ss*.5f-ss*.15f;
+    warp->data.fl[0]=warp->data.fl[4]=ss*1.3f/64.f;
+    // cvPrintf(stderr,"%f,",warp);
+    icvWarp(mat,sample,warp);
+    CvScalar avg,sdv;
+    cvAvgSdv(sample,&avg,&sdv);
+    cvSubS(sample,avg,sample);
+    cvScale(sample,sample,1.f/sdv.val[0]);
+    // cvAvgSdv(sample,&avg,&sdv);
+    // fprintf(stderr,"avg: %f, sdv: %f\n",avg.val[0],sdv.val[0]);
+    // CV_SHOW(mat);
+    // CV_SHOW(sample);
+    memcpy(data->data.ptr+max_strlen*ii,sample->data.ptr,max_strlen);
+    cvReleaseImage(&img);
+    cvReleaseMat(&mat);
   }
   data->rows = ii;
-  free(datastr);
+  cvReleaseMat(&sample);
+  cvReleaseMat(&warp);
   return data;
 }
 
@@ -34,7 +57,7 @@ CvMat * icvReadSVHNLabels(char * filename)
   if (!fs){fprintf(stderr,"file loading error: %s\n",filename);return 0;}
   CvFileNode * fnode = cvGetRootFileNode(fs);
   char tagname[20]; int ii;
-  static const int max_samples = 60000;
+  static const int max_samples = 60;
   static const int nparams = 4;
   CvMat * data = cvCreateMat(max_samples,1+nparams*10,CV_32S);
   for (ii=0;;ii++){
@@ -49,9 +72,9 @@ CvMat * icvReadSVHNLabels(char * filename)
       float ww = CV_MAT_ELEM(*sample,float,jj,2);
       float hh = CV_MAT_ELEM(*sample,float,jj,3);
       float ll = CV_MAT_ELEM(*sample,float,jj,4);
-      CV_MAT_ELEM(*data,int,ii,1+nparams*jj+0)=cvRound((xx+ww)*.5f);  // x
-      CV_MAT_ELEM(*data,int,ii,1+nparams*jj+1)=cvRound((yy+hh)*.5f);  // y
-      CV_MAT_ELEM(*data,int,ii,1+nparams*jj+2)=cvRound(MAX(ww,hh)); // scale
+      CV_MAT_ELEM(*data,int,ii,1+nparams*jj+0)=cvRound(xx+ww*.5f);  // x
+      CV_MAT_ELEM(*data,int,ii,1+nparams*jj+1)=cvRound(yy+hh*.5f);  // y
+      CV_MAT_ELEM(*data,int,ii,1+nparams*jj+2)=cvRound(MAX(ww,hh));   // scale
       CV_MAT_ELEM(*data,int,ii,1+nparams*jj+3)=cvRound(ll);           // label
     }
     cvReleaseMat(&sample);
@@ -78,13 +101,13 @@ int main(int argc, char * argv[])
   const char * pretrained_filename = "../data/svhn/pretrained.xml";
 
   fprintf(stderr,"Loading MNIST Images ...\n");
-  CvMat * training = icvReadSVHNImages((char*)training_filename);
   CvMat * response = icvReadSVHNLabels((char*)response_filename);
-  CvMat * testing  = icvReadSVHNImages((char*)testing_filename);
+  CvMat * training = icvReadSVHNImages((char*)training_filename,response);
   CvMat * expected = icvReadSVHNLabels((char*)expected_filename);
+  CvMat * testing  = icvReadSVHNImages((char*)testing_filename,expected);
 
   assert(training->rows==response->rows);
-  assert(testing->rows==expected->rows);
+  // assert(testing->rows==expected->rows);
   
   fprintf(stderr,"%d Training Images Loaded!\n",training->rows);
   fprintf(stderr,"%d Testing Images Loaded!\n",testing->rows);
