@@ -106,13 +106,28 @@ int main(int argc, char * argv[])
   CvMat * expected = icvReadSVHNLabels((char*)expected_filename);
   CvMat * testing  = icvReadSVHNImages((char*)testing_filename,expected);
 
+  const int imsize = sqrt(float(training->cols));
+  assert(imsize*imsize==training->cols);
+  const int nglimpses = 2; // number of glimpse
+  const int ntargets = 1; // number of targets
+  const int nclasses = 10; // number of classes
+
+  CvMat * responseMat = cvCreateMat(response->rows,ntargets,CV_32F);
+  cvSet(responseMat,cvScalar(-1.f));
+  for (int ii=0;ii<responseMat->rows;ii++){
+  for (int jj=0;jj<ntargets;jj++){
+    int label = CV_MAT_ELEM(*response,float,ii,1+4*jj+3);
+    CV_MAT_ELEM(*responseMat,float,ii,jj)=label;
+  }
+  }
+
   assert(training->rows==response->rows);
   // assert(testing->rows==expected->rows);
   
   fprintf(stderr,"%d Training Images Loaded!\n",training->rows);
   fprintf(stderr,"%d Testing Images Loaded!\n",testing->rows);
 
-  DRAM * cnn = new DRAM(28,28, // input image size
+  DRAM * cnn = new DRAM(imsize,imsize, // input image size
                         84,10, // full connect nodes
                         0.05,  // learning rate
                         1000,  // maxiter
@@ -121,7 +136,7 @@ int main(int argc, char * argv[])
   cnn->createNetwork();
 CV_TIMER_START();
 #if 1
-  cnn->trainNetwork(training,response);
+  cnn->trainNetwork(training,responseMat);
   cnn->writeNetworkParams(pretrained_filename);
 #else
   cnn->readNetworkParams(pretrained_filename);
@@ -171,6 +186,10 @@ CV_TIMER_START();
 CV_TIMER_SHOW();
 
   cvReleaseMat(&training);
+  cvReleaseMat(&response);
+  cvReleaseMat(&testing);
+  cvReleaseMat(&expected);
+  cvReleaseMat(&responseMat);
 
   return 0;
 }

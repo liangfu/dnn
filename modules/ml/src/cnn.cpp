@@ -250,7 +250,7 @@ cvTrainCNNClassifier( const CvMat* _train_data, int tflag,
   img_size = _train_data->cols;
   n_images = _train_data->rows;
   cnn_model->cls_labels = params->cls_labels;
-  responses = cvCreateMat(1,n_images,CV_32S);
+  responses = cvCreateMat(_responses->cols,n_images,CV_32S);
   cvTranspose(_responses,responses);
 
   // normalize image value range
@@ -644,7 +644,7 @@ static void icvCNNetworkAddLayer( CvCNNetwork* network, CvCNNLayer* layer )
             layer->input_width != 1  || layer->output_width != 1 )
             CV_ERROR( CV_StsBadArg, "Invalid size of the new layer" );
     }
-    else if ( ICV_IS_CNN_CONVOLUTION_LAYER(layer) || ICV_IS_CNN_SUBSAMPLING_LAYER(layer) )
+    else if ( ICV_IS_CNN_CONVOLUTION_LAYER(layer) || ICV_IS_CNN_SUBSAMPLING_LAYER(layer) || ICV_IS_CNN_IMGCROPPING_LAYER(layer) )
     {
         if ( prev_layer->n_output_planes != layer->n_input_planes ||
         prev_layer->output_height   != layer->input_height ||

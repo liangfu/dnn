@@ -52,8 +52,8 @@ void DRAM::createNetwork()
   maxiters = m_max_iter;
   init_learn_rate = m_learningRate;
   K = 5;
-  N=2; // number of glimpse
-  S=2; // number of targets
+  N = 1; // number of glimpse
+  S = 1; // number of targets
 
   CV_FUNCNAME("createNetwork");
   __CV_BEGIN__;
@@ -102,7 +102,6 @@ void DRAM::createNetwork()
   for (int nn = 0; nn < N; nn++){
   for (int ss = 0; ss < S; ss++){
   
-#if 0
   //-------------------------------------------------------
   // Recurrent Network II
   //-------------------------------------------------------
@@ -179,15 +178,13 @@ void DRAM::createNetwork()
       init_learn_rate, learn_type, activation_type, NULL ));
   CV_CALL(m_cnn->network->add_layer( m_cnn->network, layer ));
 
-  // if (nn==(N-1)){
-  //   n_input_planes  = n_output_planes;
-  //   n_output_planes = 2;
-  //   activation_type = CV_CNN_LOGISTIC;
-  //   CV_CALL(layer = cvCreateCNNFullConnectLayer(n_input_planes, n_output_planes, 1, 1, 
-  //       init_learn_rate, learn_type, activation_type, NULL ));
-  //   CV_CALL(m_cnn->network->add_layer( m_cnn->network, layer ));
-  // }
-#endif 
+  n_input_planes  = n_output_planes;
+  n_output_planes = 2;
+  activation_type = CV_CNN_LOGISTIC;
+  CV_CALL(layer = cvCreateCNNFullConnectLayer(n_input_planes, n_output_planes, 1, 1, 
+      init_learn_rate, learn_type, activation_type, NULL ));
+  CV_CALL(m_cnn->network->add_layer( m_cnn->network, layer ));
+
   } // ss
   } // nn
 
@@ -235,13 +232,13 @@ void DRAM::trainNetwork(CvMat *trainingData, CvMat *responseMat)
   CvCNNStatModelParams params;
 
   params.cls_labels = cvCreateMat( 10, 10, CV_32FC1 );
+  cvSet(params.cls_labels,cvScalar(1));
   params.etalons = cvCreateMat( 10, m_nNode, CV_32FC1 );
   for(i=0;i<params.etalons->rows;i++){
   for(j=0;j<params.etalons->cols;j++){
     cvmSet(params.etalons,i,j,(double)-1.0);
   } cvmSet(params.etalons,i,i,(double)1.0);
   }
-  cvSet(params.cls_labels,cvScalar(1));
 
   params.network = m_cnn->network;
   params.start_iter=0;
