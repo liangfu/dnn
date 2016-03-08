@@ -127,16 +127,16 @@ void DRAM::createNetwork()
   // Glimpse Network
   //-------------------------------------------------------
   n_input_planes  = 1;
-  input_height    = m_clipHeight;
-  input_width     = m_clipWidth;
+  output_height    = 48;//m_clipHeight;
+  output_width     = 48;//m_clipWidth;
   CV_CALL(layer = cvCreateCNNImgCroppingLayer(
-    n_input_planes, input_height, input_width, m_cnn->network->layers,
+    n_input_planes, output_height, output_width, m_cnn->network->layers,
     init_learn_rate, learn_type));
   CV_CALL(m_cnn->network->add_layer( m_cnn->network, layer ));
   
   n_input_planes  = 1;
-  input_height    = m_clipHeight;
-  input_width     = m_clipWidth;
+  input_height    = output_height;
+  input_width     = output_width;
   n_output_planes = 6;
   output_height   = input_height-K+1;
   output_width    = input_width-K+1;
@@ -179,7 +179,7 @@ void DRAM::createNetwork()
   CV_CALL(m_cnn->network->add_layer( m_cnn->network, layer ));
 
   n_input_planes  = n_output_planes;
-  n_output_planes = 2;
+  n_output_planes = 10;
   activation_type = CV_CNN_LOGISTIC;
   CV_CALL(layer = cvCreateCNNFullConnectLayer(n_input_planes, n_output_planes, 1, 1, 
       init_learn_rate, learn_type, activation_type, NULL ));
@@ -230,6 +230,7 @@ void DRAM::trainNetwork(CvMat *trainingData, CvMat *responseMat)
 {
   int i, j;	
   CvCNNStatModelParams params;
+  assert(CV_MAT_TYPE(trainingData->type)==CV_32F);
 
   params.cls_labels = cvCreateMat( 10, 10, CV_32FC1 );
   cvSet(params.cls_labels,cvScalar(1));

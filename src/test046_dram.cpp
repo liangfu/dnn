@@ -13,7 +13,7 @@ CvMat * icvReadSVHNImages(char * filename, CvMat * response)
 {
   static const int max_samples = 60;
   static const int max_strlen = 64*64;
-  CvMat * data = cvCreateMat(max_samples,max_strlen,CV_8S);
+  CvMat * data = cvCreateMat(max_samples,max_strlen,CV_32F);
   char datastr[1000];
   int ii; CvMat hdr;
   CvMat * sample = cvCreateMat(64,64,CV_32F);
@@ -41,13 +41,14 @@ CvMat * icvReadSVHNImages(char * filename, CvMat * response)
     // fprintf(stderr,"avg: %f, sdv: %f\n",avg.val[0],sdv.val[0]);
     // CV_SHOW(mat);
     // CV_SHOW(sample);
-    memcpy(data->data.ptr+max_strlen*ii,sample->data.ptr,max_strlen);
+    memcpy(data->data.fl+max_strlen*ii,sample->data.ptr,max_strlen*sizeof(float));
     cvReleaseImage(&img);
     cvReleaseMat(&mat);
   }
   data->rows = ii;
   cvReleaseMat(&sample);
   cvReleaseMat(&warp);
+  assert(CV_MAT_TYPE(data->type)==CV_32F);
   return data;
 }
 
@@ -103,6 +104,7 @@ int main(int argc, char * argv[])
   fprintf(stderr,"Loading MNIST Images ...\n");
   CvMat * response = icvReadSVHNLabels((char*)response_filename);
   CvMat * training = icvReadSVHNImages((char*)training_filename,response);
+  assert(CV_MAT_TYPE(training->type)==CV_32F);
   CvMat * expected = icvReadSVHNLabels((char*)expected_filename);
   CvMat * testing  = icvReadSVHNImages((char*)testing_filename,expected);
 
@@ -122,6 +124,7 @@ int main(int argc, char * argv[])
   }
 
   assert(training->rows==response->rows);
+  assert(CV_MAT_TYPE(training->type)==CV_32F);
   // assert(testing->rows==expected->rows);
   
   fprintf(stderr,"%d Training Images Loaded!\n",training->rows);

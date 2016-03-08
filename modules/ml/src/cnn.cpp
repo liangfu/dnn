@@ -252,6 +252,7 @@ cvTrainCNNClassifier( const CvMat* _train_data, int tflag,
   cnn_model->cls_labels = params->cls_labels;
   responses = cvCreateMat(_responses->cols,n_images,CV_32S);
   cvTranspose(_responses,responses);
+  CV_ASSERT(CV_MAT_TYPE(train_data->type)==CV_32F);
 
   // normalize image value range
   double minval, maxval;
@@ -334,6 +335,7 @@ static void icvTrainCNNetwork( CvCNNetwork* network,
 
     // Train network on the worst image
     // 1) Compute the network output on the <image>
+    CV_ASSERT(CV_MAT_TYPE(image->type)==CV_32F && CV_MAT_TYPE(images->type)==CV_32F);
     for ( k = 0; k < batch_size; k++ ){
       memcpy(image->data.fl+img_size*k,
              images->data.fl+images->cols*worst_img_idx->data.i[k],
@@ -342,7 +344,7 @@ static void icvTrainCNNetwork( CvCNNetwork* network,
     CV_CALL(cvTranspose( image, X[0] ));
 
     for ( k = 0, layer = first_layer; k < n_layers - 1; k++, layer = layer->next_layer )
-#if 1
+#if 0
     { CV_CALL(layer->forward( layer, X[k], X[k+1] ));}
     CV_CALL(layer->forward( layer, X[k], X[k+1] ));
 #else
@@ -644,12 +646,19 @@ static void icvCNNetworkAddLayer( CvCNNetwork* network, CvCNNLayer* layer )
             layer->input_width != 1  || layer->output_width != 1 )
             CV_ERROR( CV_StsBadArg, "Invalid size of the new layer" );
     }
-    else if ( ICV_IS_CNN_CONVOLUTION_LAYER(layer) || ICV_IS_CNN_SUBSAMPLING_LAYER(layer) || ICV_IS_CNN_IMGCROPPING_LAYER(layer) )
+    else if ( ICV_IS_CNN_CONVOLUTION_LAYER(layer) || ICV_IS_CNN_SUBSAMPLING_LAYER(layer) )
     {
         if ( prev_layer->n_output_planes != layer->n_input_planes ||
         prev_layer->output_height   != layer->input_height ||
         prev_layer->output_width    != layer->input_width )
         CV_ERROR( CV_StsBadArg, "Unmatched size of the new layer" );
+    }
+    else if ( ICV_IS_CNN_IMGCROPPING_LAYER(layer) )
+    {
+        // if ( prev_layer->n_output_planes != layer->n_input_planes ||
+        // prev_layer->output_height   != layer->input_height ||
+        // prev_layer->output_width    != layer->input_width )
+        // CV_ERROR( CV_StsBadArg, "Unmatched size of the new layer" );
     }
     else
         CV_ERROR( CV_StsBadArg, "Invalid layer" );
@@ -1043,8 +1052,8 @@ ML_IMPL CvCNNLayer* cvCreateCNNRecurrentLayer(
 }
 
 CvCNNLayer * cvCreateCNNImgCroppingLayer(
-  int n_input_planes, int input_height, int input_width, CvCNNLayer * image_layer,
-  float init_learn_rate, int update_rule
+    int n_input_planes, int output_height, int output_width, CvCNNLayer * image_layer,
+    float init_learn_rate, int update_rule
 )
 {
   CvCNNImgCroppingLayer* layer = 0;
@@ -1062,7 +1071,7 @@ CvCNNLayer * cvCreateCNNImgCroppingLayer(
           n_inputs,n_inputs);
   
   CV_CALL(layer = (CvCNNImgCroppingLayer*)icvCreateCNNLayer( ICV_CNN_IMGCROPPING_LAYER,
-      sizeof(CvCNNImgCroppingLayer), n_inputs, 1, 1, n_outputs, 1, 1,
+     sizeof(CvCNNImgCroppingLayer), n_inputs, image_layer->input_height, image_layer->input_width, n_outputs, output_height, output_width,
       init_learn_rate, update_rule,
       icvCNNImgCroppingRelease, icvCNNImgCroppingForward, icvCNNImgCroppingBackward ));
 
@@ -1315,7 +1324,7 @@ static void icvCNNRecurrentForward( CvCNNLayer* _layer, const CvMat* X, CvMat* Y
 {
   CV_FUNCNAME("icvCNNRecurrentForward");
 
-  if ( !ICV_IS_CNN_FULLCONNECT_LAYER(_layer) ) {
+  if ( !ICV_IS_CNN_RECURRENT_LAYER(_layer) ) {
     CV_ERROR( CV_StsBadArg, "Invalid layer" );
   }
 
@@ -1686,7 +1695,7 @@ static void icvCNNRecurrentBackward( CvCNNLayer* _layer,
 
   CV_FUNCNAME( "icvCNNRecurrentBackward" );
 
-  if ( !ICV_IS_CNN_FULLCONNECT_LAYER(_layer) ) {
+  if ( !ICV_IS_CNN_RECURRENT_LAYER(_layer) ) {
       CV_ERROR( CV_StsBadArg, "Invalid layer" );
   }
 
