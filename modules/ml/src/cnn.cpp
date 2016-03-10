@@ -344,7 +344,7 @@ static void icvTrainCNNetwork( CvCNNetwork* network,
     CV_CALL(cvTranspose( image, X[0] ));
 
     for ( k = 0, layer = first_layer; k < n_layers - 1; k++, layer = layer->next_layer )
-#if 0
+#if 1
     { CV_CALL(layer->forward( layer, X[k], X[k+1] ));}
     CV_CALL(layer->forward( layer, X[k], X[k+1] ));
 #else
@@ -1149,6 +1149,19 @@ icvCNNConvolutionForward( CvCNNLayer* _layer, const CvMat* X, CvMat* Y )
     connect_mask_data = layer->connect_mask->data.ptr;
     CvMat * Xt = cvCreateMat(X->cols,X->rows,CV_32F); cvTranspose(X,Xt);
     CvMat * Yt = cvCreateMat(Y->cols,Y->rows,CV_32F); cvTranspose(Y,Yt);
+
+    // normalize input
+    CvScalar avg,sdv;
+    for ( int si = 0; si < nsamples; si++ ){
+    for ( int no = 0; no < nXplanes; no++ ){
+      float * xptr = Xt->data.fl+Xsize*nXplanes*si+Xsize*no;
+      CvMat img = cvMat(Xsize,1,CV_32F,xptr);
+      cvAvgSdv(&img,&avg,&sdv);
+      cvSubS(&img,avg,&img);
+      cvScale(&img,&img,.5f/sdv.val[0]);
+    }
+    }    
+    
     // for ( no = 0; no < nYplanes; no++, Yplane += Ysize, w += n_weights_for_Yplane ){
 #pragma omp parallel for
     for ( int si = 0; si < nsamples; si++ ){
@@ -1171,7 +1184,10 @@ icvCNNConvolutionForward( CvCNNLayer* _layer, const CvMat* X, CvMat* Y )
       } // ni
       } // no
     } // si
-    cvTranspose(Yt,Y); cvScale(Y,Y,1.f/float(K*K));
+
+    cvScale(Yt,Yt,1.f/float(K*K));
+    
+    cvTranspose(Yt,Y); 
     cvReleaseMat(&Xt);
     cvReleaseMat(&Yt);
   }__END__;
