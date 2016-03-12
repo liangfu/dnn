@@ -293,6 +293,7 @@ typedef struct CvCNNRecurrentLayer
 {
   CV_CNN_LAYER_FIELDS();
   // CvMat * WX;
+  int time_index;
   int seq_length;
   int n_hiddens;
   CvMat * H;

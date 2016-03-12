@@ -1010,29 +1010,28 @@ ML_IMPL CvCNNLayer* cvCreateCNNRecurrentLayer(
     CV_ERROR( CV_StsBadArg, "Incorrect parameters" );
   }
 
-  fprintf(stderr,"RecurrentLayer: input (%d), output (%d)\n",
-          n_inputs,n_outputs);
+  fprintf(stderr,"RecurrentLayer: input (%d), hidden (%d), output (%d), length (%d)\n",
+          n_inputs, n_hiddens, n_outputs, seq_length);
   
   CV_CALL(layer = (CvCNNRecurrentLayer*)icvCreateCNNLayer( ICV_CNN_RECURRENT_LAYER,
       sizeof(CvCNNRecurrentLayer), n_inputs, 1, 1, n_outputs, 1, 1,
       init_learn_rate, update_rule,
       icvCNNRecurrentRelease, icvCNNRecurrentForward, icvCNNRecurrentBackward ));
 
-  layer->weights = 0;
-  // layer->WX = 0;
+  layer->weights = 0; // we don't use this !
+  layer->time_index = 0;
+  layer->seq_length = seq_length;
+  layer->n_hiddens = n_hiddens;
+  layer->H = 0;
   layer->Wxh = 0;
   layer->Whh = 0;
   layer->Why = 0;
-  layer->H = 0;
-  layer->n_hiddens = n_hiddens;//cvRound(exp(log(n_outputs)+log(n_inputs)));
-  layer->seq_length = seq_length;
   layer->activation_type = activation_type;
 
   int n_hiddens = layer->n_hiddens;
-  CV_CALL(layer->Wxh = cvCreateMat( n_hiddens, n_inputs+1 , CV_32F ));
+  CV_CALL(layer->Wxh = cvCreateMat( n_hiddens, n_inputs , CV_32F ));
   CV_CALL(layer->Whh = cvCreateMat( n_hiddens, n_hiddens+1, CV_32F ));
   CV_CALL(layer->Why = cvCreateMat( n_outputs, n_hiddens+1, CV_32F ));
-  CV_CALL(layer->H   = cvCreateMat( n_hiddens, seq_length, CV_32F ));
 
   if ( Wxh || Whh || Why  ){
     CV_CALL(cvCopy( Wxh, layer->Wxh ));
@@ -1046,7 +1045,7 @@ ML_IMPL CvCNNLayer* cvCreateCNNRecurrentLayer(
                cvScalar(-1.f/sqrt(n_hiddens)), cvScalar(1.f/sqrt(n_hiddens)) );
     cvRandArr( &rng, layer->Why, CV_RAND_UNI, 
                cvScalar(-1.f/sqrt(n_hiddens)), cvScalar(1.f/sqrt(n_hiddens)) );
-    for (int ii=0;ii<n_hiddens;ii++){ CV_MAT_ELEM(*layer->Wxh,float,ii,n_inputs)=0; }
+    // for (int ii=0;ii<n_hiddens;ii++){ CV_MAT_ELEM(*layer->Wxh,float,ii,n_inputs)=0; }
     for (int ii=0;ii<n_hiddens;ii++){ CV_MAT_ELEM(*layer->Whh,float,ii,n_hiddens)=0; }
     for (int ii=0;ii<n_outputs;ii++){ CV_MAT_ELEM(*layer->Why,float,ii,n_hiddens)=0; }
   }
@@ -1365,43 +1364,66 @@ static void icvCNNRecurrentForward( CvCNNLayer* _layer, const CvMat* X, CvMat* Y
   CvMat Wxh_submat, Whh_submat, hbiascol, Why_submat, ybiascol;
   int n_outputs = Y->rows;
   int n_hiddens = layer->n_hiddens;
+  int seq_length = layer->seq_length;
   int batch_size = X->cols;
-  CvMat * WX = 0; CvMat * WH = 0;
+  CvMat * WX = 0, * WH = 0, * H_prev = 0, * H_curr = 0;
 
   CV_ASSERT(X->cols == batch_size && X->rows == layer->n_input_planes);
   CV_ASSERT(Y->cols == batch_size && Y->rows == layer->n_output_planes);
 
-  // bias on last column vector
-  // CvRect roi = cvRect(0, 0, weights->cols-1, weights->rows );
-  // CV_CALL(cvGetSubRect( weights, &sub_weights, roi));
-  CV_CALL(cvGetCols( Whh, &Whh_submat, 0, Whh->cols-2));
-  CV_CALL(cvGetCol( Whh, &ybiascol, Whh->cols-1));
-  CV_ASSERT(CV_MAT_TYPE(ybiascol.type)==CV_32F);
-  CvMat * hbias = cvCreateMat(hbiascol.rows,batch_size,CV_32F);
-  cvRepeat(&hbiascol,hbias);
-  
+  // memory allocation
+  if (!layer->H){
+    CV_CALL(layer->H = cvCreateMat( n_hiddens * batch_size, seq_length, CV_32F ));
+    cvZero(layer->H);
+  }
+  CvMat * H = layer->H;
   CV_CALL(WX = cvCreateMat( n_hiddens, batch_size, CV_32F ));
   CV_CALL(WH = cvCreateMat( n_hiddens, batch_size, CV_32F ));
+  CV_CALL(H_prev = cvCreateMat( n_hiddens * batch_size, 1, CV_32F ));
+  CV_CALL(H_curr = cvCreateMat( n_hiddens * batch_size, 1, CV_32F ));
   cvZero( WX ); cvZero( WH );
+  
+  // bias on last column vector
+  CV_CALL(cvGetCols( Whh, &Whh_submat, 0, Whh->cols-1));
+  CV_CALL(cvGetCols( Why, &Why_submat, 0, Why->cols-1));
+  CV_CALL(cvGetCol( Whh, &hbiascol, Whh->cols-1));
+  CV_CALL(cvGetCol( Why, &ybiascol, Why->cols-1));
+  CvMat * hbias = cvCreateMat(hbiascol.rows,batch_size,CV_32F);
+  CvMat * ybias = cvCreateMat(ybiascol.rows,batch_size,CV_32F);
+  cvRepeat(&hbiascol,hbias);
+  cvRepeat(&ybiascol,ybias);
+
+  // hidden states
+  CvMat H_prev_hdr, H_curr_hdr;
+  cvGetCol(H,&H_prev_hdr,layer->time_index); cvCopy(&H_prev_hdr,H_prev);
+  CvMat H_prev_reshaped = cvMat(n_hiddens, batch_size, CV_32F, H_prev->data.ptr);
+  CvMat H_curr_reshaped = cvMat(n_hiddens, batch_size, CV_32F, H_curr->data.ptr);
 
   // update inner variables used in back-propagation
-  CV_CALL(cvGEMM( &Wxh, X, 1, 0, 1, WX ));
-  CV_CALL(cvGEMM( &Whh_submat, layer->H, 1, hbias, 1, WH ));
-  // CV_CALL(cvGEMM( &Why_submat, layer->H, 1, hbias, 1, WH ));
+  CV_CALL(cvGEMM( Wxh, X, 1, 0, 1, WX ));
+  CV_CALL(cvGEMM( &Whh_submat, &H_prev_reshaped, 1, hbias, 1, WH ));
+  cvAdd(WX,WH,&H_curr_reshaped);
   
   // apply activation
   if (layer->activation_type==CV_CNN_NONE){
-    // do nothing
   }else if (layer->activation_type==CV_CNN_HYPERBOLIC){
-    CV_CALL(cvTanh( WX, Y ));
+    CV_CALL(cvTanh( H_curr, H_curr ));
   }else if (layer->activation_type==CV_CNN_LOGISTIC){
-    CV_CALL(cvSigmoid( WX, Y ));
+    CV_CALL(cvSigmoid( H_curr, H_curr ));
   }else if (layer->activation_type==CV_CNN_RELU){
-    CV_CALL(cvReLU( WX, Y ));
+    CV_CALL(cvReLU( H_curr, H_curr ));
   }else{assert(false);}
+  cvGetCol(H,&H_curr_hdr,layer->time_index+1); cvCopy(H_curr,&H_curr_hdr);
+  
+  CV_CALL(cvGEMM( &Why_submat, &H_curr_reshaped, 1, ybias, 1, Y ));
 
+  if (WX){cvReleaseMat(&WX);WX=0;}
+  if (WH){cvReleaseMat(&WH);WH=0;}
+  if (H_prev){cvReleaseMat(&H_prev);H_prev=0;}
+  if (H_curr){cvReleaseMat(&H_curr);H_curr=0;}
   if (hbias){cvReleaseMat(&hbias);hbias=0;}
-  // if (ybias){cvReleaseMat(&ybias);ybias=0;}
+  if (ybias){cvReleaseMat(&ybias);ybias=0;}
+  layer->time_index++;
 
   }__END__;
 }
