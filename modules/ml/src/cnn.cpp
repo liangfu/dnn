@@ -1359,8 +1359,10 @@ static void icvCNNRecurrentForward( CvCNNLayer* _layer, const CvMat* X, CvMat* Y
   {__BEGIN__;
 
   CvCNNRecurrentLayer * layer = (CvCNNRecurrentLayer*)_layer;
-  CvMat * weights = layer->weights;
-  CvMat sub_weights, biascol;
+  CvMat * Wxh = layer->Wxh;
+  CvMat * Whh = layer->Whh;
+  CvMat * Why = layer->Why;
+  CvMat Wxh_submat, Whh_submat, hbiascol, Why_submat, ybiascol;
   int n_outputs = Y->rows;
   int n_hiddens = layer->n_hiddens;
   int batch_size = X->cols;
@@ -1372,19 +1374,20 @@ static void icvCNNRecurrentForward( CvCNNLayer* _layer, const CvMat* X, CvMat* Y
   // bias on last column vector
   // CvRect roi = cvRect(0, 0, weights->cols-1, weights->rows );
   // CV_CALL(cvGetSubRect( weights, &sub_weights, roi));
-  CV_CALL(cvGetCols( weights, &sub_weights, 0, weights->cols-2));
-  CV_CALL(cvGetCol( weights, &biascol, weights->cols-1));
-  CV_ASSERT(CV_MAT_TYPE(biascol.type)==CV_32F);
-  CvMat * bias = cvCreateMat(biascol.rows,batch_size,CV_32F);
-  cvRepeat(&biascol,bias);
+  CV_CALL(cvGetCols( Whh, &Whh_submat, 0, Whh->cols-2));
+  CV_CALL(cvGetCol( Whh, &ybiascol, Whh->cols-1));
+  CV_ASSERT(CV_MAT_TYPE(ybiascol.type)==CV_32F);
+  CvMat * hbias = cvCreateMat(hbiascol.rows,batch_size,CV_32F);
+  cvRepeat(&hbiascol,hbias);
   
   CV_CALL(WX = cvCreateMat( n_hiddens, batch_size, CV_32F ));
   CV_CALL(WH = cvCreateMat( n_hiddens, batch_size, CV_32F ));
   cvZero( WX ); cvZero( WH );
 
   // update inner variables used in back-propagation
-  CV_CALL(cvGEMM( &sub_weights, X, 1, bias, 1, WX ));
-  CV_CALL(cvGEMM( &sub_weights, layer->H, 1, bias, 1, WH ));
+  CV_CALL(cvGEMM( &Wxh, X, 1, 0, 1, WX ));
+  CV_CALL(cvGEMM( &Whh_submat, layer->H, 1, hbias, 1, WH ));
+  // CV_CALL(cvGEMM( &Why_submat, layer->H, 1, hbias, 1, WH ));
   
   // apply activation
   if (layer->activation_type==CV_CNN_NONE){
@@ -1397,7 +1400,8 @@ static void icvCNNRecurrentForward( CvCNNLayer* _layer, const CvMat* X, CvMat* Y
     CV_CALL(cvReLU( WX, Y ));
   }else{assert(false);}
 
-  if (bias){cvReleaseMat(&bias);bias=0;}
+  if (hbias){cvReleaseMat(&hbias);hbias=0;}
+  // if (ybias){cvReleaseMat(&ybias);ybias=0;}
 
   }__END__;
 }
