@@ -997,8 +997,9 @@ ML_IMPL CvCNNLayer* cvCreateCNNFullConnectLayer(
 
 /*************************************************************************/
 ML_IMPL CvCNNLayer* cvCreateCNNRecurrentLayer(
-    int n_inputs, int n_outputs, 
-    float init_learn_rate, int update_rule, int activation_type, CvMat * weights )
+    int n_inputs, int n_outputs, int n_hiddens, int seq_length,
+    float init_learn_rate, int update_rule, int activation_type, 
+    CvMat * Wxh, CvMat * Whh, CvMat * Why )
 {
   CvCNNRecurrentLayer* layer = 0;
 
@@ -1017,34 +1018,45 @@ ML_IMPL CvCNNLayer* cvCreateCNNRecurrentLayer(
       init_learn_rate, update_rule,
       icvCNNRecurrentRelease, icvCNNRecurrentForward, icvCNNRecurrentBackward ));
 
-  layer->WX = 0;
-  layer->Wih = 0;
+  layer->weights = 0;
+  // layer->WX = 0;
+  layer->Wxh = 0;
   layer->Whh = 0;
-  layer->Who = 0;
-  layer->activation_type = activation_type;//CV_CNN_HYPERBOLIC;
+  layer->Why = 0;
+  layer->H = 0;
+  layer->n_hiddens = n_hiddens;//cvRound(exp(log(n_outputs)+log(n_inputs)));
+  layer->seq_length = seq_length;
+  layer->activation_type = activation_type;
 
-  CV_CALL(layer->weights = cvCreateMat( n_outputs, n_inputs+1, CV_32FC1 ));
-  if ( weights ){
-    if ( !ICV_IS_MAT_OF_TYPE( weights, CV_32FC1 ) ) {
-      CV_ERROR( CV_StsBadSize, "Type of initial weights matrix must be CV_32FC1" );
-    }
-    if ( !CV_ARE_SIZES_EQ( weights, layer->weights ) ) {
-      CV_ERROR( CV_StsBadSize, "Invalid size of initial weights matrix" );
-    }
-    CV_CALL(cvCopy( weights, layer->weights ));
+  int n_hiddens = layer->n_hiddens;
+  CV_CALL(layer->Wxh = cvCreateMat( n_hiddens, n_inputs+1 , CV_32F ));
+  CV_CALL(layer->Whh = cvCreateMat( n_hiddens, n_hiddens+1, CV_32F ));
+  CV_CALL(layer->Why = cvCreateMat( n_outputs, n_hiddens+1, CV_32F ));
+  CV_CALL(layer->H   = cvCreateMat( n_hiddens, seq_length, CV_32F ));
+
+  if ( Wxh || Whh || Why  ){
+    CV_CALL(cvCopy( Wxh, layer->Wxh ));
+    CV_CALL(cvCopy( Whh, layer->Whh ));
+    CV_CALL(cvCopy( Why, layer->Why ));
   } else {
-    CvRNG rng = cvRNG( 0xFFFFFFFF );
-    cvRandArr( &rng, layer->weights, CV_RAND_UNI, 
+    CvRNG rng = cvRNG( -1 );
+    cvRandArr( &rng, layer->Wxh, CV_RAND_UNI, 
                cvScalar(-1.f/sqrt(n_inputs)), cvScalar(1.f/sqrt(n_inputs)) );
-    // initialize bias to zero
-    for (int ii=0;ii<n_outputs;ii++){ CV_MAT_ELEM(*layer->weights,float,ii,n_inputs)=0; }
+    cvRandArr( &rng, layer->Whh, CV_RAND_UNI, 
+               cvScalar(-1.f/sqrt(n_hiddens)), cvScalar(1.f/sqrt(n_hiddens)) );
+    cvRandArr( &rng, layer->Why, CV_RAND_UNI, 
+               cvScalar(-1.f/sqrt(n_hiddens)), cvScalar(1.f/sqrt(n_hiddens)) );
+    for (int ii=0;ii<n_hiddens;ii++){ CV_MAT_ELEM(*layer->Wxh,float,ii,n_inputs)=0; }
+    for (int ii=0;ii<n_hiddens;ii++){ CV_MAT_ELEM(*layer->Whh,float,ii,n_hiddens)=0; }
+    for (int ii=0;ii<n_outputs;ii++){ CV_MAT_ELEM(*layer->Why,float,ii,n_hiddens)=0; }
   }
 
   __END__;
 
   if ( cvGetErrStatus() < 0 && layer ){
-    cvReleaseMat( &layer->WX );
-    cvReleaseMat( &layer->weights );
+    cvReleaseMat( &layer->Wxh );
+    cvReleaseMat( &layer->Whh );
+    cvReleaseMat( &layer->Why );
     cvFree( &layer );
   }
 
@@ -1350,47 +1362,40 @@ static void icvCNNRecurrentForward( CvCNNLayer* _layer, const CvMat* X, CvMat* Y
   CvMat * weights = layer->weights;
   CvMat sub_weights, biascol;
   int n_outputs = Y->rows;
+  int n_hiddens = layer->n_hiddens;
   int batch_size = X->cols;
+  CvMat * WX = 0; CvMat * WH = 0;
 
   CV_ASSERT(X->cols == batch_size && X->rows == layer->n_input_planes);
   CV_ASSERT(Y->cols == batch_size && Y->rows == layer->n_output_planes);
 
   // bias on last column vector
-  CvRect roi = cvRect(0, 0, weights->cols-1, weights->rows );
-  CV_CALL(cvGetSubRect( weights, &sub_weights, roi));
+  // CvRect roi = cvRect(0, 0, weights->cols-1, weights->rows );
+  // CV_CALL(cvGetSubRect( weights, &sub_weights, roi));
+  CV_CALL(cvGetCols( weights, &sub_weights, 0, weights->cols-2));
   CV_CALL(cvGetCol( weights, &biascol, weights->cols-1));
   CV_ASSERT(CV_MAT_TYPE(biascol.type)==CV_32F);
   CvMat * bias = cvCreateMat(biascol.rows,batch_size,CV_32F);
   cvRepeat(&biascol,bias);
   
-  CV_CALL(layer->WX = cvCreateMat( n_outputs, batch_size, CV_32FC1 ));
-  cvZero( layer->WX );
+  CV_CALL(WX = cvCreateMat( n_hiddens, batch_size, CV_32F ));
+  CV_CALL(WH = cvCreateMat( n_hiddens, batch_size, CV_32F ));
+  cvZero( WX ); cvZero( WH );
 
   // update inner variables used in back-propagation
-  CV_CALL(cvGEMM( &sub_weights, X, 1, bias, 1, layer->WX ));
+  CV_CALL(cvGEMM( &sub_weights, X, 1, bias, 1, WX ));
+  CV_CALL(cvGEMM( &sub_weights, layer->H, 1, bias, 1, WH ));
+  
+  // apply activation
   if (layer->activation_type==CV_CNN_NONE){
     // do nothing
   }else if (layer->activation_type==CV_CNN_HYPERBOLIC){
-    CV_CALL(cvTanh( layer->WX, Y ));
+    CV_CALL(cvTanh( WX, Y ));
   }else if (layer->activation_type==CV_CNN_LOGISTIC){
-    CV_CALL(cvSigmoid( layer->WX, Y ));
+    CV_CALL(cvSigmoid( WX, Y ));
   }else if (layer->activation_type==CV_CNN_RELU){
-    CV_CALL(cvReLU( layer->WX, Y ));
+    CV_CALL(cvReLU( WX, Y ));
   }else{assert(false);}
-
-  //// check numerical stability
-  // CV_CALL(cvMinS( layer->exp2ssumWX, FLT_MAX, layer->exp2ssumWX ));
-  // for ( int ii = 0; ii < layer->exp2ssumWX->rows; ii++ ){
-  //   CV_ASSERT ( layer->exp2ssumWX->data.fl[ii] != FLT_MAX );
-  // }
-
-  //// compute the output variable
-  // CvMat * sum = cvCreateMat(1,batch_size,CV_32F);
-  // CvMat * sumrep = cvCreateMat(n_outputs,batch_size,CV_32F);
-  // cvReduce(layer->exp2ssumWX,sum,-1,CV_REDUCE_SUM);cvRepeat(sum,sumrep);
-  // cvDiv(layer->exp2ssumWX,sumrep,Y);
-  // cvReleaseMat(&sum);
-  // cvReleaseMat(&sumrep);
 
   if (bias){cvReleaseMat(&bias);bias=0;}
 
@@ -1726,6 +1731,7 @@ static void icvCNNRecurrentBackward( CvCNNLayer* _layer,
   CvMat sub_weights, Xtemplate, exp2ssumWXrow;
   int batch_size = X->cols;
   CvMat * dE_dY_T = cvCreateMat(n_outputs, batch_size, CV_32F);
+  CvMat * WX = 0;
 
   CV_ASSERT(X->cols == batch_size && X->rows == n_inputs);
   CV_ASSERT(dE_dY->rows == batch_size && dE_dY->cols == n_outputs );
@@ -1737,23 +1743,11 @@ static void icvCNNRecurrentBackward( CvCNNLayer* _layer,
   // compute (tanh'(WX))*dE_dY
   if (layer->activation_type==CV_CNN_NONE){
   }else if (layer->activation_type==CV_CNN_HYPERBOLIC){
-    // cvTanh(layer->exp2ssumWX,dE_dY_afder);
-    // cvPow(dE_dY_afder,dE_dY_afder,2.);
-    // cvSubRS(dE_dY_afder,cvScalar(1),dE_dY_afder);
-    cvTanhDer(layer->WX,dE_dY_afder);
+    cvTanhDer(WX,dE_dY_afder);
   }else if (layer->activation_type==CV_CNN_LOGISTIC){
-    // cvSigmoid(layer->exp2ssumWX,dE_dY_afder);
-    // CvMat * dE_dY_clone = cvCloneMat(dE_dY_afder);
-    // cvSubRS(dE_dY_afder,cvScalar(1),dE_dY_afder);
-    // cvMul(dE_dY_clone,dE_dY_afder,dE_dY_afder);
-    // cvReleaseMat(&dE_dY_clone);
-    cvSigmoidDer(layer->WX,dE_dY_afder);
+    cvSigmoidDer(WX,dE_dY_afder);
   }else if (layer->activation_type==CV_CNN_RELU){
-    // CvMat * dE_dY_mask = cvCreateMat(dE_dY_afder->rows,dE_dY_afder->cols,CV_8U);
-    // cvCmpS(layer->exp2ssumWX,0,dE_dY_mask,CV_CMP_GT);
-    // cvScale(dE_dY_mask,dE_dY_afder,1./255.f);
-    // cvReleaseMat(&dE_dY_mask);
-    cvReLUDer(layer->WX,dE_dY_afder);
+    cvReLUDer(WX,dE_dY_afder);
   }else{assert(false);}
   cvTranspose(dE_dY,dE_dY_T);
   cvMul(dE_dY_afder,dE_dY_T,dE_dY_afder);
@@ -1788,7 +1782,7 @@ static void icvCNNRecurrentBackward( CvCNNLayer* _layer,
   }
   
   cvReleaseMat(&dE_dY_T);
-  if (layer->WX){ cvReleaseMat(&layer->WX);layer->WX=0; }
+  if (WX){ cvReleaseMat(&WX);WX=0; }
   }__END__;
 
   cvReleaseMat( &dE_dY_afder );
@@ -1985,8 +1979,10 @@ static void icvCNNRecurrentRelease( CvCNNLayer** p_layer )
     if ( !ICV_IS_CNN_RECURRENT_LAYER(layer) )
         CV_ERROR( CV_StsBadArg, "Invalid layer" );
 
-    cvReleaseMat( &layer->WX );
-    cvReleaseMat( &layer->weights );
+    cvReleaseMat( &layer->Wxh );
+    cvReleaseMat( &layer->Whh );
+    cvReleaseMat( &layer->Why );
+    // cvReleaseMat( &layer->weights );
     cvFree( p_layer );
 
     __END__;

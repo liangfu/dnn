@@ -108,9 +108,11 @@ void DRAM::createNetwork()
   n_input_planes  = n_output_planes * output_height* output_width;
   n_output_planes = 128;
   activation_type = CV_CNN_RELU;
+  int n_hiddens = cvRound(exp(log(n_input_planes)+log(n_output_planes)));
+  int seq_length = N*(S+1);
   CV_CALL(layer = cvCreateCNNRecurrentLayer(
-      n_input_planes, n_output_planes, 
-      init_learn_rate, learn_type, activation_type, NULL ));
+      n_input_planes, n_output_planes, n_hiddens, seq_length,
+      init_learn_rate, learn_type, activation_type, NULL, NULL, NULL ));
   CV_CALL(m_cnn->network->add_layer( m_cnn->network, layer ));
 
   //-------------------------------------------------------
@@ -174,8 +176,8 @@ void DRAM::createNetwork()
   n_output_planes = 128;
   activation_type = CV_CNN_RELU;
   CV_CALL(layer = cvCreateCNNRecurrentLayer(
-      n_input_planes, n_output_planes, 
-      init_learn_rate, learn_type, activation_type, NULL ));
+      n_input_planes, n_output_planes, n_hiddens, seq_length, 
+      init_learn_rate, learn_type, activation_type, NULL, NULL, NULL ));
   CV_CALL(m_cnn->network->add_layer( m_cnn->network, layer ));
 
   n_input_planes  = n_output_planes;

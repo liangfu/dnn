@@ -292,10 +292,13 @@ typedef struct CvCNNFullConnectLayer
 typedef struct CvCNNRecurrentLayer
 {
   CV_CNN_LAYER_FIELDS();
-  CvMat * WX;
-  CvMat * Wih; // input to hidden
+  // CvMat * WX;
+  int seq_length;
+  int n_hiddens;
+  CvMat * H;
+  CvMat * Wxh; // input to hidden
   CvMat * Whh; // hidden to hidden
-  CvMat * Who; // hidden to output
+  CvMat * Why; // hidden to output
   // activation function type,
   // either CV_CNN_LOGISTIC,CV_CNN_HYPERBOLIC,CV_CNN_RELU or CV_CNN_NONE
   int activation_type;
@@ -399,8 +402,9 @@ CVAPI(CvCNNLayer*) cvCreateCNNFullConnectLayer(
 //     float init_learn_rate, int learning_type, int delta_w_increase_type,  int nsamples, int max_iter,CvMat* weights CV_DEFAULT(0) );
 
 CVAPI(CvCNNLayer*) cvCreateCNNRecurrentLayer(
-    int n_inputs, int n_outputs, 
-    float init_learn_rate, int update_rule, int activation_type, CvMat* weights );
+    int n_inputs, int n_outputs, int n_hiddens, int seq_length,
+    float init_learn_rate, int update_rule, int activation_type, 
+    CvMat * Wxh, CvMat * Whh, CvMat * Why );
 
 CVAPI(CvCNNLayer*) cvCreateCNNImgCroppingLayer(
     int n_input_planes, int input_height, int input_width, CvCNNLayer * image_layer,
