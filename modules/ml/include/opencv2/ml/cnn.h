@@ -206,8 +206,6 @@ typedef void (CV_CDECL *CvCNNetworkRelease)
     /* Trainable weights of the layer (including bias) */           \
     /* i-th row is a set of weights of the i-th output plane */     \
     CvMat* weights;                                                 \
-    /*used the follow variable to store the last time diag hessian*/  \
-    CvMat* hessian_diag;                                              \
                                                                     \
     CvCNNLayerForward  forward;                                     \
     CvCNNLayerBackward backward;                                    \
@@ -292,14 +290,20 @@ typedef struct CvCNNFullConnectLayer
 typedef struct CvCNNRecurrentLayer
 {
   CV_CNN_LAYER_FIELDS();
-  // CvMat * WX;
+  // current time index used for training the testing, via step by step approach
   int time_index;
+  // sequence length, for attention model: n_glimpses*n_targets
   int seq_length;
+  // number of hidden layers within RNN model, default: exp((log(n_inputs)+log(n_outputs))*.5f)
   int n_hiddens;
+  // hidden states, default size: (n_hiddens*batch_size,seq_length)
   CvMat * H;
-  CvMat * Wxh; // input to hidden
-  CvMat * Whh; // hidden to hidden
-  CvMat * Why; // hidden to output
+  // weight matrix for input data, default size: (n_hiddens, n_inputs)
+  CvMat * Wxh;
+  // weight matrix with bias for hidden data, default size: (n_hiddens, n_hiddens+1)
+  CvMat * Whh;
+  // weight matrix with bias for generating output data, default size: (n_outputs, n_hiddens+1)
+  CvMat * Why;
   // activation function type,
   // either CV_CNN_LOGISTIC,CV_CNN_HYPERBOLIC,CV_CNN_RELU or CV_CNN_NONE
   int activation_type;
@@ -316,10 +320,10 @@ typedef struct CvCNNImgCroppingLayer
 
 typedef struct CvCNNetwork
 {
-    int n_layers;
-    CvCNNLayer* layers;
-    CvCNNetworkAddLayer add_layer;
-    CvCNNetworkRelease release;
+  int n_layers;
+  CvCNNLayer* layers;
+  CvCNNetworkAddLayer add_layer;
+  CvCNNetworkRelease release;
 }CvCNNetwork;
 
 //add by lxts on jun-22-2008
@@ -345,8 +349,7 @@ struct CvCNNStatModel;
 
 // typedef float (CV_CDECL *CvCNNStatModelPredict)
 // (const CvCNNStatModel *,const CvMat *,CvMat *,CvMat** output);
-typedef float (CV_CDECL *CvCNNStatModelPredict)
-(const CvCNNStatModel *,const CvMat *,CvMat *);
+typedef float (CV_CDECL *CvCNNStatModelPredict) (const CvCNNStatModel *,const CvMat *,CvMat *);
 
 // typedef void (CV_CDECL *CvCNNStatModelUpdate)
 //     (CvCNNStatModel *,const CvMat *,int,const CvMat *,const CvCNNStatModelParams *,const CvMat *,const CvMat *,const CvMat *,const CvMat *);
@@ -355,8 +358,7 @@ typedef void (CV_CDECL *CvCNNStatModelUpdate)(
         const CvMat* _responses, const CvStatModelParams* _params,
         const CvMat*, const CvMat* _sample_idx,
         const CvMat*, const CvMat* );
-typedef void (CV_CDECL *CvCNNStatModelRelease)
-    (CvCNNStatModel **);
+typedef void (CV_CDECL *CvCNNStatModelRelease) (CvCNNStatModel **);
 
 #define CV_STAT_MODEL_FIELDS()                           \
   int flags;                                             \
@@ -374,33 +376,20 @@ typedef struct CvCNNStatModel
     CvMat* cls_labels;
 }CvCNNStatModel;
 
-
 CVAPI(CvCNNLayer*) cvCreateCNNConvolutionLayer(
     int n_input_planes, int input_height, int input_width,
     int n_output_planes, int K,
     float init_learn_rate, int learn_rate_decrease_type,
     CvMat* connect_mask, CvMat* weights );
-// cvCreateCNNConvolutionLayer(
-//     int n_input_planes, int input_height, int input_width,
-//     int n_output_planes, int K,float a,float s,
-//     double init_learn_rate, int learn_rate_decrease_type, int delta_w_increase_type,  int nsamples, int max_iter,
-//     CvMat* connect_mask CV_DEFAULT(0), CvMat* weights CV_DEFAULT(0) );
 
 CVAPI(CvCNNLayer*) cvCreateCNNSubSamplingLayer(
     int n_input_planes, int input_height, int input_width,
     int sub_samp_scale, float a, float s, 
     float init_learn_rate, int learn_rate_decrease_type, CvMat* weights );
-// cvCreateCNNSubSamplingLayer(
-//     int n_input_planes, int input_height, int input_width,
-//     int sub_samp_scale, float a, float s,
-//     float init_learn_rate, int learn_rate_decrease_type, int delta_w_increase_type,  int nsamples, int max_iter, CvMat* weights CV_DEFAULT(0) );
 
 CVAPI(CvCNNLayer*) cvCreateCNNFullConnectLayer(
     int n_inputs, int n_outputs, float a, float s, 
     float init_learn_rate, int learn_rate_decrease_type, int activation_type, CvMat* weights );
-// cvCreateCNNFullConnectLayer( 
-//     int n_inputs, int n_outputs, float a, float s,
-//     float init_learn_rate, int learning_type, int delta_w_increase_type,  int nsamples, int max_iter,CvMat* weights CV_DEFAULT(0) );
 
 CVAPI(CvCNNLayer*) cvCreateCNNRecurrentLayer(
     int n_inputs, int n_outputs, int n_hiddens, int seq_length,
@@ -420,6 +409,10 @@ CVAPI(CvCNNStatModel*) cvTrainCNNClassifier(
             const CvMat* CV_DEFAULT(0),
             const CvMat* sample_idx CV_DEFAULT(0),
             const CvMat* CV_DEFAULT(0), const CvMat* CV_DEFAULT(0) );
+
+CVAPI(CvCNNetwork*) cvLoadCNNetworkModel(const char * filename);
+
+CVAPI(CvCNNStatModelParams*) cvLoadCNNetworkSolver(const char * filename);
 
 /****************************************************************************************\
 *                               Estimate classifiers algorithms                          *
@@ -448,22 +441,7 @@ typedef float (CV_CDECL *CvStatModelEstimateGetCurrentResult)
 typedef void (CV_CDECL *CvStatModelEstimateReset)
                     ( CvStatModel* estimateModel );
 
-//added by lxts on june-28-2008
-CVAPI(CvCNNStatModel*) cvCreateCNNStatModel(int flag, int size);// ,
-    // CvCNNStatModelRelease release,
-		// CvCNNStatModelPredict predict,
-		// CvCNNStatModelUpdate update);
-
-// CVAPI(CvMat*) icvCNNModelPredict( const CvCNNStatModel* model,
-// 								  const CvMat* _image,
-// 								  CvMat** output);
-// CVAPI(float) icvCNNModelPredict( const CvCNNStatModel* model,
-// 								 const CvMat* _image,
-// 								 CvMat* probs );
-// CVAPI(void) icvCNNModelUpdate(CvStatModel* _cnn_model, const CvMat* _train_data, int tflag,
-// 							  const CvMat* _responses, const CvStatModelParams* _params,
-// 							  const CvMat*, const CvMat* _sample_idx,
-// 							  const CvMat*, const CvMat* );
+CVAPI(CvCNNStatModel*) cvCreateCNNStatModel(int flag, int size);
 
 #endif /* 1 */
 
