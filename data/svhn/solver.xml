@@ -1,0 +1,9 @@
+<?xml version="1.0"?>
+<opencv_storage>
+<network>
+	<learning_rate>0.05</learning_rate>
+	<learning_type>sgd</learning_type>
+	<batch_size>2</batch_size>
+	<validation_ratio>.1</validation_ratio>
+</network>
+</opencv_storage>

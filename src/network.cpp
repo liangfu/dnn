@@ -68,7 +68,7 @@ void CvNetwork::createNetwork()
   n_output_planes = 6;
   output_height   = input_height-K+1;
   output_width    = input_width-K+1;
-  sub_samp_size=2;
+  sub_samp_size   = 2;
   CV_CALL(layer = cvCreateCNNConvolutionLayer(
     n_input_planes, input_height, input_width, n_output_planes, K,
     init_learn_rate, learn_type, connect_mask, NULL ));
@@ -191,7 +191,26 @@ void CvNetwork::createNetwork()
   __CV_END__;
 }
 
-void CvNetwork::writeNetworkParams(string outFile)
+void CvNetwork::loadWeights(string inFile)
+{
+  CvCNNConvolutionLayer * layer;
+  CvFileStorage * fs = cvOpenFileStorage(inFile.c_str(),0,CV_STORAGE_READ);
+  CvFileNode * fnode = cvGetRootFileNode( fs );
+  
+  if (m_cnn == NULL){fprintf(stderr,"ERROR: CNN has not been built yet\n");exit(0);}
+  
+  layer=(CvCNNConvolutionLayer*)m_cnn->network->layers;
+  layer->weights = (CvMat*)cvReadByName(fs,fnode,"conv1");
+  layer->next_layer->next_layer->weights = (CvMat*)cvReadByName(fs,fnode,"conv2");
+  layer->next_layer->next_layer->next_layer->next_layer->weights = 
+    (CvMat*)cvReadByName(fs,fnode,"softmax1");
+  layer->next_layer->next_layer->next_layer->next_layer->next_layer->weights = 
+    (CvMat*)cvReadByName(fs,fnode,"softmax2");
+
+  cvReleaseFileStorage(&fs);
+}
+
+void CvNetwork::saveWeights(string outFile)
 {
   CvCNNConvolutionLayer * layer;
   CvFileStorage * fs = cvOpenFileStorage(outFile.c_str(),0,CV_STORAGE_WRITE);
@@ -207,26 +226,7 @@ void CvNetwork::writeNetworkParams(string outFile)
   cvReleaseFileStorage(&fs);
 }
 
-void CvNetwork::readNetworkWeights(string inFile)
-{
-  CvCNNConvolutionLayer * layer;
-  CvFileStorage * fs = cvOpenFileStorage(inFile.c_str(),0,CV_STORAGE_READ);
-  CvFileNode * fnode = cvGetRootFileNode( fs );
-  
-  if(m_cnn == NULL){fprintf(stderr,"ERROR: CNN has not been built yet\n");exit(0);}
-  
-  layer=(CvCNNConvolutionLayer*)m_cnn->network->layers;
-  layer->weights = (CvMat*)cvReadByName(fs,fnode,"conv1");
-  layer->next_layer->next_layer->weights = (CvMat*)cvReadByName(fs,fnode,"conv2");
-  layer->next_layer->next_layer->next_layer->next_layer->weights = 
-    (CvMat*)cvReadByName(fs,fnode,"softmax1");
-  layer->next_layer->next_layer->next_layer->next_layer->next_layer->weights = 
-    (CvMat*)cvReadByName(fs,fnode,"softmax2");
-
-  cvReleaseFileStorage(&fs);
-}
-
-void CvNetwork::trainNetwork(CvMat *trainingData, CvMat *responseMat)
+void CvNetwork::train(CvMat *trainingData, CvMat *responseMat)
 {
   int i, j;	
   CvCNNStatModelParams params;
@@ -255,6 +255,45 @@ void CvNetwork::trainNetwork(CvMat *trainingData, CvMat *responseMat)
   }else{
     m_cnn = cvTrainCNNClassifier( trainingData, CV_ROW_SAMPLE,responseMat,&params,0,0,0,0);
   }
+}
+
+float CvNetwork::evaluate(CvMat * testing, CvMat * expected, int nsamples)
+{
+  CvMat * samples = cvCreateMat(nsamples,testing->cols,CV_32F);
+  CvMat * result = cvCreateMat(10,nsamples,CV_32F);
+  CvMat * sorted = cvCreateMat(result->rows,result->cols,CV_32F);
+  CvMat * indices = cvCreateMat(result->rows,result->cols,CV_32S);
+  CvMat * indtop1 = cvCreateMat(1,result->cols,CV_32S);
+  CvMat * expected_submat = cvCreateMat(nsamples,1,CV_8U);
+  CvMat * expected_converted = cvCreateMat(nsamples,1,CV_32S);
+  CvMat * expected_transposed = cvCreateMat(1,result->cols,CV_32S);
+  CvMat * indtop1res = cvCreateMat(1,result->cols,CV_8U);
+  // testing data
+  cvGetRows(testing,samples,0,nsamples);
+  m_cnn->predict(m_cnn,samples,result);
+  cvSort(result,sorted,indices,CV_SORT_DESCENDING|CV_SORT_EVERY_COLUMN);
+  cvGetRow(indices,indtop1,0);
+  // expected data
+  cvGetRows(expected,expected_submat,0,nsamples);
+  cvConvert(expected_submat,expected_converted);
+  cvTranspose(expected_converted,expected_transposed);
+  cvCmp(indtop1,expected_transposed,indtop1res,CV_CMP_EQ);
+#if 0
+  fprintf(stderr,"expected:\n\t");
+  cvPrintf(stderr,"%d,",expected_transposed);
+  fprintf(stderr,"result:\n\t");
+  cvPrintf(stderr,"%d,",indtop1);
+#endif
+  float top1=cvSum(indtop1res).val[0]/255.f;
+  cvReleaseMat(&samples);
+  cvReleaseMat(&result);
+  cvReleaseMat(&sorted);
+  cvReleaseMat(&indices);
+  cvReleaseMat(&indtop1);
+  cvReleaseMat(&expected_submat);
+  cvReleaseMat(&expected_converted);
+  cvReleaseMat(&expected_transposed);
+  cvReleaseMat(&indtop1res);
 }
 
 

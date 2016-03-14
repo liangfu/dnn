@@ -36,12 +36,6 @@ public:
    */
   void createNetwork( );
 
-  /** \brief Save CNN parameters to a file
-   * a normal member to save the CNN parameters to a file.
-   * @param outFile the name of the output file.
-   */
-  void writeNetworkParams(string outFile);
-
   /** \brief CNN models
    * a public variable.
    * Saved the CNN model in this variable.
@@ -54,22 +48,30 @@ public:
   double         m_learningRate;
   int            m_batch_size;
 
-  void readNetworkModel(string inFile){}
+  void loadModel(string inFile){}
   
-  void readNetworkSolver(string inFile){}
+  void loadSolver(string inFile){}
 
   /** \brief Load CNN parameters from a file
    * a normal member loading the parameters of CNN from a file.
    * @param inFile the file containing the CNN parameter info.
    */
-  void readNetworkWeights(string inFile);
+  void loadWeights(string inFile);
+
+  /** \brief Save CNN parameters to a file
+   * a normal member to save the CNN parameters to a file.
+   * @param outFile the name of the output file.
+   */
+  void saveWeights(string outFile);
 
   /** \brief Train a CNN model
    * a normal member to train the CNN.
    * @param trainingData an integer argument.
    * @param responseMat a constant character pointer.
    */
-  void trainNetwork(CvMat *trainingData, CvMat *responseMat);
+  void train(CvMat *trainingData, CvMat *responseMat);
+
+  float evaluate(CvMat * testing, CvMat * expected, int nsamples);
 };
 
 #endif // __CV_CNNETWORK_H__
