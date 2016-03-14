@@ -53,7 +53,7 @@
 /* #undef HAVE_DC1394_2 */
 
 /* DirectShow Video Capture library */
-#define HAVE_DSHOW
+/* #define HAVE_DSHOW */
 
 /* Eigen Matrix & Linear Algebra Library */
 /* #undef HAVE_EIGEN */
@@ -71,7 +71,7 @@
 /* #undef HAVE_GSTREAMER */
 
 /* GTK+ 2.0 Thread support */
-#define HAVE_GTHREAD
+/* #define HAVE_GTHREAD */
 
 /* Windows Runtime support */
 /* #undef HAVE_WINRT */

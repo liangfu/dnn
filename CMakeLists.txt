@@ -28,6 +28,8 @@ SET(CMAKE_INSTALL_RPATH "$ORIGIN/../lib:$ORIGIN/")
 # which point to directories outside the build tree to the install RPATH
 SET(CMAKE_INSTALL_RPATH_USE_LINK_PATH FALSE)
 
+add_definitions(-DCVAPI_EXPORTS)
+
 add_subdirectory(modules/cxcore)
 add_subdirectory(modules/cv)
 # add_subdirectory(modules/video)
@@ -170,24 +172,29 @@ include_directories(
 # add_executable(test043_optflow src/test043_optflow.cpp)
 # target_link_libraries(test043_optflow cxcore cvutil cv video highgui )
 
-add_executable(test044_cnn src/test044_cnn.cpp src/ConvNN.cpp)
 if( OPENMP_FOUND )
+  set( CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${OpenMP_C_FLAGS}" )
+  set( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}" )
 	IF(WIN32)
-	target_link_libraries(test044_cnn cxcore cvutil cv highgui ml ${FFMPEG_LIBRARIES}) # video
+    # target_link_libraries(test044_cnn cxcore cvutil cv highgui ml ${FFMPEG_LIBRARIES}) # video
+		set( OPENMP_LIBRARIES "")
 	ELSE(WIN32)
-	target_link_libraries(test044_cnn cxcore cvutil cv highgui ml ${FFMPEG_LIBRARIES} gomp) # video
+	  # target_link_libraries(test044_cnn cxcore cvutil cv highgui ml ${FFMPEG_LIBRARIES} gomp) # video
+		set( OPENMP_LIBRARIES gomp)
 	endif(WIN32)
 else( OPENMP_FOUND )
-	target_link_libraries(test044_cnn cxcore cvutil cv highgui ml ${FFMPEG_LIBRARIES}) # video 
+	# target_link_libraries(test044_cnn cxcore cvutil cv highgui ml ${FFMPEG_LIBRARIES}) # video 
+  set( OPENMP_LIBRARIES "")
 endif( OPENMP_FOUND )
 
+add_executable(test044_cnn src/test044_cnn.cpp src/ConvNN.cpp)
+target_link_libraries(test044_cnn cxcore cvutil cv highgui ml ${FFMPEG_LIBRARIES} ${OPENMP_LIBRARIES})
+
 add_executable(test046_dram src/test046_dram.cpp src/dram.cpp)
-target_link_libraries(test046_dram cxcore cvutil cv highgui ml ${FFMPEG_LIBRARIES} gomp) # video
+target_link_libraries(test046_dram cxcore cvutil cv highgui ml ${FFMPEG_LIBRARIES} ${OPENMP_LIBRARIES}) # video
 
 add_executable(network src/test047_network.cpp src/network.cpp)
-target_link_libraries(network cxcore cvutil cv highgui ml ${FFMPEG_LIBRARIES} gomp) # video
+target_link_libraries(network cxcore cvutil cv highgui ml ${FFMPEG_LIBRARIES} ${OPENMP_LIBRARIES}) # video
 
-# add_executable(test045latentssvm src/test045_latentssvm.cpp)
-# target_link_libraries(test045latentssvm cxcore cvutil cv video highgui ml latentssvm )
 
 
