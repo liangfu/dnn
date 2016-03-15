@@ -14,7 +14,7 @@
 	<stride>1</stride>
 </layer-1>
 <layer-2>
-	<type>Subsampling</type>
+	<type>SubSampling</type>
 	<name>pool1</name>
 	<ksize>2</ksize>
 	<stride>2</stride>
@@ -27,7 +27,7 @@
 	<stride>1</stride>
 </layer-3>
 <layer-4>
-	<type>Subsampling</type>
+	<type>SubSampling</type>
 	<name>pool2</name>
 	<ksize>2</ksize>
 	<stride>2</stride>
@@ -36,11 +36,13 @@
 	<type>FullConnect</type>
 	<name>fc1</name>
 	<n_output_planes>84</n_output_planes>
+	<activation_type>relu</activation_type>
 </layer-5>
 <layer-6>
 	<type>FullConnect</type>
 	<name>fc2</name>
 	<n_output_planes>10</n_output_planes>
+	<activation_type>tanh</activation_type>
 </layer-6>
 </layers>
 </opencv_storage>

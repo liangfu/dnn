@@ -17,21 +17,52 @@ using namespace std;
 
 class CvCNNSolver
 {
+  float m_lr_init;
+  int m_decay_type;// = CV_CNN_LEARN_RATE_DECREASE_SQRT_INV;
+  int m_maxiter;
+  int m_batch_size;
+  float m_validate_ratio;
+
+  char m_model_filename[1<<10];
+  char m_weights_filename[1<<10];
+
   char m_training_filename[1<<10];
   char m_response_filename[1<<10];
   char m_testing_filename[1<<10];
   char m_expected_filename[1<<10];
 public:
-  CvCNNSolver(char * solver_filename){
+  CvCNNSolver(char * solver_filename):
+    m_lr_init(.0001f),m_decay_type(CV_CNN_LEARN_RATE_DECREASE_SQRT_INV),
+    m_maxiter(1),m_batch_size(1),m_validate_ratio(0.1f)
+  {
     CvFileStorage * fs = cvOpenFileStorage(solver_filename,0,CV_STORAGE_READ);
-    CvFileNode * dnode = cvGetFileNodeByName(fs,0,"data");
-    strcpy(m_training_filename,cvReadStringByName(fs,dnode,"training_filename"));
-    strcpy(m_response_filename,cvReadStringByName(fs,dnode,"response_filename"));
-    strcpy(m_testing_filename, cvReadStringByName(fs,dnode,"testing_filename"));
-    strcpy(m_expected_filename,cvReadStringByName(fs,dnode,"expected_filename"));
+    CvFileNode * node = cvGetFileNodeByName(fs,0,"data");
+    strcpy(m_training_filename,cvReadStringByName(fs,node,"training_filename"));
+    strcpy(m_response_filename,cvReadStringByName(fs,node,"response_filename"));
+    strcpy(m_testing_filename, cvReadStringByName(fs,node,"testing_filename"));
+    strcpy(m_expected_filename,cvReadStringByName(fs,node,"expected_filename"));
+    node = cvGetFileNodeByName(fs,0,"network");
+    strcpy(m_model_filename,cvReadStringByName(fs,node,"model_filename"));
+    strcpy(m_weights_filename,cvReadStringByName(fs,node,"weights_filename"));
+    m_lr_init = cvReadRealByName(fs,node,"lr_init");
+    // const char * decay_desc = cvReadStringByName(fs,node,"decay_type");
+    // if (!strcmp(decay_desc,"invsqrt")){m_decay_type=CV_CNN_LEARN_RATE_DECREASE_SQRT_INV;}
+    m_maxiter = cvReadIntByName(fs,node,"maxiter");
+    m_batch_size = cvReadIntByName(fs,node,"batch_size");
+    m_validate_ratio = cvReadRealByName(fs,node,"validate_ratio");
     if (fs){cvReleaseFileStorage(&fs);fs=0;}
   }
   ~CvCNNSolver(){}
+
+  float lr_init(){return m_lr_init;}
+  int decay_type(){return m_decay_type;}
+  int maxiter(){return m_maxiter;}
+  int batch_size(){return m_batch_size;}
+  float validate_ratio(){return m_validate_ratio;}
+
+  char * model_filename(){return (char*)m_model_filename;}
+  char * weights_filename(){return (char*)m_weights_filename;}
+  
   char * training_filename(){return (char*)m_training_filename;}
   char * response_filename(){return (char*)m_response_filename;}
   char * testing_filename (){return (char*)m_testing_filename;}
@@ -45,6 +76,7 @@ public:
 class CvNetwork
 {
   CvCNNSolver * m_solver;
+  CvCNNStatModel * m_cnn ;	
 
 public:
   CvNetwork();
@@ -54,27 +86,15 @@ public:
 
   CvCNNSolver * solver(){return m_solver;}
 
-  /** \brief Create CNN models
-   * Create CNN models.
-   * @param a an integer argument.
-   * @param s a constant character pointer.
-   * @see publicVar()
-   * @return The test results
-   */
-  void createNetwork( );
-
   /** \brief CNN models
    * a public variable.
    * Saved the CNN model in this variable.
    */
-  CvCNNStatModel * m_cnn ;	
-
-  // CvCNNStatModel * cnn_train;
-  int            m_clipHeight, m_clipWidth;
-  int            m_nNode, m_connectNode;
-  int            m_max_iter;
-  double         m_learningRate;
-  int            m_batch_size;
+  // int            m_clipHeight, m_clipWidth;
+  // int            m_nNode, m_connectNode;
+  // int            m_max_iter;
+  // double         m_learningRate;
+  // int            m_batch_size;
 
   void loadModel(string inFile);
   

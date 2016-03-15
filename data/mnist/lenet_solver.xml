@@ -7,8 +7,10 @@
 	<expected_filename>data/mnist/t10k-labels-idx1-ubyte.xml</expected_filename>
 </data>
 <network>
+	<model_filename>data/mnist/lenet_model.xml</model_filename>
+	<weights_filename>data/mnist/lenet_weights.xml</weights_filename>
 	<lr_init>0.05</lr_init>
-	<lr_type>sgd</lr_type>
+	<decay_type>invsqrt</decay_type>
 	<maxiter>2000</maxiter>
 	<batch_size>2</batch_size>
 	<validate_ratio>0.1</validate_ratio>

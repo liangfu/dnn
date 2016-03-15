@@ -71,14 +71,14 @@ int main(int argc, char * argv[])
   fprintf(stderr,"%d Training Images Loaded!\n",training->rows);
   fprintf(stderr,"%d Testing Images Loaded!\n",testing->rows);
 
-  cnn->loadModel(model_filename);
-  
   CV_TIMER_START();
 
   if (!strcmp(task,"train")){
+    cnn->loadModel(model_filename);
     cnn->train(training,response);
     cnn->saveWeights(weights_filename);
   }else{
+    cnn->loadModel(model_filename);
     cnn->loadWeights(weights_filename);
   }
   
