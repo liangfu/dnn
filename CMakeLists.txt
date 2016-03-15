@@ -196,5 +196,8 @@ target_link_libraries(test046_dram cxcore cvutil cv highgui ml ${FFMPEG_LIBRARIE
 add_executable(network src/test047_network.cpp src/network.cpp)
 target_link_libraries(network cxcore cvutil cv highgui ml ${FFMPEG_LIBRARIES} ${OPENMP_LIBRARIES}) # video
 
+add_executable(mnist2xml src/test048_mnist2xml.cpp  src/network.cpp)
+target_link_libraries(mnist2xml cxcore cvutil cv highgui ml ${FFMPEG_LIBRARIES} ${OPENMP_LIBRARIES}) # video
+
 
 

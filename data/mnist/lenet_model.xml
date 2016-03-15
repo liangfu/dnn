@@ -1,42 +1,46 @@
 <?xml version="1.0"?>
 <opencv_storage>
-<layer>
-	<type>Convolution</type>
-	<name>conv1</name>
+<data>
 	<n_input_planes>1</n_input_planes>
 	<input_height>28</input_height>
 	<input_width>28</input_width>
+</data>
+<layers>
+<layer-1>
+	<type>Convolution</type>
+	<name>conv1</name>
 	<n_output_planes>6</n_output_planes>
 	<ksize>5</ksize>
 	<stride>1</stride>
-</layer>
-<layer>
+</layer-1>
+<layer-2>
 	<type>Subsampling</type>
 	<name>pool1</name>
 	<ksize>2</ksize>
 	<stride>2</stride>
-</layer>
-<layer>
+</layer-2>
+<layer-3>
 	<type>Convolution</type>
 	<name>conv2</name>
 	<n_output_planes>16</n_output_planes>
 	<ksize>5</ksize>
 	<stride>1</stride>
-</layer>
-<layer>
+</layer-3>
+<layer-4>
 	<type>Subsampling</type>
 	<name>pool2</name>
 	<ksize>2</ksize>
 	<stride>2</stride>
-</layer>
+</layer-4>
+<layer-5>
 	<type>FullConnect</type>
 	<name>fc1</name>
 	<n_output_planes>84</n_output_planes>
-<layer>
-</layer>
+</layer-5>
+<layer-6>
 	<type>FullConnect</type>
 	<name>fc2</name>
 	<n_output_planes>10</n_output_planes>
-<layer>
-</layer>
+</layer-6>
+</layers>
 </opencv_storage>

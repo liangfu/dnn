@@ -4,31 +4,20 @@
 
 using namespace std;
 
-CvNetwork::CvNetwork(void)
+CvNetwork::CvNetwork():m_solver(0),m_cnn(0)
 {
-  m_cnn = 0;
-  // cnn_train = 0;
-  m_batch_size = 1;
-}
-
-CvNetwork::CvNetwork(int height, int width, int cNode,int node, 
-               double alpha, int maxiter, int batch_size)
-{
-  m_clipHeight = height;
-  m_clipWidth  = width;
-  m_nNode = node;
-  m_connectNode = cNode;
-  m_learningRate = alpha;
-  m_max_iter = maxiter;
-  m_batch_size = batch_size;
+  // m_clipHeight = height;
+  // m_clipWidth  = width;
+  // m_nNode = node;
+  // m_connectNode = cNode;
+  // m_learningRate = alpha;
+  // m_max_iter = maxiter;
+  // m_batch_size = batch_size;
 }
 
 CvNetwork::~CvNetwork(void)
 {
-  if( cvGetErrStatus() < 0 ) {
-    if( m_cnn ) { m_cnn->release( (CvCNNStatModel**)&m_cnn ); }
-    // if( cnn_train ) cnn_train->release( (CvCNNStatModel**)&cnn_train );
-  }
+  if( m_cnn ) { m_cnn->release( (CvCNNStatModel**)&m_cnn ); }
 }
 
 void CvNetwork::createNetwork()
@@ -189,6 +178,38 @@ void CvNetwork::createNetwork()
   } // nn
 
   __CV_END__;
+}
+
+void CvNetwork::loadModel(string inFile)
+{
+  CvCNNLayer * layer = 0;
+  CvFileStorage * fs = cvOpenFileStorage(inFile.c_str(),0,CV_STORAGE_READ);
+  CvFileNode * root = cvGetRootFileNode( fs );
+  CvFileNode * node = 0;
+  char nodename[10]={0,};
+
+  node = cvGetFileNodeByName(fs,root,"data");
+  int n_input_planes = cvReadIntByName(fs,node,"n_input_planes");
+  int input_height   = cvReadIntByName(fs,node,"input_height");
+  int input_width    = cvReadIntByName(fs,node,"input_width");
+  int n_output_planes = 0;
+  int output_height   = 0;
+  int output_width    = 0;
+
+  root = cvGetFileNodeByName(fs,root,"layers");
+  for (int ii=1;;ii++){
+    sprintf(nodename,"layer-%d",ii);
+    node = cvGetFileNodeByName(fs,root,nodename);
+    if (!node){break;}
+    const char * type = cvReadStringByName(fs,node,"type");
+    const char * name = cvReadStringByName(fs,node,"name");
+    if (!strcmp(type,"Convolution")){
+    }else if (!strcmp(type,"SubSampling")){
+    }else if (!strcmp(type,"FullConnect")){
+    }
+  }
+
+  if (fs){cvReleaseFileStorage(&fs);fs=0;}
 }
 
 void CvNetwork::loadWeights(string inFile)

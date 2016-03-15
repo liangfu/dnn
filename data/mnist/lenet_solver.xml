@@ -1,0 +1,16 @@
+<?xml version="1.0"?>
+<opencv_storage>
+<data>
+	<training_filename>data/mnist/train-images-idx3-ubyte.xml</training_filename>
+	<response_filename>data/mnist/train-labels-idx1-ubyte.xml</response_filename>
+	<testing_filename>data/mnist/t10k-images-idx3-ubyte.xml</testing_filename>
+	<expected_filename>data/mnist/t10k-labels-idx1-ubyte.xml</expected_filename>
+</data>
+<network>
+	<lr_init>0.05</lr_init>
+	<lr_type>sgd</lr_type>
+	<maxiter>2000</maxiter>
+	<batch_size>2</batch_size>
+	<validate_ratio>0.1</validate_ratio>
+</network>
+</opencv_storage>

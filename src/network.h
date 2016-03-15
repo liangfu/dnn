@@ -15,17 +15,44 @@
 
 using namespace std;
 
+class CvCNNSolver
+{
+  char m_training_filename[1<<10];
+  char m_response_filename[1<<10];
+  char m_testing_filename[1<<10];
+  char m_expected_filename[1<<10];
+public:
+  CvCNNSolver(char * solver_filename){
+    CvFileStorage * fs = cvOpenFileStorage(solver_filename,0,CV_STORAGE_READ);
+    CvFileNode * dnode = cvGetFileNodeByName(fs,0,"data");
+    strcpy(m_training_filename,cvReadStringByName(fs,dnode,"training_filename"));
+    strcpy(m_response_filename,cvReadStringByName(fs,dnode,"response_filename"));
+    strcpy(m_testing_filename, cvReadStringByName(fs,dnode,"testing_filename"));
+    strcpy(m_expected_filename,cvReadStringByName(fs,dnode,"expected_filename"));
+    if (fs){cvReleaseFileStorage(&fs);fs=0;}
+  }
+  ~CvCNNSolver(){}
+  char * training_filename(){return (char*)m_training_filename;}
+  char * response_filename(){return (char*)m_response_filename;}
+  char * testing_filename (){return (char*)m_testing_filename;}
+  char * expected_filename(){return (char*)m_expected_filename;}
+};
+
 /** \class CvNetwork
  *  \brief CvNetwork class
  *  see member functions for detail
  */
 class CvNetwork
 {
+  CvCNNSolver * m_solver;
+
 public:
-  CvNetwork(void);
-  CvNetwork(int height, int width, int node, int cNode,
-         double alpha, int maxiter, int batch_size);
-  ~CvNetwork(void);
+  CvNetwork();
+  // CvNetwork(int height, int width, int node, int cNode,
+  //        double alpha, int maxiter, int batch_size);
+  ~CvNetwork();
+
+  CvCNNSolver * solver(){return m_solver;}
 
   /** \brief Create CNN models
    * Create CNN models.
@@ -41,6 +68,7 @@ public:
    * Saved the CNN model in this variable.
    */
   CvCNNStatModel * m_cnn ;	
+
   // CvCNNStatModel * cnn_train;
   int            m_clipHeight, m_clipWidth;
   int            m_nNode, m_connectNode;
@@ -48,9 +76,12 @@ public:
   double         m_learningRate;
   int            m_batch_size;
 
-  void loadModel(string inFile){}
+  void loadModel(string inFile);
   
-  void loadSolver(string inFile){}
+  void loadSolver(string inFile){
+    if (m_solver){delete m_solver;m_solver=0;}
+    m_solver = new CvCNNSolver((char*)inFile.c_str());
+  }
 
   /** \brief Load CNN parameters from a file
    * a normal member loading the parameters of CNN from a file.

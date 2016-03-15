@@ -13,33 +13,51 @@ typedef cv::CommandLineParser CvCommandLineParser;
 
 int main(int argc, char * argv[])
 {
-  const char * keys = 
-    "{  1 |         | train | choose `train` or `test`     }"
-    "{  w | weights |       | location of weights file     }"
-    "{  m | model   |       | location of model file       }"
-    "{  s | solver  |       | location of solver file      }"
-    "{  h | help    | true  | display this help message    }";
-    // "{  o | omp     | 1     | number of threads to be used }"
-  CvCommandLineParser parser(argc,argv,keys);
-  const char * command = parser.get<string>("1").c_str();
-  const int display_help = parser.get<bool>("help");
-  if (display_help){parser.printParams();return 0;}
+  char keys[1<<12];
+  sprintf(keys,
+          "{  1 |         | train | choose `train` or `test`     }"
+          "{  w | weights |       | location of weights file     }"
+          "{  m | model   |       | location of model file       }"
+          "{  s | solver  |       | location of solver file      }"
+          "{  o | omp     | %d    | number of threads to be used }"
+          "{  h | help    | false | display this help message    }", 
 #ifdef _OPENMP
-  int max_threads = MAX(1.,std::ceil(float(omp_get_max_threads())*.5));
+          size_t(MAX(1.,std::ceil(float(omp_get_max_threads())*.5)))
 #else
-  int max_threads = 1;
+          1
 #endif
+          );
+  CvCommandLineParser parser(argc,argv,keys);
+  const char * task = parser.get<string>("1").c_str();
+  const int display_help = parser.get<bool>("help");
+  const int max_threads = parser.get<int>("omp");
+  if (display_help){parser.printParams();return 0;}
+  if (strcmp(task,"train")&&strcmp(task,"test")){
+    fprintf(stderr,"choose `train` or `test` as first argument.\n");return 0;
+  }
   
   fprintf(stderr, "MAX_THREADS=%d\n",max_threads);
 
-  const char * training_filename = "../data/svhn/train/%d.png";
-  const char * response_filename = "../data/svhn/train/digitStruct.xml";
-  const char * testing_filename  = "../data/svhn/test/%d.png";
-  const char * expected_filename = "../data/svhn/test/digitStruct.xml";
+  char   model_filename[1<<10]={0,}; //= parser.get<string>("model").c_str();
+  char  solver_filename[1<<10]={0,}; //= parser.get<string>("solver").c_str();
+  char weights_filename[1<<10]={0,}; //= parser.get<string>("weights").c_str();
+  if (parser.get<string>("model").length()>0){
+    strcpy(model_filename,parser.get<string>("model").c_str());
+  }
+  if (parser.get<string>("solver").length()>0){
+    strcpy(solver_filename,parser.get<string>("solver").c_str());
+  }
+  if (parser.get<string>("weights").length()>0){
+    strcpy(weights_filename,parser.get<string>("weights").c_str());
+  }
 
-  const char * model_filename = "../data/svhn/model.xml";
-  const char * solver_filename = "../data/svhn/solver.xml";
-  const char * weights_filename = "../data/svhn/weights.xml";
+  CvNetwork * cnn = new CvNetwork();
+  cnn->loadSolver(solver_filename);
+
+  const char * training_filename = cnn->solver()->training_filename();
+  const char * response_filename = cnn->solver()->response_filename();
+  const char * testing_filename  = cnn->solver()->testing_filename();
+  const char * expected_filename = cnn->solver()->expected_filename();
 
   fprintf(stderr,"Loading MNIST Images ...\n");
   CvMat * response = (CvMat*)cvLoad((char*)response_filename);
@@ -53,22 +71,22 @@ int main(int argc, char * argv[])
   fprintf(stderr,"%d Training Images Loaded!\n",training->rows);
   fprintf(stderr,"%d Testing Images Loaded!\n",testing->rows);
 
-  CvNetwork * cnn = new CvNetwork();
   cnn->loadModel(model_filename);
-  cnn->loadSolver(solver_filename);
   
-CV_TIMER_START();
-#if 1
-  cnn->train(training,response);
-  cnn->saveWeights(weights_filename);
-#else
-  cnn->loadWeights(weights_filename);
-#endif
+  CV_TIMER_START();
+
+  if (!strcmp(task,"train")){
+    cnn->train(training,response);
+    cnn->saveWeights(weights_filename);
+  }else{
+    cnn->loadWeights(weights_filename);
+  }
   
   int nsamples = MIN(5000,testing->rows);
   float top1 = cnn->evaluate(testing,expected,nsamples);
   fprintf(stderr,"top-1: %.1f%%\n",float(top1*100.f)/float(nsamples));
-CV_TIMER_SHOW();
+
+  CV_TIMER_SHOW();
 
   cvReleaseMat(&training);
   cvReleaseMat(&response);
