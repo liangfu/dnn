@@ -72,7 +72,8 @@ void CvNetwork::loadModel(string inFile)
       n_input_planes = n_input_planes * input_height * input_width;
       if (!strcmp(activation_desc,"relu")){activation_type = CV_CNN_RELU;}else
       if (!strcmp(activation_desc,"tanh")){activation_type = CV_CNN_HYPERBOLIC;}else
-      if (!strcmp(activation_desc,"logit")){activation_type = CV_CNN_LOGISTIC;}
+      if (!strcmp(activation_desc,"logit")){activation_type = CV_CNN_LOGISTIC;}else
+      if (!strcmp(activation_desc,"none")){activation_type = CV_CNN_NONE;}
       layer = cvCreateCNNFullConnectLayer(
         n_input_planes, n_output_planes, 1, 1, 
         lr_init, decay_type, activation_type, NULL );
