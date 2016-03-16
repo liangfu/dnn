@@ -1553,67 +1553,67 @@ static void icvCNNConvolutionBackward(
 static void icvCNNSubSamplingBackward(
     CvCNNLayer* _layer, int t, const CvMat* X, const CvMat* dE_dY, CvMat* dE_dX )
 {
-    // derivative of activation function
-    CvMat* dY_dX_elems = 0; // elements of matrix dY_dX
-    CvMat* dY_dW_elems = 0; // elements of matrix dY_dW
-    CvMat* dE_dW = 0;
+  // derivative of activation function
+  CvMat* dY_dX_elems = 0; // elements of matrix dY_dX
+  CvMat* dY_dW_elems = 0; // elements of matrix dY_dW
+  CvMat* dE_dW = 0;
 
-    CV_FUNCNAME("icvCNNSubSamplingBackward");
+  CV_FUNCNAME("icvCNNSubSamplingBackward");
 
-    if ( !ICV_IS_CNN_SUBSAMPLING_LAYER(_layer) )
-        CV_ERROR( CV_StsBadArg, "Invalid layer" );
+  if ( !ICV_IS_CNN_SUBSAMPLING_LAYER(_layer) ) {
+    CV_ERROR( CV_StsBadArg, "Invalid layer" );
+  }
 
-    {__BEGIN__;
+  __BEGIN__;
+  CvCNNSubSamplingLayer* layer = (CvCNNSubSamplingLayer*) _layer;
 
-    CvCNNSubSamplingLayer* layer = (CvCNNSubSamplingLayer*) _layer;
+  const int Xwidth  = layer->input_width;
+  const int Xheight = layer->input_height;
+  const int Ywidth  = layer->output_width;
+  const int Yheight = layer->output_height;
+  const int Xsize   = Xwidth * Xheight;
+  const int Ysize   = Ywidth * Yheight;
+  const int scale   = layer->sub_samp_scale;
+  const int k_max   = layer->n_output_planes * Yheight;
 
-    const int Xwidth  = layer->input_width;
-    const int Xheight = layer->input_height;
-    const int Ywidth  = layer->output_width;
-    const int Yheight = layer->output_height;
-    const int Xsize   = Xwidth * Xheight;
-    const int Ysize   = Ywidth * Yheight;
-    const int scale   = layer->sub_samp_scale;
-    const int k_max   = layer->n_output_planes * Yheight;
+  int k, i, j, m;
 
-    int k, i, j, m;
+  CV_ASSERT(CV_MAT_TYPE(layer->mask->type)==CV_32S);
+  CV_ASSERT(dE_dX->rows*dE_dX->cols==X->rows*X->cols);
 
-    CV_ASSERT(CV_MAT_TYPE(layer->mask->type)==CV_32S);
-    CV_ASSERT(dE_dX->rows*dE_dX->cols==X->rows*X->cols);
+  int nplanes = layer->n_output_planes;
+  int nsamples = X->cols;
+  int stride_size = layer->sub_samp_scale;
 
-    int nplanes = layer->n_output_planes;
-    int nsamples = X->cols;
-    int stride_size = layer->sub_samp_scale;
-
-    CvMat * maskT = cvCreateMat(dE_dY->rows,dE_dY->cols,CV_32S);
-    cvTranspose(layer->mask,maskT);
-    cvZero(dE_dX);
-    for ( int si = 0; si < nsamples; si++ ){
-    float * dxptr = dE_dX->data.fl+dE_dX->cols*si;
-    float * dyptr = dE_dY->data.fl+dE_dY->cols*si;
-    int * mptr = maskT->data.i;
-    for ( int ni = 0; ni < nplanes; ni++ ){
-      for ( int yy = 0; yy < Yheight; yy++ ){
-      for ( int xx = 0; xx < Ywidth; xx++ ){
-        int maxloc = mptr[xx];
-        int ky = maxloc / stride_size;
-        int kx = maxloc % stride_size;
-        (dxptr+stride_size*xx+Xwidth*ky)[kx]=dyptr[xx];
-      }
-      dxptr += Xwidth*stride_size;
-      dyptr += Ywidth;
-      mptr += Ywidth;
-      }
+  CvMat * maskT = cvCreateMat(dE_dY->rows,dE_dY->cols,CV_32S);
+  cvTranspose(layer->mask,maskT);
+  cvZero(dE_dX);
+  for ( int si = 0; si < nsamples; si++ ){
+  float * dxptr = dE_dX->data.fl+dE_dX->cols*si;
+  float * dyptr = dE_dY->data.fl+dE_dY->cols*si;
+  int * mptr = maskT->data.i;
+  for ( int ni = 0; ni < nplanes; ni++ ){
+    for ( int yy = 0; yy < Yheight; yy++ ){
+    for ( int xx = 0; xx < Ywidth; xx++ ){
+      int maxloc = mptr[xx];
+      int ky = maxloc / stride_size;
+      int kx = maxloc % stride_size;
+      (dxptr+stride_size*xx+Xwidth*ky)[kx]=dyptr[xx];
     }
+    dxptr += Xwidth*stride_size;
+    dyptr += Ywidth;
+    mptr += Ywidth;
     }
-    cvReleaseMat(&maskT);
-    
-    if (layer->mask){cvReleaseMat(&layer->mask);layer->mask=0;}
-    }__END__;
+  }
+  }
+  cvReleaseMat(&maskT);
+  
+  if (layer->mask){cvReleaseMat(&layer->mask);layer->mask=0;}
+  __END__;
 
-    if (dY_dX_elems){cvReleaseMat( &dY_dX_elems );dY_dX_elems=0;}
-    if (dY_dW_elems){cvReleaseMat( &dY_dW_elems );dY_dW_elems=0;}
-    if (dE_dW      ){cvReleaseMat( &dE_dW       );dE_dW      =0;}
+  if (dY_dX_elems){cvReleaseMat( &dY_dX_elems );dY_dX_elems=0;}
+  if (dY_dW_elems){cvReleaseMat( &dY_dW_elems );dY_dW_elems=0;}
+  if (dE_dW      ){cvReleaseMat( &dE_dW       );dE_dW      =0;}
 }
 
 /****************************************************************************************/
@@ -1914,370 +1914,339 @@ void cvReLUDer(CvMat * src, CvMat * dst) {
 \*************************************************************************/
 static void icvCNNConvolutionRelease( CvCNNLayer** p_layer )
 {
-    CV_FUNCNAME("icvCNNConvolutionRelease");
-    __BEGIN__;
+  CV_FUNCNAME("icvCNNConvolutionRelease");
+  __BEGIN__;
 
-    CvCNNConvolutionLayer* layer = 0;
+  CvCNNConvolutionLayer* layer = 0;
 
-    if ( !p_layer )
-        CV_ERROR( CV_StsNullPtr, "Null double pointer" );
+  if ( !p_layer )
+      CV_ERROR( CV_StsNullPtr, "Null double pointer" );
 
-    layer = *(CvCNNConvolutionLayer**)p_layer;
+  layer = *(CvCNNConvolutionLayer**)p_layer;
 
-    if ( !layer )
-        return;
-    if ( !ICV_IS_CNN_CONVOLUTION_LAYER(layer) )
-        CV_ERROR( CV_StsBadArg, "Invalid layer" );
+  if ( !layer )
+      return;
+  if ( !ICV_IS_CNN_CONVOLUTION_LAYER(layer) )
+      CV_ERROR( CV_StsBadArg, "Invalid layer" );
 
-    cvReleaseMat( &layer->weights );
-    cvReleaseMat( &layer->connect_mask );
-    cvFree( p_layer );
+  cvReleaseMat( &layer->weights );
+  cvReleaseMat( &layer->connect_mask );
+  cvFree( p_layer );
 
-    __END__;
+  __END__;
 }
 
 /****************************************************************************************/
 static void icvCNNSubSamplingRelease( CvCNNLayer** p_layer )
 {
-    CV_FUNCNAME("icvCNNSubSamplingRelease");
-    __BEGIN__;
+  CV_FUNCNAME("icvCNNSubSamplingRelease");
+  __BEGIN__;
 
-    CvCNNSubSamplingLayer* layer = 0;
+  CvCNNSubSamplingLayer* layer = 0;
 
-    if ( !p_layer )
-        CV_ERROR( CV_StsNullPtr, "Null double pointer" );
+  if ( !p_layer )
+      CV_ERROR( CV_StsNullPtr, "Null double pointer" );
 
-    layer = *(CvCNNSubSamplingLayer**)p_layer;
+  layer = *(CvCNNSubSamplingLayer**)p_layer;
 
-    if ( !layer )
-        return;
-    if ( !ICV_IS_CNN_SUBSAMPLING_LAYER(layer) )
-        CV_ERROR( CV_StsBadArg, "Invalid layer" );
+  if ( !layer )
+      return;
+  if ( !ICV_IS_CNN_SUBSAMPLING_LAYER(layer) )
+      CV_ERROR( CV_StsBadArg, "Invalid layer" );
 
-    if (layer->mask      ){cvReleaseMat( &layer->mask       ); layer->mask      =0;}
-    if (layer->exp2ssumWX){cvReleaseMat( &layer->exp2ssumWX ); layer->exp2ssumWX=0;}
-    if (layer->weights   ){cvReleaseMat( &layer->weights    ); layer->weights   =0;}
-    cvFree( p_layer );
+  if (layer->mask      ){cvReleaseMat( &layer->mask       ); layer->mask      =0;}
+  if (layer->exp2ssumWX){cvReleaseMat( &layer->exp2ssumWX ); layer->exp2ssumWX=0;}
+  if (layer->weights   ){cvReleaseMat( &layer->weights    ); layer->weights   =0;}
+  cvFree( p_layer );
 
-    __END__;
+  __END__;
 }
 
 /****************************************************************************************/
 static void icvCNNFullConnectRelease( CvCNNLayer** p_layer )
 {
-    CV_FUNCNAME("icvCNNFullConnectRelease");
-    __BEGIN__;
+  CV_FUNCNAME("icvCNNFullConnectRelease");
+  __BEGIN__;
 
-    CvCNNFullConnectLayer* layer = 0;
+  CvCNNFullConnectLayer* layer = 0;
 
-    if ( !p_layer )
-        CV_ERROR( CV_StsNullPtr, "Null double pointer" );
+  if ( !p_layer )
+      CV_ERROR( CV_StsNullPtr, "Null double pointer" );
 
-    layer = *(CvCNNFullConnectLayer**)p_layer;
+  layer = *(CvCNNFullConnectLayer**)p_layer;
 
-    if ( !layer )
-        return;
-    if ( !ICV_IS_CNN_FULLCONNECT_LAYER(layer) )
-        CV_ERROR( CV_StsBadArg, "Invalid layer" );
+  if ( !layer )
+      return;
+  if ( !ICV_IS_CNN_FULLCONNECT_LAYER(layer) )
+      CV_ERROR( CV_StsBadArg, "Invalid layer" );
 
-    cvReleaseMat( &layer->exp2ssumWX );
-    cvReleaseMat( &layer->weights );
-    cvFree( p_layer );
+  cvReleaseMat( &layer->exp2ssumWX );
+  cvReleaseMat( &layer->weights );
+  cvFree( p_layer );
 
-    __END__;
+  __END__;
 }
 
 /****************************************************************************************/
 static void icvCNNRecurrentRelease( CvCNNLayer** p_layer )
 {
-    CV_FUNCNAME("icvCNNRecurrentRelease");
-    __BEGIN__;
+  CV_FUNCNAME("icvCNNRecurrentRelease");
+  __BEGIN__;
 
-    CvCNNRecurrentLayer* layer = 0;
+  CvCNNRecurrentLayer* layer = 0;
 
-    if ( !p_layer )
-        CV_ERROR( CV_StsNullPtr, "Null double pointer" );
+  if ( !p_layer ) { CV_ERROR( CV_StsNullPtr, "Null double pointer" ); }
 
-    layer = *(CvCNNRecurrentLayer**)p_layer;
+  layer = *(CvCNNRecurrentLayer**)p_layer;
 
-    if ( !layer )
-        return;
-    if ( !ICV_IS_CNN_RECURRENT_LAYER(layer) )
-        CV_ERROR( CV_StsBadArg, "Invalid layer" );
+  if ( !layer ) { return; }
+  if ( !ICV_IS_CNN_RECURRENT_LAYER(layer) ) { 
+    CV_ERROR( CV_StsBadArg, "Invalid layer" ); 
+  }
 
-    cvReleaseMat( &layer->Wxh );
-    cvReleaseMat( &layer->Whh );
-    cvReleaseMat( &layer->Why );
-    // cvReleaseMat( &layer->weights );
-    cvFree( p_layer );
+  cvReleaseMat( &layer->Wxh );
+  cvReleaseMat( &layer->Whh );
+  cvReleaseMat( &layer->Why );
+  cvFree( p_layer );
 
-    __END__;
+  __END__;
 }
 
-/*************************************************************************\
-*                              Read/Write CNN classifier                  *
-\*************************************************************************/
+/****************************************************************************************\
+*                              Read/Write CNN classifier                                *
+\****************************************************************************************/
 static int icvIsCNNModel( const void* ptr )
 {
-    return CV_IS_CNN(ptr);
+  return CV_IS_CNN(ptr);
 }
 
-/*************************************************************************/
+/****************************************************************************************/
 static void icvReleaseCNNModel( void** ptr )
 {
-    CV_FUNCNAME("icvReleaseCNNModel");
-    __BEGIN__;
+  CV_FUNCNAME("icvReleaseCNNModel");
+  __BEGIN__;
 
-    if ( !ptr )
-        CV_ERROR( CV_StsNullPtr, "NULL double pointer" );
-    CV_ASSERT(CV_IS_CNN(*ptr));
+  if ( !ptr ) { CV_ERROR( CV_StsNullPtr, "NULL double pointer" ); }
+  CV_ASSERT(CV_IS_CNN(*ptr));
 
-    icvCNNModelRelease( (CvCNNStatModel**)ptr );
+  icvCNNModelRelease( (CvCNNStatModel**)ptr );
 
-    __END__;
+  __END__;
 }
 
 /****************************************************************************************/
 static CvCNNLayer* icvReadCNNLayer( CvFileStorage* fs, CvFileNode* node )
 {
-    CvCNNLayer* layer = 0;
-    CvMat* weights    = 0;
-    CvMat* connect_mask = 0;
+  CvCNNLayer* layer = 0;
+  CvMat* weights    = 0;
+  CvMat* connect_mask = 0;
 
-    CV_FUNCNAME("icvReadCNNLayer");
-    __BEGIN__;
+  CV_FUNCNAME("icvReadCNNLayer");
+  __BEGIN__;
 
-    int n_input_planes, input_height, input_width;
-    int n_output_planes, output_height, output_width;
-    int learn_type, layer_type;
-    float init_learn_rate;
+  int n_input_planes, input_height, input_width;
+  int n_output_planes, output_height, output_width;
+  int learn_type, layer_type;
+  float init_learn_rate;
 
-    CV_CALL(n_input_planes  = cvReadIntByName( fs, node, "n_input_planes",  -1 ));
-    CV_CALL(input_height    = cvReadIntByName( fs, node, "input_height",    -1 ));
-    CV_CALL(input_width     = cvReadIntByName( fs, node, "input_width",     -1 ));
-    CV_CALL(n_output_planes = cvReadIntByName( fs, node, "n_output_planes", -1 ));
-    CV_CALL(output_height   = cvReadIntByName( fs, node, "output_height",   -1 ));
-    CV_CALL(output_width    = cvReadIntByName( fs, node, "output_width",    -1 ));
-    CV_CALL(layer_type      = cvReadIntByName( fs, node, "layer_type",      -1 ));
+  CV_CALL(n_input_planes  = cvReadIntByName( fs, node, "n_input_planes",  -1 ));
+  CV_CALL(input_height    = cvReadIntByName( fs, node, "input_height",    -1 ));
+  CV_CALL(input_width     = cvReadIntByName( fs, node, "input_width",     -1 ));
+  CV_CALL(n_output_planes = cvReadIntByName( fs, node, "n_output_planes", -1 ));
+  CV_CALL(output_height   = cvReadIntByName( fs, node, "output_height",   -1 ));
+  CV_CALL(output_width    = cvReadIntByName( fs, node, "output_width",    -1 ));
+  CV_CALL(layer_type      = cvReadIntByName( fs, node, "layer_type",      -1 ));
 
-    CV_CALL(init_learn_rate = (float)cvReadRealByName( fs, node, "init_learn_rate", -1 ));
-    CV_CALL(learn_type = cvReadIntByName( fs, node, "learn_rate_decrease_type", -1 ));
-    CV_CALL(weights    = (CvMat*)cvReadByName( fs, node, "weights" ));
+  CV_CALL(init_learn_rate = (float)cvReadRealByName( fs, node, "init_learn_rate", -1 ));
+  CV_CALL(learn_type = cvReadIntByName( fs, node, "learn_rate_decrease_type", -1 ));
+  CV_CALL(weights    = (CvMat*)cvReadByName( fs, node, "weights" ));
 
-    if ( n_input_planes < 0  || input_height < 0  || input_width < 0 ||
-        n_output_planes < 0 || output_height < 0 || output_width < 0 ||
-        init_learn_rate < 0 || learn_type < 0 || layer_type < 0 || !weights )
-        CV_ERROR( CV_StsParseError, "" );
+  if ( n_input_planes < 0  || input_height < 0  || input_width < 0 ||
+       n_output_planes < 0 || output_height < 0 || output_width < 0 ||
+       init_learn_rate < 0 || learn_type < 0 || layer_type < 0 || !weights ) {
+    CV_ERROR( CV_StsParseError, "" );
+  }
 
-    if ( layer_type == ICV_CNN_CONVOLUTION_LAYER )
-    {
-        const int K = input_height - output_height + 1;
-        if ( K <= 0 || K != input_width - output_width + 1 )
-            CV_ERROR( CV_StsBadArg, "Invalid <K>" );
-
-        CV_CALL(connect_mask = (CvMat*)cvReadByName( fs, node, "connect_mask" ));
-        if ( !connect_mask )
-            CV_ERROR( CV_StsParseError, "Missing <connect mask>" );
-
-        CV_CALL(layer = cvCreateCNNConvolutionLayer(
-            n_input_planes, input_height, input_width, n_output_planes, K,
-            init_learn_rate, learn_type, connect_mask, weights ));
+  if ( layer_type == ICV_CNN_CONVOLUTION_LAYER ) {
+    const int K = input_height - output_height + 1;
+    if ( K <= 0 || K != input_width - output_width + 1 ) {
+      CV_ERROR( CV_StsBadArg, "Invalid <K>" );
     }
-    else if ( layer_type == ICV_CNN_SUBSAMPLING_LAYER )
-    {
-        float a, s;
-        const int sub_samp_scale = input_height/output_height;
-
-        if ( sub_samp_scale <= 0 || sub_samp_scale != input_width/output_width )
-            CV_ERROR( CV_StsBadArg, "Invalid <sub_samp_scale>" );
-
-        CV_CALL(a = (float)cvReadRealByName( fs, node, "a", -1 ));
-        CV_CALL(s = (float)cvReadRealByName( fs, node, "s", -1 ));
-        if ( a  < 0 || s  < 0 )
-            CV_ERROR( CV_StsParseError, "Missing <a> or <s>" );
-
-        // CV_CALL(layer = cvCreateCNNSubSamplingLayer(
-        //     n_input_planes, input_height, input_width, sub_samp_scale,
-        //     a, s, init_learn_rate, learn_type, weights ));
+    CV_CALL(connect_mask = (CvMat*)cvReadByName( fs, node, "connect_mask" ));
+    if ( !connect_mask ) {
+      CV_ERROR( CV_StsParseError, "Missing <connect mask>" );
     }
-    else if ( layer_type == ICV_CNN_FULLCONNECT_LAYER )
-    {
-        float a, s;
-        CV_CALL(a = (float)cvReadRealByName( fs, node, "a", -1 ));
-        CV_CALL(s = (float)cvReadRealByName( fs, node, "s", -1 ));
-        if ( a  < 0 || s  < 0 )
-            CV_ERROR( CV_StsParseError, "" );
-        if ( input_height != 1  || input_width != 1 ||
-            output_height != 1 || output_width != 1 )
-            CV_ERROR( CV_StsBadArg, "" );
-
-        // CV_CALL(layer = cvCreateCNNFullConnectLayer( n_input_planes, n_output_planes,
-        //     a, s, init_learn_rate, learn_type, weights ));
+    CV_CALL(layer = cvCreateCNNConvolutionLayer(
+      n_input_planes, input_height, input_width, n_output_planes, K,
+      init_learn_rate, learn_type, connect_mask, weights ));
+  } else if ( layer_type == ICV_CNN_SUBSAMPLING_LAYER ){
+    const int sub_samp_scale = input_height/output_height;
+    if ( sub_samp_scale <= 0 || sub_samp_scale != input_width/output_width ) {
+      CV_ERROR( CV_StsBadArg, "Invalid <sub_samp_scale>" );
     }
-    else
-        CV_ERROR( CV_StsBadArg, "Invalid <layer_type>" );
+    CV_CALL(layer = cvCreateCNNSubSamplingLayer(
+      n_input_planes, input_height, input_width, sub_samp_scale,
+      1.f, 1.f, init_learn_rate, learn_type, weights ));
+  } else if ( layer_type == ICV_CNN_FULLCONNECT_LAYER ){
+    if ( input_height != 1  || input_width != 1 || output_height != 1 || output_width != 1 ) { 
+      CV_ERROR( CV_StsBadArg, "" ); 
+    }
+    CV_CALL(layer = cvCreateCNNFullConnectLayer( n_input_planes, n_output_planes,
+      1.f, 1.f, init_learn_rate, learn_type, CV_CNN_HYPERBOLIC, weights ));
+  } else {
+    CV_ERROR( CV_StsBadArg, "Invalid <layer_type>" );
+  }
 
-    __END__;
+  __END__;
 
-    if ( cvGetErrStatus() < 0 && layer )
-        layer->release( &layer );
+  if ( cvGetErrStatus() < 0 && layer )
+      layer->release( &layer );
 
-    cvReleaseMat( &weights );
-    cvReleaseMat( &connect_mask );
+  cvReleaseMat( &weights );
+  cvReleaseMat( &connect_mask );
 
-    return layer;
+  return layer;
 }
 
 /****************************************************************************************/
 static void icvWriteCNNLayer( CvFileStorage* fs, CvCNNLayer* layer )
 {
-    CV_FUNCNAME ("icvWriteCNNLayer");
-    __BEGIN__;
+  CV_FUNCNAME ("icvWriteCNNLayer");
+  __BEGIN__;
 
-    if ( !ICV_IS_CNN_LAYER(layer) )
-        CV_ERROR( CV_StsBadArg, "Invalid layer" );
+  if ( !ICV_IS_CNN_LAYER(layer) ) { CV_ERROR( CV_StsBadArg, "Invalid layer" ); }
 
-    CV_CALL( cvStartWriteStruct( fs, NULL, CV_NODE_MAP, "opencv-ml-cnn-layer" ));
+  CV_CALL( cvStartWriteStruct( fs, NULL, CV_NODE_MAP, "opencv-ml-cnn-layer" ));
 
-    CV_CALL(cvWriteInt( fs, "n_input_planes",  layer->n_input_planes ));
-    CV_CALL(cvWriteInt( fs, "input_height",    layer->input_height ));
-    CV_CALL(cvWriteInt( fs, "input_width",     layer->input_width ));
-    CV_CALL(cvWriteInt( fs, "n_output_planes", layer->n_output_planes ));
-    CV_CALL(cvWriteInt( fs, "output_height",   layer->output_height ));
-    CV_CALL(cvWriteInt( fs, "output_width",    layer->output_width ));
-    CV_CALL(cvWriteInt( fs, "learn_rate_decrease_type", layer->learn_rate_decrease_type));
-    CV_CALL(cvWriteReal( fs, "init_learn_rate", layer->init_learn_rate ));
-    CV_CALL(cvWrite( fs, "weights", layer->weights ));
+  CV_CALL(cvWriteInt( fs, "n_input_planes",  layer->n_input_planes ));
+  CV_CALL(cvWriteInt( fs, "input_height",    layer->input_height ));
+  CV_CALL(cvWriteInt( fs, "input_width",     layer->input_width ));
+  CV_CALL(cvWriteInt( fs, "n_output_planes", layer->n_output_planes ));
+  CV_CALL(cvWriteInt( fs, "output_height",   layer->output_height ));
+  CV_CALL(cvWriteInt( fs, "output_width",    layer->output_width ));
+  CV_CALL(cvWriteInt( fs, "learn_rate_decrease_type", layer->learn_rate_decrease_type));
+  CV_CALL(cvWriteReal( fs, "init_learn_rate", layer->init_learn_rate ));
+  CV_CALL(cvWrite( fs, "weights", layer->weights ));
 
-    if ( ICV_IS_CNN_CONVOLUTION_LAYER( layer ))
-    {
-        CvCNNConvolutionLayer* l = (CvCNNConvolutionLayer*)layer;
-        CV_CALL(cvWriteInt( fs, "layer_type", ICV_CNN_CONVOLUTION_LAYER ));
-        CV_CALL(cvWrite( fs, "connect_mask", l->connect_mask ));
-    }
-    else if ( ICV_IS_CNN_SUBSAMPLING_LAYER( layer ) )
-    {
-        CvCNNSubSamplingLayer* l = (CvCNNSubSamplingLayer*)layer;
-        CV_CALL(cvWriteInt( fs, "layer_type", ICV_CNN_SUBSAMPLING_LAYER ));
-        CV_CALL(cvWriteReal( fs, "a", l->a ));
-        CV_CALL(cvWriteReal( fs, "s", l->s ));
-    }
-    else if ( ICV_IS_CNN_FULLCONNECT_LAYER( layer ) )
-    {
-        CvCNNFullConnectLayer* l = (CvCNNFullConnectLayer*)layer;
-        CV_CALL(cvWriteInt( fs, "layer_type", ICV_CNN_FULLCONNECT_LAYER ));
-        CV_CALL(cvWriteReal( fs, "a", l->a ));
-        CV_CALL(cvWriteReal( fs, "s", l->s ));
-    }
-    else
-        CV_ERROR( CV_StsBadArg, "Invalid layer" );
+  if ( ICV_IS_CNN_CONVOLUTION_LAYER( layer )){
+    CvCNNConvolutionLayer* l = (CvCNNConvolutionLayer*)layer;
+    CV_CALL(cvWriteInt( fs, "layer_type", ICV_CNN_CONVOLUTION_LAYER ));
+    CV_CALL(cvWrite( fs, "connect_mask", l->connect_mask ));
+  }else if ( ICV_IS_CNN_SUBSAMPLING_LAYER( layer ) ){
+    CvCNNSubSamplingLayer* l = (CvCNNSubSamplingLayer*)layer;
+    CV_CALL(cvWriteInt( fs, "layer_type", ICV_CNN_SUBSAMPLING_LAYER ));
+    CV_CALL(cvWriteReal( fs, "a", l->a ));
+    CV_CALL(cvWriteReal( fs, "s", l->s ));
+  }else if ( ICV_IS_CNN_FULLCONNECT_LAYER( layer ) ){
+    CvCNNFullConnectLayer* l = (CvCNNFullConnectLayer*)layer;
+    CV_CALL(cvWriteInt( fs, "layer_type", ICV_CNN_FULLCONNECT_LAYER ));
+    CV_CALL(cvWriteReal( fs, "a", l->a ));
+    CV_CALL(cvWriteReal( fs, "s", l->s ));
+  }else {
+    CV_ERROR( CV_StsBadArg, "Invalid layer" );
+  }
 
-    CV_CALL( cvEndWriteStruct( fs )); //"opencv-ml-cnn-layer"
+  CV_CALL( cvEndWriteStruct( fs )); //"opencv-ml-cnn-layer"
 
-    __END__;
+  __END__;
 }
 
 /****************************************************************************************/
 static void* icvReadCNNModel( CvFileStorage* fs, CvFileNode* root_node )
 {
-    CvCNNStatModel* cnn = 0;
-    CvCNNLayer* layer = 0;
+  CvCNNStatModel* cnn = 0;
+  CvCNNLayer* layer = 0;
 
-    CV_FUNCNAME("icvReadCNNModel");
-    __BEGIN__;
+  CV_FUNCNAME("icvReadCNNModel");
+  __BEGIN__;
 
-    CvFileNode* node;
-    CvSeq* seq;
-    CvSeqReader reader;
-    int i;
+  CvFileNode* node;
+  CvSeq* seq;
+  CvSeqReader reader;
+  int i;
 
-    CV_CALL(cnn = (CvCNNStatModel*)cvCreateCNNStatModel(
-        CV_STAT_MODEL_MAGIC_VAL|CV_CNN_MAGIC_VAL, sizeof(CvCNNStatModel)));// ,
-        // icvCNNModelRelease, icvCNNModelPredict, icvCNNModelUpdate ));
+  CV_CALL(cnn = (CvCNNStatModel*)cvCreateCNNStatModel(
+    CV_STAT_MODEL_MAGIC_VAL|CV_CNN_MAGIC_VAL, sizeof(CvCNNStatModel)));
 
-    CV_CALL(cnn->etalons = (CvMat*)cvReadByName( fs, root_node, "etalons" ));
-    CV_CALL(cnn->cls_labels = (CvMat*)cvReadByName( fs, root_node, "cls_labels" ));
+  CV_CALL(cnn->etalons = (CvMat*)cvReadByName( fs, root_node, "etalons" ));
+  CV_CALL(cnn->cls_labels = (CvMat*)cvReadByName( fs, root_node, "cls_labels" ));
 
-    if ( !cnn->etalons || !cnn->cls_labels )
-        CV_ERROR( CV_StsParseError, "No <etalons> or <cls_labels> in CNN model" );
+  if ( !cnn->etalons || !cnn->cls_labels ) {
+    CV_ERROR( CV_StsParseError, "No <etalons> or <cls_labels> in CNN model" );
+  }
 
-    CV_CALL( node = cvGetFileNodeByName( fs, root_node, "network" ));
-    seq = node->data.seq;
-    if ( !CV_NODE_IS_SEQ(node->tag) )
-        CV_ERROR( CV_StsBadArg, "" );
+  CV_CALL( node = cvGetFileNodeByName( fs, root_node, "network" ));
+  seq = node->data.seq;
+  if ( !CV_NODE_IS_SEQ(node->tag) ) { CV_ERROR( CV_StsBadArg, "" ); }
 
-    CV_CALL( cvStartReadSeq( seq, &reader, 0 ));
+  CV_CALL( cvStartReadSeq( seq, &reader, 0 ));
+  CV_CALL(layer = icvReadCNNLayer( fs, (CvFileNode*)reader.ptr ));
+  CV_CALL(cnn->network = cvCreateCNNetwork( layer ));
+
+  for ( i = 1; i < seq->total; i++ ) {
+    CV_NEXT_SEQ_ELEM( seq->elem_size, reader );
     CV_CALL(layer = icvReadCNNLayer( fs, (CvFileNode*)reader.ptr ));
-    CV_CALL(cnn->network = cvCreateCNNetwork( layer ));
+    CV_CALL(cnn->network->add_layer( cnn->network, layer ));
+  }
 
-    for ( i = 1; i < seq->total; i++ )
-    {
-        CV_NEXT_SEQ_ELEM( seq->elem_size, reader );
-        CV_CALL(layer = icvReadCNNLayer( fs, (CvFileNode*)reader.ptr ));
-        CV_CALL(cnn->network->add_layer( cnn->network, layer ));
-    }
+  __END__;
 
-    __END__;
-
-    if ( cvGetErrStatus() < 0 )
-    {
-        if ( cnn ) cnn->release( (CvCNNStatModel**)&cnn );
-        if ( layer ) layer->release( &layer );
-    }
-    return (void*)cnn;
+  if ( cvGetErrStatus() < 0 ) {
+    if ( cnn ) { cnn->release( (CvCNNStatModel**)&cnn ); }
+    if ( layer ) { layer->release( &layer ); }
+  }
+  return (void*)cnn;
 }
 
 /****************************************************************************************/
-static void
-icvWriteCNNModel( CvFileStorage* fs, const char* name,
-                  const void* struct_ptr, CvAttrList )
+static void icvWriteCNNModel( CvFileStorage* fs, const char* name, 
+                              const void* struct_ptr, CvAttrList attr)
 
 {
-    CV_FUNCNAME ("icvWriteCNNModel");
-    __BEGIN__;
+  CV_FUNCNAME ("icvWriteCNNModel");
+  __BEGIN__;
 
-    CvCNNStatModel* cnn = (CvCNNStatModel*)struct_ptr;
-    int n_layers, i;
-    CvCNNLayer* layer;
+  CvCNNStatModel* cnn = (CvCNNStatModel*)struct_ptr;
+  int n_layers, i;
+  CvCNNLayer* layer;
 
-    if ( !CV_IS_CNN(cnn) )
-        CV_ERROR( CV_StsBadArg, "Invalid pointer" );
+  if ( !CV_IS_CNN(cnn) ) { CV_ERROR( CV_StsBadArg, "Invalid pointer" ); }
 
-    n_layers = cnn->network->n_layers;
+  n_layers = cnn->network->n_layers;
 
-    CV_CALL( cvStartWriteStruct( fs, name, CV_NODE_MAP, CV_TYPE_NAME_ML_CNN ));
+  CV_CALL( cvStartWriteStruct( fs, name, CV_NODE_MAP, CV_TYPE_NAME_ML_CNN ));
 
-    CV_CALL(cvWrite( fs, "etalons", cnn->etalons ));
-    CV_CALL(cvWrite( fs, "cls_labels", cnn->cls_labels ));
+  CV_CALL(cvWrite( fs, "etalons", cnn->etalons ));
+  CV_CALL(cvWrite( fs, "cls_labels", cnn->cls_labels ));
 
-    CV_CALL( cvStartWriteStruct( fs, "network", CV_NODE_SEQ ));
+  CV_CALL( cvStartWriteStruct( fs, "network", CV_NODE_SEQ ));
 
-    layer = cnn->network->layers;
-    for ( i = 0; i < n_layers && layer; i++, layer = layer->next_layer )
-        CV_CALL(icvWriteCNNLayer( fs, layer ));
-    if ( i < n_layers || layer )
-        CV_ERROR( CV_StsBadArg, "Invalid network" );
+  layer = cnn->network->layers;
+  for ( i = 0; i < n_layers && layer; i++, layer = layer->next_layer ) {
+    CV_CALL(icvWriteCNNLayer( fs, layer ));
+  }
+  if ( i < n_layers || layer ) { CV_ERROR( CV_StsBadArg, "Invalid network" ); }
 
-    CV_CALL( cvEndWriteStruct( fs )); //"network"
-    CV_CALL( cvEndWriteStruct( fs )); //"opencv-ml-cnn"
+  CV_CALL( cvEndWriteStruct( fs )); //"network"
+  CV_CALL( cvEndWriteStruct( fs )); //"opencv-ml-cnn"
 
-    __END__;
+  __END__;
 }
 
 static int icvRegisterCNNStatModelType()
 {
-    CvTypeInfo info;
+  CvTypeInfo info;
 
-    info.header_size = sizeof( info );
-    info.is_instance = icvIsCNNModel;
-    info.release = icvReleaseCNNModel;
-    info.read = icvReadCNNModel;
-    info.write = icvWriteCNNModel;
-    info.clone = NULL;
-    info.type_name = CV_TYPE_NAME_ML_CNN;
-    cvRegisterType( &info );
+  info.header_size = sizeof( info );
+  info.is_instance = icvIsCNNModel;
+  info.release = icvReleaseCNNModel;
+  info.read = icvReadCNNModel;
+  info.write = icvWriteCNNModel;
+  info.clone = NULL;
+  info.type_name = CV_TYPE_NAME_ML_CNN;
+  cvRegisterType( &info );
 
-    return 1;
+  return 1;
 } // End of icvRegisterCNNStatModelType
 
 // static int cnn = icvRegisterCNNStatModelType();
