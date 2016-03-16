@@ -166,18 +166,19 @@ typedef void (CV_CDECL *CvCNNLayerForward)
 typedef void (CV_CDECL *CvCNNLayerBackward)
     ( CvCNNLayer* layer, int t, const CvMat* X, const CvMat* dE_dY, CvMat* dE_dX);
 
-typedef void (CV_CDECL *CvCNNLayerRelease)
-    (CvCNNLayer** layer);
+typedef void (CV_CDECL *CvCNNLayerRelease)(CvCNNLayer** layer);
 
-typedef void (CV_CDECL *CvCNNetworkAddLayer)
-    (CvCNNetwork* network, CvCNNLayer* layer);
+typedef void (CV_CDECL *CvCNNetworkAddLayer)(CvCNNetwork* network, CvCNNLayer* layer);
 
-typedef void (CV_CDECL *CvCNNetworkRelease)
-    (CvCNNetwork** network);
+typedef CvCNNLayer* (CV_CDECL *CvCNNetworkGetLayer)(CvCNNetwork* network, const char * name);
+
+typedef void (CV_CDECL *CvCNNetworkRelease)(CvCNNetwork** network);
 
 #define CV_CNN_LAYER_FIELDS()           \
     /* Indicator of the layer's type */ \
     int flags;                          \
+    /* Name of the layer, which should be unique within the network*/ \
+    char name[1024];                                                  \
                                         \
     /* Number of input images */        \
     int n_input_planes;                 \
@@ -321,8 +322,9 @@ typedef struct CvCNNImgCroppingLayer
 typedef struct CvCNNetwork
 {
   int n_layers;
-  CvCNNLayer* layers;
+  CvCNNLayer * first_layer;
   CvCNNetworkAddLayer add_layer;
+  CvCNNetworkGetLayer get_layer;
   CvCNNetworkRelease release;
 }CvCNNetwork;
 
@@ -347,12 +349,8 @@ typedef struct CvCNNStatModelParams
 // this macro is added by lxts on jun/22/2008
 struct CvCNNStatModel;
 
-// typedef float (CV_CDECL *CvCNNStatModelPredict)
-// (const CvCNNStatModel *,const CvMat *,CvMat *,CvMat** output);
 typedef float (CV_CDECL *CvCNNStatModelPredict) (const CvCNNStatModel *,const CvMat *,CvMat *);
 
-// typedef void (CV_CDECL *CvCNNStatModelUpdate)
-//     (CvCNNStatModel *,const CvMat *,int,const CvMat *,const CvCNNStatModelParams *,const CvMat *,const CvMat *,const CvMat *,const CvMat *);
 typedef void (CV_CDECL *CvCNNStatModelUpdate)(
         CvCNNStatModel* _cnn_model, const CvMat* _train_data, int tflag,
         const CvMat* _responses, const CvStatModelParams* _params,
@@ -376,27 +374,28 @@ typedef struct CvCNNStatModel
     CvMat* cls_labels;
 }CvCNNStatModel;
 
-CVAPI(CvCNNLayer*) cvCreateCNNConvolutionLayer(
+CVAPI(CvCNNLayer*) cvCreateCNNConvolutionLayer( const char * name, 
     int n_input_planes, int input_height, int input_width,
     int n_output_planes, int K,
     float init_learn_rate, int learn_rate_decrease_type,
     CvMat* connect_mask, CvMat* weights );
 
-CVAPI(CvCNNLayer*) cvCreateCNNSubSamplingLayer(
+CVAPI(CvCNNLayer*) cvCreateCNNSubSamplingLayer( const char * name, 
     int n_input_planes, int input_height, int input_width,
     int sub_samp_scale, float a, float s, 
     float init_learn_rate, int learn_rate_decrease_type, CvMat* weights );
 
-CVAPI(CvCNNLayer*) cvCreateCNNFullConnectLayer(
+CVAPI(CvCNNLayer*) cvCreateCNNFullConnectLayer( const char * name, 
     int n_inputs, int n_outputs, float a, float s, 
     float init_learn_rate, int learn_rate_decrease_type, int activation_type, CvMat* weights );
 
-CVAPI(CvCNNLayer*) cvCreateCNNRecurrentLayer(
+CVAPI(CvCNNLayer*) cvCreateCNNRecurrentLayer( const char * name, 
+    const CvCNNLayer * prev_layer, 
     int n_inputs, int n_outputs, int n_hiddens, int seq_length,
     float init_learn_rate, int update_rule, int activation_type, 
     CvMat * Wxh, CvMat * Whh, CvMat * Why );
 
-CVAPI(CvCNNLayer*) cvCreateCNNImgCroppingLayer(
+CVAPI(CvCNNLayer*) cvCreateCNNImgCroppingLayer( const char * name, 
     int n_input_planes, int input_height, int input_width, CvCNNLayer * image_layer,
     float init_learn_rate, int update_rule);
 
@@ -413,6 +412,8 @@ CVAPI(CvCNNStatModel*) cvTrainCNNClassifier(
 CVAPI(CvCNNetwork*) cvLoadCNNetworkModel(const char * filename);
 
 CVAPI(CvCNNStatModelParams*) cvLoadCNNetworkSolver(const char * filename);
+
+CVAPI(CvCNNLayer*) cvGetCNNLastLayer(CvCNNetwork * network);
 
 /****************************************************************************************\
 *                               Estimate classifiers algorithms                          *

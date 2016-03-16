@@ -47,11 +47,20 @@ void CvNetwork::loadModel(string inFile)
     node = cvGetFileNodeByName(fs,root,nodename);
     if (!node){break;}
     const char * type = cvReadStringByName(fs,node,"type");
-    const char * name = cvReadStringByName(fs,node,"name");
+    const char * name = cvReadStringByName(fs,node,"name","");
+    const char * prev_layer = cvReadStringByName(fs,node,"prev_layer","");
+    const char * activation_desc = cvReadStringByName(fs,node,"activation_type","none");
+    int activation_type = CV_CNN_HYPERBOLIC;
+    if (!strcmp(activation_desc,"relu")){activation_type = CV_CNN_RELU;}
+    else if (!strcmp(activation_desc,"tanh")){activation_type = CV_CNN_HYPERBOLIC;}
+    else if (!strcmp(activation_desc,"logit")){activation_type = CV_CNN_LOGISTIC;}
+    else if (!strcmp(activation_desc,"none")){activation_type = CV_CNN_NONE;}
+
+    // parse layer specific parameters
     if (!strcmp(type,"Convolution")){
       n_output_planes = cvReadIntByName(fs,node,"n_output_planes");
       int ksize = cvReadIntByName(fs,node,"ksize");
-      layer = cvCreateCNNConvolutionLayer(
+      layer = cvCreateCNNConvolutionLayer( name, 
         n_input_planes, input_height, input_width, n_output_planes, ksize,
         lr_init, decay_type, NULL, NULL );
       n_input_planes = n_output_planes;
@@ -59,7 +68,7 @@ void CvNetwork::loadModel(string inFile)
       input_width = input_width-ksize+1;
     }else if (!strcmp(type,"SubSampling")){
       int ksize = cvReadIntByName(fs,node,"ksize");
-      layer = cvCreateCNNSubSamplingLayer(
+      layer = cvCreateCNNSubSamplingLayer( name, 
         n_input_planes, input_height, input_width, ksize,1,1,
         lr_init, decay_type, NULL);
       n_input_planes = n_output_planes;
@@ -67,19 +76,27 @@ void CvNetwork::loadModel(string inFile)
       input_width = input_width/ksize;
     }else if (!strcmp(type,"FullConnect")){
       n_output_planes = cvReadIntByName(fs,node,"n_output_planes");
-      const char * activation_desc = cvReadStringByName(fs,node,"activation_type");
-      int activation_type = CV_CNN_RELU;
-      n_input_planes = n_input_planes * input_height * input_width;
-      if (!strcmp(activation_desc,"relu")){activation_type = CV_CNN_RELU;}else
-      if (!strcmp(activation_desc,"tanh")){activation_type = CV_CNN_HYPERBOLIC;}else
-      if (!strcmp(activation_desc,"logit")){activation_type = CV_CNN_LOGISTIC;}else
-      if (!strcmp(activation_desc,"none")){activation_type = CV_CNN_NONE;}
-      layer = cvCreateCNNFullConnectLayer(
+      layer = cvCreateCNNFullConnectLayer( name, 
         n_input_planes, n_output_planes, 1, 1, 
         lr_init, decay_type, activation_type, NULL );
       n_input_planes = n_output_planes; input_height = 1; input_width = 1;
+    }else if (!strcmp(type,"Recurrent")){
+      n_input_planes = n_input_planes * input_height * input_width;
+      n_output_planes = cvReadIntByName(fs,node,"n_output_planes");
+      const int n_hiddens_default = cvCeil(exp2((log2(n_input_planes)+log2(n_output_planes))*.5f));
+      const int n_hiddens = cvReadIntByName(fs,node,"n_hiddens",n_hiddens_default);
+      const int seq_length = cvReadIntByName(fs,node,"seq_length",1);
+      layer = cvCreateCNNRecurrentLayer( name, 
+        m_cnn->network->get_layer(m_cnn->network, prev_layer), 
+        n_input_planes, n_output_planes, n_hiddens, seq_length,
+        lr_init, decay_type, activation_type, NULL, NULL, NULL );
+      n_input_planes = n_output_planes; input_height = 1; input_width = 1;
+    }else{
+      fprintf(stderr,"ERROR: unknown layer type %s\n",type);
     }
-    if (ii==1){m_cnn->network = cvCreateCNNetwork(layer); // add layer to network
+
+    // add layer to network
+    if (ii==1){m_cnn->network = cvCreateCNNetwork(layer); 
     }else{m_cnn->network->add_layer( m_cnn->network, layer );}
   }
 
@@ -94,7 +111,7 @@ void CvNetwork::loadWeights(string inFile)
   
   if (m_cnn == NULL){fprintf(stderr,"ERROR: CNN has not been built yet\n");exit(0);}
   
-  layer=(CvCNNConvolutionLayer*)m_cnn->network->layers;
+  layer=(CvCNNConvolutionLayer*)m_cnn->network->first_layer;
   layer->weights = (CvMat*)cvReadByName(fs,fnode,"conv1");
   layer->next_layer->next_layer->weights = (CvMat*)cvReadByName(fs,fnode,"conv2");
   layer->next_layer->next_layer->next_layer->next_layer->weights = 
@@ -112,7 +129,7 @@ void CvNetwork::saveWeights(string outFile)
   
   if(m_cnn == NULL){fprintf(stderr,"ERROR: CNN has not been built yet\n");exit(0);}
   
-  layer=(CvCNNConvolutionLayer*)m_cnn->network->layers;
+  layer=(CvCNNConvolutionLayer*)m_cnn->network->first_layer;
   cvWrite(fs,"conv1",layer->weights);
   cvWrite(fs,"conv2",layer->next_layer->next_layer->weights);
   cvWrite(fs,"softmax1",layer->next_layer->next_layer->next_layer->next_layer->weights);
@@ -127,14 +144,17 @@ void CvNetwork::train(CvMat *trainingData, CvMat *responseMat)
   CvCNNStatModelParams params;
   assert(CV_MAT_TYPE(trainingData->type)==CV_32F);
 
-  params.cls_labels = cvCreateMat( 10, 10, CV_32FC1 );
-  cvSet(params.cls_labels,cvScalar(1));
-  params.etalons = cvCreateMat( 10, 10, CV_32FC1 );
-  for(i=0;i<params.etalons->rows;i++){
-  for(j=0;j<params.etalons->cols;j++){
-    cvmSet(params.etalons,i,j,(double)-1.0);
-  } cvmSet(params.etalons,i,i,(double)1.0);
+  CvCNNLayer * last_layer = cvGetCNNLastLayer(m_cnn->network);
+  int n_outputs = last_layer->n_output_planes;
+  if (ICV_IS_CNN_RECURRENT_LAYER(last_layer)){
+    n_outputs *= ((CvCNNRecurrentLayer*)last_layer)->seq_length;
   }
+
+  params.cls_labels = cvCreateMat( n_outputs, n_outputs, CV_32FC1 );
+  cvSet(params.cls_labels,cvScalar(1));
+  params.etalons = cvCreateMat( n_outputs, n_outputs, CV_32FC1 );
+  cvSetIdentity(params.etalons,cvScalar(2));
+  cvSubS(params.etalons,cvScalar(1),params.etalons);
 
   params.network = m_cnn->network;
   params.start_iter=0;

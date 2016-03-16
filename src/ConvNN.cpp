@@ -33,7 +33,7 @@ void CNNIO::init(int outNode, int width, int height, ConvNN *CNN)
   int k,i;
   int n_layers = CNN->m_cnn->network->n_layers;
 
-  for( k = 0, layer = CNN->m_cnn->network->layers; k < n_layers; 
+  for( k = 0, layer = CNN->m_cnn->network->first_layer; k < n_layers; 
        k++, layer = layer->next_layer ) {
     output[k+1] = cvCreateMat( layer->n_output_planes*layer->output_height*
                                layer->output_width, 1, CV_32FC1 );
@@ -114,14 +114,14 @@ void ConvNN::createCNN()
     CV_STAT_MODEL_MAGIC_VAL|CV_CNN_MAGIC_VAL, sizeof(CvCNNStatModel)));
 
   // 20 @ 28x28
-  CV_CALL(layer = cvCreateCNNConvolutionLayer(
+  CV_CALL(layer = cvCreateCNNConvolutionLayer( "conv1", 
     n_input_planes, input_height, input_width, n_output_planes, K,
     init_learn_rate, learn_type, connect_mask, NULL ));
   CV_CALL(m_cnn->network = cvCreateCNNetwork( layer ));
 
   // 20 @ 14x14
   sub_samp_size=2;
-  CV_CALL(layer = cvCreateCNNSubSamplingLayer(
+  CV_CALL(layer = cvCreateCNNSubSamplingLayer( "pool1",
       n_output_planes, output_height, output_width, sub_samp_size,a,s,
       init_learn_rate, learn_type, NULL));
   CV_CALL(m_cnn->network->add_layer( m_cnn->network, layer ));
@@ -136,13 +136,13 @@ void ConvNN::createCNN()
   init_learn_rate = m_learningRate;
 
   // 50 @ 14x14
-  CV_CALL(layer = cvCreateCNNConvolutionLayer(
+  CV_CALL(layer = cvCreateCNNConvolutionLayer( "conv2", 
     n_input_planes, input_height, input_width, n_output_planes, K,
     init_learn_rate, learn_type, connect_mask, NULL ));
   CV_CALL(m_cnn->network->add_layer( m_cnn->network, layer ));
 
   sub_samp_size=2;
-  CV_CALL(layer = cvCreateCNNSubSamplingLayer(
+  CV_CALL(layer = cvCreateCNNSubSamplingLayer( "pool2", 
       n_output_planes, output_height, output_width, sub_samp_size,a,s,
       init_learn_rate, learn_type, NULL));
   CV_CALL(m_cnn->network->add_layer( m_cnn->network, layer ));
@@ -156,7 +156,7 @@ void ConvNN::createCNN()
   a = 1;
   s = 1;
   activation_type = CV_CNN_RELU;
-  CV_CALL(layer = cvCreateCNNFullConnectLayer(
+  CV_CALL(layer = cvCreateCNNFullConnectLayer( "fc1", 
       n_input_planes, n_output_planes, a, s, 
       init_learn_rate, learn_type, activation_type, NULL ));
   CV_CALL(m_cnn->network->add_layer( m_cnn->network, layer ));
@@ -167,7 +167,8 @@ void ConvNN::createCNN()
   a = 1;
   s = 1;
   activation_type = CV_CNN_HYPERBOLIC;
-  CV_CALL(layer = cvCreateCNNFullConnectLayer(n_input_planes, n_output_planes, a, s, 
+  CV_CALL(layer = cvCreateCNNFullConnectLayer( "fc2", 
+      n_input_planes, n_output_planes, a, s, 
       init_learn_rate, learn_type, activation_type, NULL ));
   CV_CALL(m_cnn->network->add_layer( m_cnn->network, layer ));
 
@@ -181,7 +182,7 @@ void ConvNN::writeCNNParams(string outFile)
   
   if(m_cnn == NULL){fprintf(stderr,"ERROR: CNN has not been built yet\n");exit(0);}
   
-  layer=(CvCNNConvolutionLayer*)m_cnn->network->layers;
+  layer=(CvCNNConvolutionLayer*)m_cnn->network->first_layer;
   cvWrite(fs,"conv1",layer->weights);
   cvWrite(fs,"conv2",layer->next_layer->next_layer->weights);
   cvWrite(fs,"softmax1",layer->next_layer->next_layer->next_layer->next_layer->weights);
@@ -198,7 +199,7 @@ void ConvNN::readCNNParams(string inFile)
   
   if(m_cnn == NULL){fprintf(stderr,"ERROR: CNN has not been built yet\n");exit(0);}
   
-  layer=(CvCNNConvolutionLayer*)m_cnn->network->layers;
+  layer=(CvCNNConvolutionLayer*)m_cnn->network->first_layer;
   layer->weights = (CvMat*)cvReadByName(fs,fnode,"conv1");
   layer->next_layer->next_layer->weights = (CvMat*)cvReadByName(fs,fnode,"conv2");
   layer->next_layer->next_layer->next_layer->next_layer->weights = 

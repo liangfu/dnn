@@ -195,7 +195,7 @@ CommandLineParser::CommandLineParser(int argc, const char* const argv[], const c
             }
 
             if (!hasValueThroughEq && ((curName == keysVector[0]) || (curName == keysVector[1]))
-                && (values_buffer.find("true") ||
+                && (// values_buffer.find("true") ||
                     values_buffer.find("false") != values_buffer.npos ||
                     values_buffer == ""
                 ))

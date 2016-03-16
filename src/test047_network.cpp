@@ -74,9 +74,9 @@ int main(int argc, char * argv[])
   CV_TIMER_START();
 
   if (!strcmp(task,"train")){
-    cnn->loadModel(model_filename);
+    cnn->loadModel(cnn->solver()->model_filename());
     cnn->train(training,response);
-    cnn->saveWeights(weights_filename);
+    cnn->saveWeights(cnn->solver()->weights_filename());
   }else{
     cnn->loadModel(model_filename);
     cnn->loadWeights(weights_filename);

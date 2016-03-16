@@ -18,8 +18,8 @@ int main(int argc, char * argv[])
   char keys[1<<12];
   sprintf(keys,
           "{  s | solver     |       | location of solver file      }"
-          "{ tr | trainsize  | 50000 | number of training samples   }"
-          "{ ts | testsize   | 10000 | number of testing samples    }"
+          "{ tr | trainsize  | 5000  | number of training samples   }"
+          "{ ts | testsize   | 1000  | number of testing samples    }"
           "{  h | help       | false | display this help message    }");
   CvCommandLineParser parser(argc,argv,keys);
   const int display_help = parser.get<bool>("help");
