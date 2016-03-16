@@ -1,10 +1,10 @@
 <?xml version="1.0"?>
 <opencv_storage>
 <data>
-	<training_filename>data/mnist/train-images-idx3-ubyte.xml</training_filename>
-	<response_filename>data/mnist/train-labels-idx1-ubyte.xml</response_filename>
-	<testing_filename>data/mnist/t10k-images-idx3-ubyte.xml</testing_filename>
-	<expected_filename>data/mnist/t10k-labels-idx1-ubyte.xml</expected_filename>
+	<training_filename>data/mnist/train-images-idx3-ubyte.xml.gz</training_filename>
+	<response_filename>data/mnist/train-labels-idx1-ubyte.xml.gz</response_filename>
+	<testing_filename>data/mnist/t10k-images-idx3-ubyte.xml.gz</testing_filename>
+	<expected_filename>data/mnist/t10k-labels-idx1-ubyte.xml.gz</expected_filename>
 </data>
 <network>
 	<model_filename>data/mnist/lenet_model.xml</model_filename>

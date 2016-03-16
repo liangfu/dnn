@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 2.8.2)
 
 project(cxcore)
 
-INCLUDE_DIRECTORIES(./include)
+INCLUDE_DIRECTORIES(./include ../znzlib)
 
 add_library(cxcore SHARED
 	src/algorithm.cpp
@@ -50,7 +50,7 @@ if( OPENMP_FOUND )
 ELSE (OPENMP_FOUND)
 	IF(WIN32)
 	ELSE(WIN32)
-		TARGET_LINK_LIBRARIES(cxcore pthread rt)
+		TARGET_LINK_LIBRARIES(cxcore pthread rt znzlib)
 	ENDIF(WIN32)
 ENDIF(OPENMP_FOUND)
 

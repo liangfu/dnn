@@ -13,6 +13,9 @@
 // #include "_ml.h"
 #include "cxcore.h"
 
+#include <stdio.h>
+#include <stdlib.h>
+
 using namespace std;
 
 class CvCNNSolver
@@ -36,6 +39,7 @@ public:
     m_maxiter(1),m_batch_size(1),m_validate_ratio(0.1f)
   {
     CvFileStorage * fs = cvOpenFileStorage(solver_filename,0,CV_STORAGE_READ);
+    if (!fs){fprintf(stderr,"error: solver file %s not exist!\n",solver_filename); exit(-1);}
     CvFileNode * node = cvGetFileNodeByName(fs,0,"data");
     strcpy(m_training_filename,cvReadStringByName(fs,node,"training_filename"));
     strcpy(m_response_filename,cvReadStringByName(fs,node,"response_filename"));

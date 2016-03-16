@@ -106,6 +106,7 @@ include_directories(
   ${CMAKE_CURRENT_SOURCE_DIR}
 	include
 	src
+	modules/znzlib
 	modules/cxcore/include
 	modules/cv/include
 	modules/cvutil/include
@@ -197,7 +198,10 @@ add_executable(network src/test047_network.cpp src/network.cpp)
 target_link_libraries(network cxcore cvutil cv highgui ml ${FFMPEG_LIBRARIES} ${OPENMP_LIBRARIES}) # video
 
 add_executable(mnist2xml src/test048_mnist2xml.cpp  src/network.cpp)
-target_link_libraries(mnist2xml cxcore cvutil cv highgui ml ${FFMPEG_LIBRARIES} ${OPENMP_LIBRARIES}) # video
+target_link_libraries(mnist2xml cxcore cvutil cv highgui ml ${FFMPEG_LIBRARIES} ${OPENMP_LIBRARIES})
+
+add_executable(additiongen src/test049_additiongen.cpp  src/network.cpp)
+target_link_libraries(additiongen cxcore cvutil cv highgui ml ${FFMPEG_LIBRARIES} ${OPENMP_LIBRARIES})
 
 
 

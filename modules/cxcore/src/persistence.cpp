@@ -47,7 +47,7 @@
 #include <iterator>
 #include <wchar.h>
 
-#define USE_ZLIB 0
+#define USE_ZLIB 1
 
 #ifdef __APPLE__
 #  include "TargetConditionals.h"

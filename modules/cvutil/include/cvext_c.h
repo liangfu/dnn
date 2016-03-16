@@ -618,6 +618,27 @@ void cvSaveEx(const char * fn, const CvArr * arr)
   }
 }
 
+CV_INLINE
+void cvGetBaseName(char * filename, char * basename)
+{
+  char * pslash=strrchr(filename,'/');
+  if (pslash){
+    char * pdot = strchr(pslash,'.');
+    if (pdot){
+      strncpy(basename,filename,pdot-filename);
+    }else{
+      strcpy(basename,filename);
+    }
+  }else{
+    char * pdot = strchr(filename,'.');
+    if (pdot){
+      strncpy(basename,filename,pdot-filename);
+    }else{
+      strcpy(basename,filename);
+    }
+  }
+}
+
 //------------------------------------------------------------------
 // CONVERSION
 //------------------------------------------------------------------

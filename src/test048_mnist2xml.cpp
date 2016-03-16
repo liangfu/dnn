@@ -89,10 +89,14 @@ int main(int argc, char * argv[])
   char response_filename[1<<10]={0,}; 
   char  testing_filename[1<<10]={0,}; 
   char expected_filename[1<<10]={0,}; 
-  strncpy(training_filename,training_filename_xml,strlen(training_filename_xml)-4);
-  strncpy(response_filename,response_filename_xml,strlen(response_filename_xml)-4);
-  strncpy( testing_filename, testing_filename_xml,strlen(testing_filename_xml)-4);
-  strncpy(expected_filename,expected_filename_xml,strlen(expected_filename_xml)-4);
+  // strncpy(training_filename,training_filename_xml,strlen(training_filename_xml)-4);
+  // strncpy(response_filename,response_filename_xml,strlen(response_filename_xml)-4);
+  // strncpy( testing_filename, testing_filename_xml,strlen(testing_filename_xml)-4);
+  // strncpy(expected_filename,expected_filename_xml,strlen(expected_filename_xml)-4);
+  cvGetBaseName((char*)training_filename_xml,(char*)training_filename);
+  cvGetBaseName((char*)response_filename_xml,(char*)response_filename);
+  cvGetBaseName((char*) testing_filename_xml,(char*) testing_filename);
+  cvGetBaseName((char*)expected_filename_xml,(char*)expected_filename);
 
   CvMat * training = read_Mnist_Images((char*)training_filename);
   CvMat * response = read_Mnist_Labels((char*)response_filename);
@@ -105,3 +109,5 @@ int main(int argc, char * argv[])
 
   return 0;
 }
+
+
