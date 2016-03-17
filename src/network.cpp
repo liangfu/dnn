@@ -46,7 +46,8 @@ void CvNetwork::loadModel(string inFile)
     sprintf(nodename,"layer-%d",ii);
     node = cvGetFileNodeByName(fs,root,nodename);
     if (!node){break;}
-    const char * type = cvReadStringByName(fs,node,"type");
+    const char * predefined = cvReadStringByName(fs,node,"predefined","");
+    const char * type = cvReadStringByName(fs,node,"type","");
     const char * name = cvReadStringByName(fs,node,"name","");
     const char * prev_layer = cvReadStringByName(fs,node,"prev_layer","");
     const char * activation_desc = cvReadStringByName(fs,node,"activation_type","none");
@@ -57,7 +58,12 @@ void CvNetwork::loadModel(string inFile)
     else if (!strcmp(activation_desc,"none")){activation_type = CV_CNN_NONE;}
 
     // parse layer specific parameters
-    if (!strcmp(type,"Convolution")){
+    if (strlen(predefined)>0){
+      layer = m_cnn->network->get_layer(m_cnn->network,predefined);
+      n_input_planes = layer->n_output_planes; 
+      input_height = layer->output_height; 
+      input_width = layer->output_width;
+    }else if (!strcmp(type,"Convolution")){
       n_output_planes = cvReadIntByName(fs,node,"n_output_planes");
       int ksize = cvReadIntByName(fs,node,"ksize");
       layer = cvCreateCNNConvolutionLayer( name, 
@@ -87,7 +93,6 @@ void CvNetwork::loadModel(string inFile)
       const int n_hiddens = cvReadIntByName(fs,node,"n_hiddens",n_hiddens_default);
       const int seq_length = cvReadIntByName(fs,node,"seq_length",1);
       layer = cvCreateCNNRecurrentLayer( name, 
-        m_cnn->network->get_layer(m_cnn->network, prev_layer), 
         n_input_planes, n_output_planes, n_hiddens, seq_length,
         lr_init, decay_type, activation_type, NULL, NULL, NULL );
       n_input_planes = n_output_planes; input_height = 1; input_width = 1;

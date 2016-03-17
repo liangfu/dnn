@@ -306,7 +306,7 @@ typedef struct CvCNNRecurrentLayer
   // weight matrix with bias for generating output data, default size: (n_outputs, n_hiddens+1)
   CvMat * Why;
   // activation function type,
-  // either CV_CNN_LOGISTIC,CV_CNN_HYPERBOLIC,CV_CNN_RELU or CV_CNN_NONE
+  // either CV_CNN_LOGISTIC, CV_CNN_HYPERBOLIC, CV_CNN_RELU or CV_CNN_NONE
   int activation_type;
 }CvCNNRecurrentLayer;
 
@@ -390,7 +390,6 @@ CVAPI(CvCNNLayer*) cvCreateCNNFullConnectLayer( const char * name,
     float init_learn_rate, int learn_rate_decrease_type, int activation_type, CvMat* weights );
 
 CVAPI(CvCNNLayer*) cvCreateCNNRecurrentLayer( const char * name, 
-    const CvCNNLayer * prev_layer, 
     int n_inputs, int n_outputs, int n_hiddens, int seq_length,
     float init_learn_rate, int update_rule, int activation_type, 
     CvMat * Wxh, CvMat * Whh, CvMat * Why );

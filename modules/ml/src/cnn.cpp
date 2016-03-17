@@ -1049,7 +1049,6 @@ ML_IMPL CvCNNLayer* cvCreateCNNFullConnectLayer( const char * name,
 
 /*************************************************************************/
 ML_IMPL CvCNNLayer* cvCreateCNNRecurrentLayer( const char * name, 
-    const CvCNNLayer * prev_layer, 
     int n_inputs, int n_outputs, int n_hiddens, int seq_length,
     float init_learn_rate, int update_rule, int activation_type, 
     CvMat * Wxh, CvMat * Whh, CvMat * Why )
@@ -1059,9 +1058,7 @@ ML_IMPL CvCNNLayer* cvCreateCNNRecurrentLayer( const char * name,
   CV_FUNCNAME("cvCreateCNNRecurrentLayer");
   __BEGIN__;
 
-  if ( init_learn_rate <= 0) {
-    CV_ERROR( CV_StsBadArg, "Incorrect parameters" );
-  }
+  if ( init_learn_rate <= 0) { CV_ERROR( CV_StsBadArg, "Incorrect parameters" ); }
 
   fprintf(stderr,"RecurrentLayer: input (%d), hidden (%d), output (%d), length (%d)\n",
           n_inputs, n_hiddens, n_outputs, seq_length);

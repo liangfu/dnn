@@ -10,47 +10,14 @@
 <layer-1>
 	<type>Recurrent</type>
 	<name>rnn1</name>
-	<prev_layer>rnn1</prev_layer>
 	<n_output_planes>1</n_output_planes>
 	<n_hiddens>2</n_hiddens>
 	<seq_length>10</seq_length>
 	<activation_type>tanh</activation_type>
 </layer-1>
-<layer-2>
-	<type>Recurrent</type>
-	<name>rnn1</name>
-	<prev_layer>rnn1</prev_layer>
-	<n_output_planes>1</n_output_planes>
-	<n_hiddens>2</n_hiddens>
-	<seq_length>10</seq_length>
-	<activation_type>tanh</activation_type>
-</layer-2>
-<layer-3>
-	<type>Recurrent</type>
-	<name>rnn1</name>
-	<prev_layer>rnn1</prev_layer>
-	<n_output_planes>1</n_output_planes>
-	<n_hiddens>2</n_hiddens>
-	<seq_length>10</seq_length>
-	<activation_type>tanh</activation_type>
-</layer-3>
-<layer-4>
-	<type>Recurrent</type>
-	<name>rnn1</name>
-	<prev_layer>rnn1</prev_layer>
-	<n_output_planes>1</n_output_planes>
-	<n_hiddens>2</n_hiddens>
-	<seq_length>10</seq_length>
-	<activation_type>tanh</activation_type>
-</layer-4>
-<layer-5>
-	<type>Recurrent</type>
-	<name>rnn1</name>
-	<prev_layer>rnn1</prev_layer>
-	<n_output_planes>1</n_output_planes>
-	<n_hiddens>2</n_hiddens>
-	<seq_length>10</seq_length>
-	<activation_type>tanh</activation_type>
-</layer-5>
+<layer-2><predefined>rnn1</predefined></layer-2>
+<layer-3><predefined>rnn1</predefined></layer-3>
+<layer-4><predefined>rnn1</predefined></layer-4>
+<layer-5><predefined>rnn1</predefined></layer-5>
 </layers>
 </opencv_storage>
