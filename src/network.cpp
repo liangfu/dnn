@@ -59,7 +59,17 @@ void CvNetwork::loadModel(string inFile)
 
     // parse layer specific parameters
     if (strlen(predefined)>0){
-      layer = m_cnn->network->get_layer(m_cnn->network,predefined);
+      CvCNNLayer * predefined_layer = m_cnn->network->get_layer(m_cnn->network,predefined);
+      if (ICV_IS_CNN_RECURRENT_LAYER(predefined_layer)){
+        int time_index = cvReadIntByName(fs,node,"time_index",0);
+        CvCNNRecurrentLayer * recurrent_layer = (CvCNNRecurrentLayer*)predefined_layer;
+        layer = cvCreateCNNRecurrentLayer( predefined_layer->name, predefined_layer, 
+          predefined_layer->n_input_planes, predefined_layer->n_output_planes, 
+          recurrent_layer->n_hiddens, recurrent_layer->seq_length, time_index, lr_init, decay_type, 
+          recurrent_layer->activation_type, NULL, NULL, NULL );
+      }else{
+        layer = predefined_layer;
+      }
       n_input_planes = layer->n_output_planes; 
       input_height = layer->output_height; 
       input_width = layer->output_width;
@@ -92,8 +102,8 @@ void CvNetwork::loadModel(string inFile)
       const int n_hiddens_default = cvCeil(exp2((log2(n_input_planes)+log2(n_output_planes))*.5f));
       const int n_hiddens = cvReadIntByName(fs,node,"n_hiddens",n_hiddens_default);
       const int seq_length = cvReadIntByName(fs,node,"seq_length",1);
-      layer = cvCreateCNNRecurrentLayer( name, 
-        n_input_planes, n_output_planes, n_hiddens, seq_length,
+      layer = cvCreateCNNRecurrentLayer( name, 0, 
+        n_input_planes, n_output_planes, n_hiddens, seq_length, 0, 
         lr_init, decay_type, activation_type, NULL, NULL, NULL );
       n_input_planes = n_output_planes; input_height = 1; input_width = 1;
     }else{

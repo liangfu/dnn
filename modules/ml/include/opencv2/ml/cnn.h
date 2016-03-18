@@ -390,7 +390,8 @@ CVAPI(CvCNNLayer*) cvCreateCNNFullConnectLayer( const char * name,
     float init_learn_rate, int learn_rate_decrease_type, int activation_type, CvMat* weights );
 
 CVAPI(CvCNNLayer*) cvCreateCNNRecurrentLayer( const char * name, 
-    int n_inputs, int n_outputs, int n_hiddens, int seq_length,
+    const CvCNNLayer * hidden_layer, 
+    int n_inputs, int n_outputs, int n_hiddens, int seq_length, int time_index, 
     float init_learn_rate, int update_rule, int activation_type, 
     CvMat * Wxh, CvMat * Whh, CvMat * Why );
 

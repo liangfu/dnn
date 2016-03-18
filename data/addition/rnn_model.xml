@@ -13,11 +13,17 @@
 	<n_output_planes>1</n_output_planes>
 	<n_hiddens>2</n_hiddens>
 	<seq_length>10</seq_length>
+	<seq_index>0</seq_index>
 	<activation_type>tanh</activation_type>
 </layer-1>
-<layer-2><predefined>rnn1</predefined></layer-2>
-<layer-3><predefined>rnn1</predefined></layer-3>
-<layer-4><predefined>rnn1</predefined></layer-4>
-<layer-5><predefined>rnn1</predefined></layer-5>
+<layer-2> <type>Recurrent</type><predefined>rnn1</predefined><time_index>1</time_index></layer-2>
+<layer-3> <type>Recurrent</type><predefined>rnn1</predefined><time_index>2</time_index></layer-3>
+<layer-4> <type>Recurrent</type><predefined>rnn1</predefined><time_index>3</time_index></layer-4>
+<layer-5> <type>Recurrent</type><predefined>rnn1</predefined><time_index>4</time_index></layer-5>
+<layer-6> <type>Recurrent</type><predefined>rnn1</predefined><time_index>5</time_index></layer-6>
+<layer-7> <type>Recurrent</type><predefined>rnn1</predefined><time_index>6</time_index></layer-7>
+<layer-8> <type>Recurrent</type><predefined>rnn1</predefined><time_index>7</time_index></layer-8>
+<layer-9> <type>Recurrent</type><predefined>rnn1</predefined><time_index>8</time_index></layer-9>
+<layer-10><type>Recurrent</type><predefined>rnn1</predefined><time_index>9</time_index></layer-10>
 </layers>
 </opencv_storage>

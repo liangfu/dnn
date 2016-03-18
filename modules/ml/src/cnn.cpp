@@ -631,38 +631,37 @@ static void icvCNNetworkAddLayer( CvCNNetwork* network, CvCNNLayer* layer )
 
   CvCNNLayer* prev_layer;
 
-  if ( network == NULL )
-      CV_ERROR( CV_StsNullPtr, "Null <network> pointer" );
-
-  prev_layer = network->first_layer;
-  while( prev_layer->next_layer )
-      prev_layer = prev_layer->next_layer;
-
-  if ( ICV_IS_CNN_FULLCONNECT_LAYER(layer) || ICV_IS_CNN_RECURRENT_LAYER(layer) )
-  {
-      if ( layer->n_input_planes != prev_layer->output_width*prev_layer->output_height*
-          prev_layer->n_output_planes )
-          CV_ERROR( CV_StsBadArg, "Unmatched size of the new layer" );
-      if ( layer->input_height != 1 || layer->output_height != 1 ||
-          layer->input_width != 1  || layer->output_width != 1 )
-          CV_ERROR( CV_StsBadArg, "Invalid size of the new layer" );
+  if ( network == NULL ) {
+    CV_ERROR( CV_StsNullPtr, "Null <network> pointer" );
   }
-  else if ( ICV_IS_CNN_CONVOLUTION_LAYER(layer) || ICV_IS_CNN_SUBSAMPLING_LAYER(layer) )
-  {
-      if ( prev_layer->n_output_planes != layer->n_input_planes ||
-      prev_layer->output_height   != layer->input_height ||
-      prev_layer->output_width    != layer->input_width )
+
+  // prev_layer = network->first_layer;
+  // while ( prev_layer->next_layer ) { prev_layer = prev_layer->next_layer; }
+  prev_layer = cvGetCNNLastLayer(network);
+
+  if ( ICV_IS_CNN_FULLCONNECT_LAYER(layer) ){
+    if ( layer->n_input_planes != prev_layer->output_width*prev_layer->output_height*
+         prev_layer->n_output_planes ) {
       CV_ERROR( CV_StsBadArg, "Unmatched size of the new layer" );
-  }
-  else if ( ICV_IS_CNN_IMGCROPPING_LAYER(layer) )
-  {
-      // if ( prev_layer->n_output_planes != layer->n_input_planes ||
-      // prev_layer->output_height   != layer->input_height ||
-      // prev_layer->output_width    != layer->input_width )
-      // CV_ERROR( CV_StsBadArg, "Unmatched size of the new layer" );
-  }
-  else{
-      CV_ERROR( CV_StsBadArg, "Invalid layer" );
+    }
+    if ( layer->input_height != 1 || layer->output_height != 1 ||
+         layer->input_width != 1  || layer->output_width != 1 ) {
+      CV_ERROR( CV_StsBadArg, "Invalid size of the new layer" );
+    }
+  }else if ( ICV_IS_CNN_CONVOLUTION_LAYER(layer) || ICV_IS_CNN_SUBSAMPLING_LAYER(layer) ){
+    if ( prev_layer->n_output_planes != layer->n_input_planes ||
+         prev_layer->output_height   != layer->input_height ||
+         prev_layer->output_width    != layer->input_width ) {
+      CV_ERROR( CV_StsBadArg, "Unmatched size of the new layer" );
+    }
+  }else if ( ICV_IS_CNN_RECURRENT_LAYER(layer) ) {
+    if ( layer->input_height != 1 || layer->output_height != 1 ||
+         layer->input_width != 1  || layer->output_width != 1 ) {
+      CV_ERROR( CV_StsBadArg, "Invalid size of the new layer" );
+    }
+  }else if ( ICV_IS_CNN_IMGCROPPING_LAYER(layer) ) {
+  }else{
+    CV_ERROR( CV_StsBadArg, "Invalid layer" );
   }
 
   layer->prev_layer = prev_layer;
@@ -674,7 +673,7 @@ static void icvCNNetworkAddLayer( CvCNNetwork* network, CvCNNLayer* layer )
 
 static CvCNNLayer* icvCNNetworkGetLayer( CvCNNetwork* network, const char * name )
 {
-  CV_FUNCNAME("icvGetCNNLastLayer");
+  CV_FUNCNAME("icvGetCNNGetLayer");
   CvCNNLayer* first_layer, *layer, *last_layer, *target_layer=0;
   int n_layers, i;
   __BEGIN__;
@@ -1049,7 +1048,8 @@ ML_IMPL CvCNNLayer* cvCreateCNNFullConnectLayer( const char * name,
 
 /*************************************************************************/
 ML_IMPL CvCNNLayer* cvCreateCNNRecurrentLayer( const char * name, 
-    int n_inputs, int n_outputs, int n_hiddens, int seq_length,
+    const CvCNNLayer * hidden_layer, 
+    int n_inputs, int n_outputs, int n_hiddens, int seq_length, int time_index, 
     float init_learn_rate, int update_rule, int activation_type, 
     CvMat * Wxh, CvMat * Whh, CvMat * Why )
 {
@@ -1060,8 +1060,8 @@ ML_IMPL CvCNNLayer* cvCreateCNNRecurrentLayer( const char * name,
 
   if ( init_learn_rate <= 0) { CV_ERROR( CV_StsBadArg, "Incorrect parameters" ); }
 
-  fprintf(stderr,"RecurrentLayer: input (%d), hidden (%d), output (%d), length (%d)\n",
-          n_inputs, n_hiddens, n_outputs, seq_length);
+  fprintf(stderr,"RecurrentLayer: input (%d), hidden (%d), output (%d), length (%d), index (%d)\n",
+          n_inputs, n_hiddens, n_outputs, seq_length, time_index);
   
   CV_CALL(layer = (CvCNNRecurrentLayer*)icvCreateCNNLayer( ICV_CNN_RECURRENT_LAYER, name, 
       sizeof(CvCNNRecurrentLayer), n_inputs, 1, 1, n_outputs, 1, 1,
@@ -1069,7 +1069,7 @@ ML_IMPL CvCNNLayer* cvCreateCNNRecurrentLayer( const char * name,
       icvCNNRecurrentRelease, icvCNNRecurrentForward, icvCNNRecurrentBackward ));
 
   layer->weights = 0; // we don't use this !
-  layer->time_index = 0;
+  layer->time_index = time_index;
   layer->seq_length = seq_length;
   layer->n_hiddens = n_hiddens;
   layer->H = 0;
