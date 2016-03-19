@@ -128,8 +128,9 @@ typedef struct CvCNNetwork CvCNNetwork;
 #define ICV_CNN_CONVOLUTION_LAYER    0x00001111
 #define ICV_CNN_SUBSAMPLING_LAYER    0x00002222
 #define ICV_CNN_FULLCONNECT_LAYER    0x00003333
-#define ICV_CNN_RECURRENT_LAYER      0x00004444
-#define ICV_CNN_IMGCROPPING_LAYER    0x00005555
+#define ICV_CNN_IMGCROPPING_LAYER    0x00004444
+#define ICV_CNN_RECURRENT_LAYER      0x00005555
+#define ICV_CNN_INPUTDATA_LAYER      0x00006666
 
 #define CV_IS_CNN(cnn)                                                     \
 	( (cnn)!=NULL )
@@ -150,13 +151,17 @@ typedef struct CvCNNetwork CvCNNetwork;
     ( (ICV_IS_CNN_LAYER( layer )) && (((CvCNNLayer*) (layer))->flags       \
         & ~CV_MAGIC_MASK) == ICV_CNN_FULLCONNECT_LAYER )
 
+#define ICV_IS_CNN_IMGCROPPING_LAYER( layer )                              \
+    ( (ICV_IS_CNN_LAYER( layer )) && (((CvCNNLayer*) (layer))->flags       \
+        & ~CV_MAGIC_MASK) == ICV_CNN_IMGCROPPING_LAYER )
+
 #define ICV_IS_CNN_RECURRENT_LAYER( layer )                                \
     ( (ICV_IS_CNN_LAYER( layer )) && (((CvCNNLayer*) (layer))->flags       \
         & ~CV_MAGIC_MASK) == ICV_CNN_RECURRENT_LAYER )
 
-#define ICV_IS_CNN_IMGCROPPING_LAYER( layer )                              \
+#define ICV_IS_CNN_INPUTDATA_LAYER( layer )                                \
     ( (ICV_IS_CNN_LAYER( layer )) && (((CvCNNLayer*) (layer))->flags       \
-        & ~CV_MAGIC_MASK) == ICV_CNN_IMGCROPPING_LAYER )
+        & ~CV_MAGIC_MASK) == ICV_CNN_INPUTDATA_LAYER )
 
 typedef void (CV_CDECL *CvCNNLayerForward)
     ( CvCNNLayer* layer, const CvMat* input, CvMat* output );
@@ -288,6 +293,15 @@ typedef struct CvCNNFullConnectLayer
     int activation_type;
 }CvCNNFullConnectLayer;
 
+typedef struct CvCNNImgCroppingLayer
+{
+  CV_CNN_LAYER_FIELDS();
+  // resource to load data for image cropping
+  CvCNNLayer * input_layer;
+  // crop specified time index for next layer
+  int time_index;
+}CvCNNImgCroppingLayer;
+
 typedef struct CvCNNRecurrentLayer
 {
   CV_CNN_LAYER_FIELDS();
@@ -297,8 +311,10 @@ typedef struct CvCNNRecurrentLayer
   int seq_length;
   // number of hidden layers within RNN model, default: exp((log(n_inputs)+log(n_outputs))*.5f)
   int n_hiddens;
-  // hidden states, default size: (n_hiddens*batch_size,seq_length)
+  // hidden states, default size: (n_hiddens*batch_size, seq_length)
   CvMat * H;
+  // output states, default size: (n_output_planes, batch_size)
+  CvMat * Y;
   // weight matrix for input data, default size: (n_hiddens, n_inputs)
   CvMat * Wxh;
   // weight matrix with bias for hidden data, default size: (n_hiddens, n_hiddens+1)
@@ -310,14 +326,19 @@ typedef struct CvCNNRecurrentLayer
   int activation_type;
 }CvCNNRecurrentLayer;
 
-typedef struct CvCNNImgCroppingLayer
+typedef struct CvCNNInputDataLayer
 {
+  // shape of the data are available in common `layer fields`
   CV_CNN_LAYER_FIELDS();
-  CvMat * WX;
-  // activation function type,
-  // either CV_CNN_LOGISTIC,CV_CNN_HYPERBOLIC,CV_CNN_RELU or CV_CNN_NONE
-  int activation_type;
-}CvCNNImgCroppingLayer;
+  // the sequential length of input data
+  int seq_length;
+  // original input data, default size: 
+  //          (n_input_planes*n_input_width*n_input_height*seq_length, nsamples)
+  CvMat * input_data;
+  // original response matrix, default size:
+  //          (1, nsamples)
+  CvMat * response;
+}CvCNNInputDataLayer;
 
 typedef struct CvCNNetwork
 {
@@ -389,14 +410,18 @@ CVAPI(CvCNNLayer*) cvCreateCNNFullConnectLayer( const char * name,
     int n_inputs, int n_outputs, float a, float s, 
     float init_learn_rate, int learn_rate_decrease_type, int activation_type, CvMat* weights );
 
+CVAPI(CvCNNLayer*) cvCreateCNNImgCroppingLayer( const char * name, const CvCNNLayer * input_layer,
+    int n_output_planes, int output_height, int output_width, int time_index,
+    float init_learn_rate, int update_rule);
+
 CVAPI(CvCNNLayer*) cvCreateCNNRecurrentLayer( const char * name, 
     const CvCNNLayer * hidden_layer, 
     int n_inputs, int n_outputs, int n_hiddens, int seq_length, int time_index, 
     float init_learn_rate, int update_rule, int activation_type, 
     CvMat * Wxh, CvMat * Whh, CvMat * Why );
 
-CVAPI(CvCNNLayer*) cvCreateCNNImgCroppingLayer( const char * name, 
-    int n_input_planes, int input_height, int input_width, CvCNNLayer * image_layer,
+CVAPI(CvCNNLayer*) cvCreateCNNInputDataLayer( const char * name, 
+    int n_input_planes, int input_height, int input_width, int seq_length,
     float init_learn_rate, int update_rule);
 
 CVAPI(CvCNNetwork*) cvCreateCNNetwork( CvCNNLayer* first_layer );

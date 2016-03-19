@@ -133,8 +133,8 @@ void DRAM::createNetwork()
   n_input_planes  = 1;
   output_height    = 48;//m_clipHeight;
   output_width     = 48;//m_clipWidth;
-  CV_CALL(layer = cvCreateCNNImgCroppingLayer( "crop1", 
-    n_input_planes, output_height, output_width, m_cnn->network->first_layer,
+  CV_CALL(layer = cvCreateCNNImgCroppingLayer( "crop1", m_cnn->network->first_layer,
+    n_input_planes, output_height, output_width, 0, 
     init_learn_rate, learn_type));
   CV_CALL(m_cnn->network->add_layer( m_cnn->network, layer ));
   

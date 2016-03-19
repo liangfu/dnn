@@ -31,18 +31,18 @@ void CvNetwork::loadModel(string inFile)
   int decay_type = m_solver->decay_type();
 
   node = cvGetFileNodeByName(fs,root,"data");
-  int n_input_planes = cvReadIntByName(fs,node,"n_input_planes");
-  int input_height   = cvReadIntByName(fs,node,"input_height");
-  int input_width    = cvReadIntByName(fs,node,"input_width");
-  int n_output_planes = 0;
-  int output_height   = 0;
-  int output_width    = 0;
+  int n_input_planes = 1;
+  int input_height   = 1;
+  int input_width    = 1;
+  int n_output_planes = 1;
+  int output_height   = 1;
+  int output_width    = 1;
   
   m_cnn = (CvCNNStatModel*)cvCreateCNNStatModel(
     CV_STAT_MODEL_MAGIC_VAL|CV_CNN_MAGIC_VAL, sizeof(CvCNNStatModel));
 
   root = cvGetFileNodeByName(fs,root,"layers");
-  for (int ii=1;;ii++){
+  for (int ii=0;;ii++){
     sprintf(nodename,"layer-%d",ii);
     node = cvGetFileNodeByName(fs,root,nodename);
     if (!node){break;}
@@ -67,8 +67,16 @@ void CvNetwork::loadModel(string inFile)
           predefined_layer->n_input_planes, predefined_layer->n_output_planes, 
           recurrent_layer->n_hiddens, recurrent_layer->seq_length, time_index, lr_init, decay_type, 
           recurrent_layer->activation_type, NULL, NULL, NULL );
+      }else if (ICV_IS_CNN_IMGCROPPING_LAYER(predefined_layer)){
+        int time_index = cvReadIntByName(fs,node,"time_index",0);
+        CvCNNImgCroppingLayer * crop_layer = (CvCNNImgCroppingLayer*)predefined_layer;
+        CvCNNLayer * input_layer = crop_layer->input_layer;
+        layer = cvCreateCNNImgCroppingLayer( name, input_layer, 
+          crop_layer->n_output_planes, crop_layer->output_height, crop_layer->output_width, 
+          time_index, lr_init, decay_type );
       }else{
-        layer = predefined_layer;
+        //layer = predefined_layer;
+        assert(false); // unexpected!
       }
       n_input_planes = layer->n_output_planes; 
       input_height = layer->output_height; 
@@ -96,9 +104,25 @@ void CvNetwork::loadModel(string inFile)
         n_input_planes, n_output_planes, 1, 1, 
         lr_init, decay_type, activation_type, NULL );
       n_input_planes = n_output_planes; input_height = 1; input_width = 1;
+    }else if (!strcmp(type,"ImgCropping")){
+      const char * input_layer_name = cvReadStringByName(fs,node,"input_layer","");
+      if (strlen(input_layer_name)<1){
+        LOGE("input layer name is required while defining ImgCropping layer."); exit(-1);
+      }
+      CvCNNLayer * input_layer = m_cnn->network->get_layer(m_cnn->network,input_layer_name);
+      n_input_planes = cvReadIntByName(fs,node,"n_input_planes",n_input_planes);
+      input_height   = cvReadIntByName(fs,node,"input_height",input_height);
+      input_width    = cvReadIntByName(fs,node,"input_width",input_width);
+      n_output_planes = cvReadIntByName(fs,node,"n_output_planes",1);
+      int time_index = cvReadIntByName(fs,node,"time_index",0);
+      layer = cvCreateCNNImgCroppingLayer( name, input_layer, 
+        n_input_planes, input_height, input_width, time_index, 
+        lr_init, decay_type );
+      n_input_planes = n_output_planes; input_height = 1; input_width = 1;
     }else if (!strcmp(type,"Recurrent")){
-      n_input_planes = n_input_planes * input_height * input_width;
-      n_output_planes = cvReadIntByName(fs,node,"n_output_planes");
+      const int n_input_planes_default = n_input_planes * input_height * input_width;
+      n_input_planes = cvReadIntByName(fs,node,"n_input_planes",n_input_planes_default);
+      n_output_planes = cvReadIntByName(fs,node,"n_output_planes",1);
       const int n_hiddens_default = cvCeil(exp2((log2(n_input_planes)+log2(n_output_planes))*.5f));
       const int n_hiddens = cvReadIntByName(fs,node,"n_hiddens",n_hiddens_default);
       const int seq_length = cvReadIntByName(fs,node,"seq_length",1);
@@ -106,12 +130,21 @@ void CvNetwork::loadModel(string inFile)
         n_input_planes, n_output_planes, n_hiddens, seq_length, 0, 
         lr_init, decay_type, activation_type, NULL, NULL, NULL );
       n_input_planes = n_output_planes; input_height = 1; input_width = 1;
+    }else if (!strcmp(type,"InputData")){
+      n_input_planes = cvReadIntByName(fs,node,"n_input_planes",1);
+      input_height   = cvReadIntByName(fs,node,"input_height",1);
+      input_width    = cvReadIntByName(fs,node,"input_width",1);
+      const int seq_length = cvReadIntByName(fs,node,"seq_length",1);
+      layer = cvCreateCNNInputDataLayer( name, 
+        n_input_planes, input_height, input_width, seq_length,
+        lr_init, decay_type );
+      n_input_planes = n_output_planes; input_height = 1; input_width = 1;
     }else{
       fprintf(stderr,"ERROR: unknown layer type %s\n",type);
     }
 
     // add layer to network
-    if (ii==1){m_cnn->network = cvCreateCNNetwork(layer); 
+    if (!m_cnn->network){m_cnn->network = cvCreateCNNetwork(layer); 
     }else{m_cnn->network->add_layer( m_cnn->network, layer );}
   }
 

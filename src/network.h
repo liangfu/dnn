@@ -12,6 +12,7 @@
 #include "ml.h"
 // #include "_ml.h"
 #include "cxcore.h"
+#include "cvext_c.h"
 
 #include <stdio.h>
 #include <stdlib.h>
