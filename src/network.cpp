@@ -110,13 +110,12 @@ void CvNetwork::loadModel(string inFile)
         LOGE("input layer name is required while defining ImgCropping layer."); exit(-1);
       }
       CvCNNLayer * input_layer = m_cnn->network->get_layer(m_cnn->network,input_layer_name);
-      n_input_planes = cvReadIntByName(fs,node,"n_input_planes",n_input_planes);
-      input_height   = cvReadIntByName(fs,node,"input_height",input_height);
-      input_width    = cvReadIntByName(fs,node,"input_width",input_width);
       n_output_planes = cvReadIntByName(fs,node,"n_output_planes",1);
-      int time_index = cvReadIntByName(fs,node,"time_index",0);
-      layer = cvCreateCNNImgCroppingLayer( name, input_layer, 
-        n_input_planes, input_height, input_width, time_index, 
+      output_height   = cvReadIntByName(fs,node,"output_height",output_height);
+      output_width    = cvReadIntByName(fs,node,"output_width",output_width);
+      const int time_index = cvReadIntByName(fs,node,"time_index",0);
+      layer = cvCreateCNNImgCroppingLayer( name, input_layer, // input shaped defined in `input_layer`
+        n_output_planes, output_height, output_width, time_index, 
         lr_init, decay_type );
       n_input_planes = n_output_planes; input_height = 1; input_width = 1;
     }else if (!strcmp(type,"Recurrent")){
@@ -126,8 +125,9 @@ void CvNetwork::loadModel(string inFile)
       const int n_hiddens_default = cvCeil(exp2((log2(n_input_planes)+log2(n_output_planes))*.5f));
       const int n_hiddens = cvReadIntByName(fs,node,"n_hiddens",n_hiddens_default);
       const int seq_length = cvReadIntByName(fs,node,"seq_length",1);
+      const int time_index = cvReadIntByName(fs,node,"time_index",0);
       layer = cvCreateCNNRecurrentLayer( name, 0, 
-        n_input_planes, n_output_planes, n_hiddens, seq_length, 0, 
+        n_input_planes, n_output_planes, n_hiddens, seq_length, time_index, 
         lr_init, decay_type, activation_type, NULL, NULL, NULL );
       n_input_planes = n_output_planes; input_height = 1; input_width = 1;
     }else if (!strcmp(type,"InputData")){

@@ -1435,8 +1435,10 @@ static void icvCNNImgCroppingForward( CvCNNLayer * _layer, const CvMat* X, CvMat
   __BEGIN__;
   CvCNNImgCroppingLayer * layer = (CvCNNImgCroppingLayer*)_layer;
   CvCNNInputDataLayer * input_layer = (CvCNNInputDataLayer*)layer->input_layer;
+  CV_ASSERT(Y->rows==layer->n_output_planes*layer->output_height*layer->output_width);
+  CV_ASSERT(X->cols==Y->cols); // batch_size
+  CvMat * input_data = input_layer->input_data;
   
-
   __END__;
 }
 
@@ -1534,7 +1536,7 @@ static void icvCNNRecurrentForward( CvCNNLayer* _layer, const CvMat* X, CvMat * 
 static void icvCNNInputDataForward( CvCNNLayer * _layer, const CvMat* X, CvMat* Y )
 {
   CV_FUNCNAME("icvCNNInputDataForward");
-  if ( !ICV_IS_CNN_IMGCROPPING_LAYER(_layer) ) { CV_ERROR( CV_StsBadArg, "Invalid layer" ); }
+  if ( !ICV_IS_CNN_INPUTDATA_LAYER(_layer) ) { CV_ERROR( CV_StsBadArg, "Invalid layer" ); }
   __BEGIN__;
   CvCNNInputDataLayer * layer = (CvCNNInputDataLayer*)_layer;
   
