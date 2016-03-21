@@ -35,10 +35,10 @@ int main(int argc, char * argv[])
   const int n_test_samples = parser.get<int>("testsize");
 
   CvRNG rng;
-  CvMat * trainingInt = cvCreateMat(n_train_samples,2,CV_32F);
-  CvMat * responseInt = cvCreateMat(n_train_samples,1,CV_32F);
-  CvMat * testingInt = cvCreateMat(n_test_samples,2,CV_32F);
-  CvMat * expectedInt = cvCreateMat(n_test_samples,1,CV_32F);
+  CvMat * trainingInt = cvCreateMat(n_train_samples,2,CV_32S);
+  CvMat * responseInt = cvCreateMat(n_train_samples,1,CV_32S);
+  CvMat * testingInt = cvCreateMat(n_test_samples,2,CV_32S);
+  CvMat * expectedInt = cvCreateMat(n_test_samples,1,CV_32S);
   CvMat * training = cvCreateMat(n_train_samples,20,CV_32F);
   CvMat * response = cvCreateMat(n_train_samples,10,CV_32F);
   CvMat * testing = cvCreateMat(n_test_samples,20,CV_32F);
@@ -75,16 +75,21 @@ void icvConvertIntToBinary(CvMat * src, CvMat * dst)
   const int nbinaries = dst->cols/ndigits;
   int number = 0; float * binary = new float[nbinaries];
   assert(dst->rows==nsamples);
-  assert(CV_MAT_TYPE(src->type)==CV_32F);
+  assert(CV_MAT_TYPE(src->type)==CV_32S);
   assert(CV_MAT_TYPE(dst->type)==CV_32F);
   for (int ii=0;ii<nsamples;ii++){
   for (int jj=0;jj<ndigits;jj++){
-    number = CV_MAT_ELEM(*src,float,ii,jj);
+    number = CV_MAT_ELEM(*src,int,ii,jj);
     for (int kk=0;kk<nbinaries;kk++){
       binary[kk]=float(int((number>>kk)&0x01)); // reverse order
     }
-    memcpy(dst->data.fl+ndigits*nbinaries*ii+jj,binary,sizeof(float)*nbinaries);
+    memcpy(dst->data.fl+ndigits*nbinaries*ii+nbinaries*jj,binary,sizeof(float)*nbinaries);
+    if (ii==0){
+      fprintf(stderr,"%d: %.0f %.0f %.0f %.0f %.0f %.0f %.0f %.0f %.0f %.0f\n",number,
+              binary[0],binary[1],binary[2],binary[3],binary[4],
+              binary[5],binary[6],binary[7],binary[8],binary[9]);
+    }
   }
-  }
+  }fprintf(stderr,"--\n");
   delete [] binary;
 }

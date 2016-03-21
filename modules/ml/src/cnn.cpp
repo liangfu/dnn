@@ -264,7 +264,7 @@ cvTrainCNNClassifier( const CvMat* _train_data, int tflag,
   CV_ASSERT(CV_MAT_TYPE(train_data->type)==CV_32F);
 
   // normalize image value range
-  if (!ICV_IS_CNN_RECURRENT_LAYER(params->network->first_layer)){
+  if (ICV_IS_CNN_CONVOLUTION_LAYER(params->network->first_layer)){
     double minval, maxval;
     cvMinMaxLoc(train_data,&minval,&maxval,0,0);
     cvSubS(train_data,cvScalar(minval),train_data);
@@ -359,8 +359,13 @@ static void icvTrainCNNetwork( CvCNNetwork* network,const CvMat* images, const C
     CV_CALL(cvTranspose( X0_transpose, X[0] ));
 
     for ( k = 0, layer = first_layer; k < n_layers - 1; k++, layer = layer->next_layer )
-#if 0
-    { CV_CALL(layer->forward( layer, X[k], X[k+1] ));}
+#if 1
+    { CV_CALL(layer->forward( layer, X[k], X[k+1] )); 
+      if (ICV_IS_CNN_RECURRENT_LAYER(layer)){
+        cvPrintf(stderr,"%.2f ",X[k]);fprintf(stderr,"-->\n");cvPrintf(stderr,"%.2f ",X[k+1]);
+        icvVisualizeCNNLayer(layer->prev_layer, X[k]); fprintf(stderr,"\n--\n"); 
+      }
+    }
     CV_CALL(layer->forward( layer, X[k], X[k+1] ));
 #else
     { CV_CALL(layer->forward( layer, X[k], X[k+1] ));
@@ -371,11 +376,12 @@ static void icvTrainCNNetwork( CvCNNetwork* network,const CvMat* images, const C
 #endif
 
     // 2) Compute the gradient
-    if (ICV_IS_CNN_RECURRENT_LAYER(layer)){
-      cvCopy(((CvCNNRecurrentLayer*)layer)->Y,etalon);
-    }
     CvMat etalon_src,etalon_dst;
-    cvTranspose( X[n_layers], dE_dX[n_layers] );
+    if (ICV_IS_CNN_RECURRENT_LAYER(layer)){
+      cvCopy(((CvCNNRecurrentLayer*)layer)->Y,dE_dX[n_layers]);
+    }else{
+      cvTranspose( X[n_layers], dE_dX[n_layers] );
+    }
     for ( k = 0; k < batch_size; k++ ){
       cvGetRow( etalons, &etalon_src, responses->data.i[worst_img_idx->data.i[k]] );
       cvGetRow( etalon, &etalon_dst, k );
@@ -851,8 +857,6 @@ void icvVisualizeCNNLayer(CvCNNLayer * layer, const CvMat * Y)
   for (int pi=0;pi<nplanes;pi++){
     for (int yy=0;yy<hh;yy++){
     for (int xx=0;xx<ww;xx++){
-      // memcpy(imgYptr+imgYcols*(hh*si+yy)+ww*pi+xx,
-      //        Yptr+nsamples*(hh*ww*pi+ww*yy+xx)+si,4);
       CV_MAT_ELEM(*imgY,float,hh*si+yy,ww*pi+xx)=CV_MAT_ELEM(*Y,float,hh*ww*pi+ww*yy+xx,si);
     }
     }
