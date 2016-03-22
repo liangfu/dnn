@@ -305,6 +305,8 @@ typedef struct CvCNNImgCroppingLayer
 typedef struct CvCNNRecurrentLayer
 {
   CV_CNN_LAYER_FIELDS();
+  // reference layer
+  CvCNNLayer * hidden_layer;
   // current time index used for training the testing, via step by step approach
   int time_index;
   // sequence length, for attention model: n_glimpses*n_targets
