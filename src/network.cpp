@@ -6,18 +6,12 @@ using namespace std;
 
 CvNetwork::CvNetwork():m_solver(0),m_cnn(0)
 {
-  // m_clipHeight = height;
-  // m_clipWidth  = width;
-  // m_nNode = node;
-  // m_connectNode = cNode;
-  // m_learningRate = alpha;
-  // m_max_iter = maxiter;
-  // m_batch_size = batch_size;
 }
 
 CvNetwork::~CvNetwork(void)
 {
-  if( m_cnn ) { m_cnn->release( (CvCNNStatModel**)&m_cnn ); }
+  if ( m_solver ){ delete m_solver; m_solver=0; }
+  if ( m_cnn ) { m_cnn->release( (CvCNNStatModel**)&m_cnn ); m_cnn=0; }
 }
 
 void CvNetwork::loadModel(string inFile)
