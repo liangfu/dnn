@@ -317,6 +317,10 @@ typedef struct CvCNNRecurrentLayer
   CvMat * H;
   // output states, default size: (n_output_planes, batch_size)
   CvMat * Y;
+  // probabilities, default size: (n_output_planes, batch_size)
+  CvMat * P;
+  // loss
+  double loss;
   // weight matrix for input data, default size: (n_hiddens, n_inputs)
   CvMat * Wxh;
   // weight matrix with bias for hidden data, default size: (n_hiddens, n_hiddens+1)

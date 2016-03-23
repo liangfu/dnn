@@ -259,6 +259,7 @@ float CvNetwork::evaluate(CvMat * testing, CvMat * expected, int nsamples)
   cvReleaseMat(&expected_converted);
   cvReleaseMat(&expected_transposed);
   cvReleaseMat(&indtop1res);
+  return top1;
 }
 
 

@@ -30,6 +30,9 @@ SET(CMAKE_INSTALL_RPATH_USE_LINK_PATH FALSE)
 
 add_definitions(-DCVAPI_EXPORTS)
 
+add_subdirectory(modules/zlib)
+add_subdirectory(modules/znzlib)
+
 add_subdirectory(modules/cxcore)
 add_subdirectory(modules/cv)
 # add_subdirectory(modules/video)

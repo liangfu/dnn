@@ -361,24 +361,20 @@ static void icvTrainCNNetwork( CvCNNetwork* network,const CvMat* images, const C
     for ( k = 0, layer = first_layer; k < n_layers - 1; k++, layer = layer->next_layer )
 #if 1
     { CV_CALL(layer->forward( layer, X[k], X[k+1] )); 
-      if (ICV_IS_CNN_RECURRENT_LAYER(layer)){
-        CvCNNLayer * hidden_layer = ((CvCNNRecurrentLayer*)layer)->hidden_layer;
-        CvMat * H = hidden_layer?((CvCNNRecurrentLayer*)hidden_layer)->H:
-                                 ((CvCNNRecurrentLayer*)layer)->H;
-        CvMat * Y = hidden_layer?((CvCNNRecurrentLayer*)hidden_layer)->Y:
-                                 ((CvCNNRecurrentLayer*)layer)->Y;
-        // cvPrintf(stderr,"%.2f ",X[k]);fprintf(stderr,"-->\n");
-        cvPrintf(stderr,"%.2f ",H);
-        CV_SHOW(H); // fprintf(stderr,"\n--\n"); 
-      }
     }
     CV_CALL(layer->forward( layer, X[k], X[k+1] ));
 #else
     { CV_CALL(layer->forward( layer, X[k], X[k+1] ));
-      {icvVisualizeCNNLayer(layer, X[k+1]);}
+      if (ICV_IS_CNN_RECURRENT_LAYER(layer)){
+        CvCNNLayer * hidden_layer = ((CvCNNRecurrentLayer*)layer)->hidden_layer;
+        CvMat * Y = hidden_layer?((CvCNNRecurrentLayer*)hidden_layer)->Y:
+                                 ((CvCNNRecurrentLayer*)layer)->Y;
+        cvPrintf(stderr,"%.2f ", Y);
+        CV_SHOW(Y);
+      }// else{icvVisualizeCNNLayer(layer, X[k+1]);}
     }
     CV_CALL(layer->forward( layer, X[k], X[k+1] ));
-    {icvVisualizeCNNLayer(layer, X[k+1]);fprintf(stderr,"\n");}
+    // {icvVisualizeCNNLayer(layer, X[k+1]);fprintf(stderr,"\n");}
 #endif
 
     // 2) Compute the gradient
@@ -1104,6 +1100,8 @@ ML_IMPL CvCNNLayer* cvCreateCNNRecurrentLayer( const char * name,
   layer->n_hiddens = n_hiddens;
   layer->H = 0;
   layer->Y = 0;
+  layer->P = 0;
+  layer->loss = 0;
   layer->Wxh = 0;
   layer->Whh = 0;
   layer->Why = 0;
@@ -1496,10 +1494,9 @@ static void icvCNNRecurrentForward( CvCNNLayer* _layer, const CvMat* X, CvMat * 
 
   // memory allocation
   if (!hidden_layer){
-    layer->H = cvCreateMat( n_hiddens * batch_size, seq_length, CV_32F ); 
-    cvZero(layer->H);
-    layer->Y = cvCreateMat( n_outputs * batch_size, seq_length, CV_32F ); 
-    cvZero(layer->Y);
+    layer->H = cvCreateMat( n_hiddens * batch_size, seq_length, CV_32F ); cvZero(layer->H);
+    layer->Y = cvCreateMat( n_outputs * batch_size, seq_length, CV_32F ); cvZero(layer->Y);
+    layer->P = cvCreateMat( n_outputs * batch_size, seq_length, CV_32F ); cvZero(layer->P);
   }
   CvMat * H = hidden_layer?hidden_layer->H:layer->H;
   CV_CALL(WX = cvCreateMat( n_hiddens, batch_size, CV_32F ));
@@ -1526,12 +1523,12 @@ static void icvCNNRecurrentForward( CvCNNLayer* _layer, const CvMat* X, CvMat * 
   CvMat H_prev_reshaped = cvMat(n_hiddens, batch_size, CV_32F, H_prev->data.ptr);
   CvMat H_curr_reshaped = cvMat(n_hiddens, batch_size, CV_32F, H_curr->data.ptr);
 
-  // update inner variables used in back-propagation
+  // H_t1 = Wxh * X_t0 + ( Whh * H_t0 + bh )
   CV_CALL(cvGEMM( Wxh, X, 1, 0, 1, WX ));
   CV_CALL(cvGEMM( &Whh_submat, &H_prev_reshaped, 1, hbias, 1, WH ));
   cvAdd(WX,WH,&H_curr_reshaped);
   
-  // apply activation
+  // activation for hidden states, relu and tahn is preferred
   if (layer->activation_type==CV_CNN_NONE){
   }else if (layer->activation_type==CV_CNN_HYPERBOLIC){
     CV_CALL(cvTanh( H_curr, H_curr ));
@@ -1541,19 +1538,21 @@ static void icvCNNRecurrentForward( CvCNNLayer* _layer, const CvMat* X, CvMat * 
     CV_CALL(cvReLU( H_curr, H_curr ));
   }else{assert(false);}
 
-  CvMat Y_curr_hdr;
+  CvMat Y_curr_hdr,P_curr_hdr; CV_ASSERT(batch_size==1);
   cvGetCol(H,&H_curr_hdr,layer->time_index); cvCopy(H_curr,&H_curr_hdr);
-  cvGetCol(hidden_layer?hidden_layer->Y:layer->Y,
-           &Y_curr_hdr,layer->time_index); CV_ASSERT(batch_size==1);
+  cvGetCol(hidden_layer?hidden_layer->Y:layer->Y,&Y_curr_hdr,layer->time_index); 
+  cvGetCol(hidden_layer?hidden_layer->P:layer->P,&P_curr_hdr,layer->time_index); 
 
-  // cvPrintf(stderr,"%.2f,",hidden_layer?hidden_layer->Y:layer->Y);
+  // Y = Why * H + by
   CV_CALL(cvGEMM( &Why_submat, &H_curr_reshaped, 1, ybias, 1, &Y_curr_hdr ));
-  if (layer->next_layer) {  // last layer ?
-    cvCopy(&Y_curr_hdr,Y); 
-  }else{
-    cvTranspose(hidden_layer->Y,Y);
-  }
+  if (layer->next_layer) {cvCopy(&Y_curr_hdr,Y); }else{ cvTranspose(hidden_layer->Y,Y); }
 
+  // size correct ???? and compute loss ???
+  CvMat * sumP = cvCreateMat(P_curr_hdr.rows,P_curr_hdr.cols,CV_32F); 
+  cvExp(&Y_curr_hdr,&P_curr_hdr);
+  cvReduce(&P_curr_hdr,sumP,-1,CV_REDUCE_SUM);
+  cvReleaseMat(&sumP);
+  
   if (WX){cvReleaseMat(&WX);WX=0;}
   if (WH){cvReleaseMat(&WH);WH=0;}
   if (H_prev){cvReleaseMat(&H_prev);H_prev=0;}

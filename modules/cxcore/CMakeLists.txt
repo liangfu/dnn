@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 2.8.2)
 
 project(cxcore)
 
-INCLUDE_DIRECTORIES(./include ../znzlib)
+INCLUDE_DIRECTORIES(./include ../znzlib ../zlib/include)
 
 add_library(cxcore SHARED
 	src/algorithm.cpp
@@ -44,11 +44,13 @@ if( OPENMP_FOUND )
   set( CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${OpenMP_C_FLAGS}" )
   set( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}" )
 	IF(WIN32)
+		TARGET_LINK_LIBRARIES(cxcore znzlib zlib)
 	ELSE(WIN32)
-		TARGET_LINK_LIBRARIES(cxcore pthread rt gomp)
+		TARGET_LINK_LIBRARIES(cxcore pthread rt gomp znzlib)
 	ENDIF(WIN32)
 ELSE (OPENMP_FOUND)
 	IF(WIN32)
+		TARGET_LINK_LIBRARIES(cxcore znzlib zlib)
 	ELSE(WIN32)
 		TARGET_LINK_LIBRARIES(cxcore pthread rt znzlib)
 	ENDIF(WIN32)
