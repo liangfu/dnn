@@ -259,8 +259,10 @@ cvTrainCNNClassifier( const CvMat* _train_data, int tflag,
   img_size = _train_data->cols;
   n_images = _train_data->rows;
   cnn_model->cls_labels = params->cls_labels;
-  responses = cvCreateMat(_responses->cols,n_images,CV_32S);
-  cvTranspose(_responses,responses);
+  // responses = cvCreateMat(_responses->cols,n_images,CV_32S);
+  // cvTranspose(_responses,responses);
+  responses = cvCreateMat(n_images,_responses->cols,CV_32F);
+  cvConvert(_responses,responses);
   CV_ASSERT(CV_MAT_TYPE(train_data->type)==CV_32F);
 
   // normalize image value range
@@ -294,7 +296,7 @@ cvTrainCNNClassifier( const CvMat* _train_data, int tflag,
 
 /*************************************************************************/
 static void icvTrainCNNetwork( CvCNNetwork* network,const CvMat* images, const CvMat* responses,
-                               const CvMat* etalons,
+                               const CvMat* , //etalons,
                                int grad_estim_type, int max_iter, int start_iter, int batch_size )
 {
   CvMat** X     = 0;
@@ -307,11 +309,11 @@ static void icvTrainCNNetwork( CvCNNetwork* network,const CvMat* images, const C
 
   CvCNNLayer * first_layer = network->first_layer;
   CvCNNLayer * last_layer = cvGetCNNLastLayer(network);
+  const int seq_length = 
+    ICV_IS_CNN_INPUTDATA_LAYER(first_layer)?((CvCNNInputDataLayer*)first_layer)->seq_length:1;
   const int img_height = first_layer->input_height;
   const int img_width  = first_layer->input_width;
-  const int img_size   = ICV_IS_CNN_INPUTDATA_LAYER(first_layer)?
-      first_layer->n_input_planes*img_width*img_height*((CvCNNInputDataLayer*)first_layer)->seq_length:
-      first_layer->n_input_planes*img_width*img_height;
+  const int img_size   = first_layer->n_input_planes*img_width*img_height*seq_length;
   const int n_images   = responses->cols;
   CvMat * X0_transpose = cvCreateMat( batch_size, img_size, CV_32FC1 );
   CvCNNLayer* layer;
@@ -386,8 +388,9 @@ static void icvTrainCNNetwork( CvCNNetwork* network,const CvMat* images, const C
       cvTranspose( X[n_layers], dE_dX[n_layers] );
     }
     for ( k = 0; k < batch_size; k++ ){
-      cvGetRow( etalons, &etalon_src, responses->data.i[worst_img_idx->data.i[k]] );
-      cvGetRow( etalon, &etalon_dst, k );
+      // cvGetRow( etalons, &etalon_src, responses->data.i[worst_img_idx->data.i[k]] );
+      cvGetRow(responses,&etalon_src,worst_img_idx->data.i[k]);
+      cvGetRow(etalon,&etalon_dst,k);
       cvCopy(&etalon_src, &etalon_dst);
     }
     cvSub( dE_dX[n_layers], etalon, dE_dX[n_layers] );
@@ -1489,7 +1492,6 @@ static void icvCNNRecurrentForward( CvCNNLayer* _layer, const CvMat* X, CvMat * 
   CvMat * WX = 0, * WH = 0, * H_prev = 0, * H_curr = 0, * WX_curr, * WH_curr;
 
   CV_ASSERT(X->cols == batch_size && X->rows == layer->n_input_planes);
-  // CV_ASSERT(X_next->cols == batch_size && X_next->rows == layer->n_input_planes);
 
   // memory allocation
   if (!hidden_layer){
@@ -1553,7 +1555,7 @@ static void icvCNNRecurrentForward( CvCNNLayer* _layer, const CvMat* X, CvMat * 
   // Y = sigmoid(Why * H + by)
   CV_CALL(cvGEMM( &Why_submat, &H_curr_reshaped, 1, ybias, 1, &Y_curr_hdr ));
   CV_CALL(cvCopy(&Y_curr_hdr,&WH_curr_reshaped));
-  CV_CALL(cvTanh( &Y_curr_hdr, &Y_curr_hdr )); // output activation
+  CV_CALL(cvSigmoid( &Y_curr_hdr, &Y_curr_hdr )); // output activation
   if (layer->next_layer) {cvCopy(&Y_curr_hdr,Y); }else{ cvTranspose(hidden_layer->Y,Y); }
   
   if (WX){cvReleaseMat(&WX);WX=0;}
@@ -1872,7 +1874,11 @@ static void icvCNNFullConnectBackward( CvCNNLayer* _layer,
   cvReleaseMat( &dE_dW );
 }
 
-static void icvCNNImgCroppingBackward( CvCNNLayer* layer, int t, const CvMat*, const CvMat* dE_dY, CvMat* dE_dX ){}
+static void icvCNNImgCroppingBackward( CvCNNLayer* layer, int t, 
+                                       const CvMat * X, const CvMat* dE_dY, CvMat* dE_dX )
+{
+  
+}
 
 /****************************************************************************************/
 /* <dE_dY>, <dE_dX> should be row-vectors.
@@ -1884,30 +1890,80 @@ static void icvCNNImgCroppingBackward( CvCNNLayer* layer, int t, const CvMat*, c
    Input parameter <dE_dY> is the partial derivative of the
    loss function with respect to the planes components
    of the current layer. */
-static void icvCNNRecurrentBackward( CvCNNLayer* _layer,
-                                    int t,
-                                    const CvMat* X,
-                                    const CvMat* dE_dY,
-                                    CvMat* dE_dX )
+static void icvCNNRecurrentBackward( CvCNNLayer* _layer, int t,
+                                     const CvMat * X, const CvMat * dE_dY, CvMat * dE_dX )
 {
   CvMat* dE_dW = 0;
   CV_FUNCNAME( "icvCNNRecurrentBackward" );
   if ( !ICV_IS_CNN_RECURRENT_LAYER(_layer) ) { CV_ERROR( CV_StsBadArg, "Invalid layer" ); }
 
-  {__BEGIN__;
+  __BEGIN__;
 
-  CvCNNRecurrentLayer* layer = (CvCNNRecurrentLayer*)_layer;
-  const int n_outputs = layer->n_output_planes;
-  const int n_inputs  = layer->n_input_planes;
+  CvCNNRecurrentLayer * layer = (CvCNNRecurrentLayer*)_layer;
+  CvCNNRecurrentLayer * hidden_layer = (CvCNNRecurrentLayer*)layer->hidden_layer;
+  CvMat * Wxh = layer->Wxh;
+  CvMat * Whh = layer->Whh;
+  CvMat * Why = layer->Why;
+  CvMat Wxh_submat, Whh_submat, hbiascol, Why_submat, ybiascol;
+  int time_index = layer->time_index;
+  int seq_length = layer->seq_length;
+  int n_inputs = layer->n_input_planes;
+  int n_outputs = layer->n_output_planes;
+  int n_hiddens = layer->n_hiddens;
+  int batch_size = X->cols;
+  CvMat * WX = 0, * WH = 0, * H_prev = 0, * H_curr = 0, * WX_curr, * WH_curr;
+  CvMat * layerH = hidden_layer?hidden_layer->H:layer->H;
+  CvMat * layerY = hidden_layer?hidden_layer->Y:layer->Y;
+  CvMat * layerWX = hidden_layer?hidden_layer->WX:layer->WX;
+  CvMat * layerWH = hidden_layer?hidden_layer->WH:layer->WH;
+  
+  CV_ASSERT( cvGetSize(layerH)==cvGetSize(layerWX) );
+  if ( !hidden_layer ){ CV_ASSERT(layer->H && layer->Y && layer->WX && layer->WH); }
+  
+  // memory allocation
+  CV_CALL(WX = cvCreateMat( n_hiddens, batch_size, CV_32F ));
+  CV_CALL(WH = cvCreateMat( n_hiddens, batch_size, CV_32F ));
+  CV_CALL(H_prev = cvCreateMat( n_hiddens * batch_size, 1, CV_32F ));
+  CV_CALL(H_curr = cvCreateMat( n_hiddens * batch_size, 1, CV_32F ));
+  CV_CALL(WX_curr = cvCreateMat( n_hiddens * batch_size, 1, CV_32F ));
+  CV_CALL(WH_curr = cvCreateMat( n_outputs * batch_size, 1, CV_32F ));
+  cvZero( WX ); cvZero( WH );
+  
+  // bias on last column vector
+  CV_CALL(cvGetCols( Whh, &Whh_submat, 0, Whh->cols-1));
+  CV_CALL(cvGetCols( Why, &Why_submat, 0, Why->cols-1));
+  CV_CALL(cvGetCol( Whh, &hbiascol, Whh->cols-1));
+  CV_CALL(cvGetCol( Why, &ybiascol, Why->cols-1));
+  CvMat * hbias = cvCreateMat(hbiascol.rows,batch_size,CV_32F);
+  CvMat * ybias = cvCreateMat(ybiascol.rows,batch_size,CV_32F);
+  cvRepeat(&hbiascol,hbias);
+  cvRepeat(&ybiascol,ybias);
+
+  // hidden states
+  CvMat H_prev_hdr, H_curr_hdr, WX_curr_hdr, WH_curr_hdr, Y_curr_hdr;
+  if (layer->time_index==0){ cvZero(H_prev); cvZero(WX_curr); cvZero(WH_curr); }else{
+    cvGetCol(layerH,&H_prev_hdr,layer->time_index-1); cvCopy(&H_prev_hdr,H_prev);
+    cvGetCol(layerWX,&WX_curr_hdr,layer->time_index); cvCopy(&WX_curr_hdr,WX_curr);
+    cvGetCol(layerWH,&WH_curr_hdr,layer->time_index); cvCopy(&WH_curr_hdr,WH_curr);
+  }
+  CvMat H_prev_reshaped = cvMat(n_hiddens, batch_size, CV_32F, H_prev->data.ptr);
+  CvMat H_curr_reshaped = cvMat(n_hiddens, batch_size, CV_32F, H_curr->data.ptr);
+  CvMat WX_curr_reshaped = cvMat(n_hiddens, batch_size, CV_32F, WX_curr->data.ptr);
+  CvMat WH_curr_reshaped = cvMat(n_outputs, batch_size, CV_32F, WH_curr->data.ptr);
   
   
 
-  }__END__;
 
-  cvReleaseMat( &dE_dW );
+  __END__;
+
+  if (dE_dW) { cvReleaseMat( &dE_dW ); dE_dW=0; }
 }
 
-static void icvCNNInputDataBackward( CvCNNLayer* layer, int t, const CvMat*, const CvMat* dE_dY, CvMat* dE_dX ){}
+static void icvCNNInputDataBackward( CvCNNLayer* layer, int t, 
+                                     const CvMat*, const CvMat* dE_dY, CvMat* dE_dX )
+{
+  
+}
 
 /*************************************************************************\
  *                           Utility functions                           *
