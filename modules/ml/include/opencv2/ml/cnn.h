@@ -313,23 +313,28 @@ typedef struct CvCNNRecurrentLayer
   int seq_length;
   // number of hidden layers within RNN model, default: exp((log(n_inputs)+log(n_outputs))*.5f)
   int n_hiddens;
-  // hidden states, default size: (n_hiddens*batch_size, seq_length)
-  CvMat * H;
-  // output states, default size: (n_output_planes, batch_size)
-  CvMat * Y;
-  // probabilities, default size: (n_output_planes, batch_size)
-  CvMat * P;
-  // loss
-  double loss;
   // weight matrix for input data, default size: (n_hiddens, n_inputs)
   CvMat * Wxh;
   // weight matrix with bias for hidden data, default size: (n_hiddens, n_hiddens+1)
   CvMat * Whh;
   // weight matrix with bias for generating output data, default size: (n_outputs, n_hiddens+1)
   CvMat * Why;
-  // activation function type,
+  // activation function type for hidden layer activation, 
   // either CV_CNN_LOGISTIC, CV_CNN_HYPERBOLIC, CV_CNN_RELU or CV_CNN_NONE
   int activation_type;
+  // -------------------------------------------------------
+  // VARIABLES REQUIRED FOR COMPUTING FORWARD & BACKWARD PASS
+  // -------------------------------------------------------
+  // hidden states, default size: (n_hiddens*batch_size, seq_length)
+  CvMat * H;
+  // output states, default size: (n_output_planes, batch_size)
+  CvMat * Y;
+  // input states to hidden states, WX = Wxh*X + Whh*H_prev + bh
+  CvMat * WX;
+  // hidden states to output states, WH = Why*H_curr + by
+  CvMat * WH;
+  // accumulated loss for output state loss in all time, loss = \sum_t^T(Y-target)
+  double loss;
 }CvCNNRecurrentLayer;
 
 typedef struct CvCNNInputDataLayer

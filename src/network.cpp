@@ -175,9 +175,13 @@ void CvNetwork::saveWeights(string outFile)
   for (int ii=0;ii<n_layers;ii++,layer=layer->next_layer){
     if (ICV_IS_CNN_RECURRENT_LAYER(layer)){
       CvCNNRecurrentLayer * rnnlayer = (CvCNNRecurrentLayer*)layer;
-      cvWrite(fs,(string(rnnlayer->name)+string("_Wxh")).c_str(),rnnlayer->Wxh);
-      cvWrite(fs,(string(rnnlayer->name)+string("_Whh")).c_str(),rnnlayer->Whh);
-      cvWrite(fs,(string(rnnlayer->name)+string("_Why")).c_str(),rnnlayer->Why);
+      char xhstr[1024],hhstr[1024],hystr[1024];
+      sprintf(xhstr,"%s_step%d_Wxh",rnnlayer->name,rnnlayer->time_index);
+      sprintf(hhstr,"%s_step%d_Whh",rnnlayer->name,rnnlayer->time_index);
+      sprintf(hystr,"%s_step%d_Why",rnnlayer->name,rnnlayer->time_index);
+      cvWrite(fs,xhstr,rnnlayer->Wxh);
+      cvWrite(fs,hhstr,rnnlayer->Whh);
+      cvWrite(fs,hystr,rnnlayer->Why);
     }
   }
   // cvWrite(fs,"conv1",layer->weights);
