@@ -333,8 +333,12 @@ typedef struct CvCNNRecurrentLayer
   CvMat * WX;
   // hidden states to output states, WH = Why*H_curr + by
   CvMat * WH;
-  // accumulated loss for output state loss in all time, loss = \sum_t^T(Y-target)
+  // accumulated loss for output state loss in complete sequence, loss = \sum_t^T(Y-target)
   double loss;
+  // gradient in complete sequence, size is same as output states: (n_output_planes, batch_size)
+  CvMat * dE_dY;
+  // weight updates
+  CvMat * dWxh, * dWhh, * dWhy;
 }CvCNNRecurrentLayer;
 
 typedef struct CvCNNInputDataLayer

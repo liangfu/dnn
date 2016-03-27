@@ -367,16 +367,22 @@ static void icvTrainCNNetwork( CvCNNetwork* network,const CvMat* images, const C
     CV_CALL(layer->forward( layer, X[k], X[k+1] ));
 #else
     { CV_CALL(layer->forward( layer, X[k], X[k+1] ));
-      if (ICV_IS_CNN_RECURRENT_LAYER(layer)){
-        CvCNNLayer * hidden_layer = ((CvCNNRecurrentLayer*)layer)->hidden_layer;
-        CvMat * Y = hidden_layer?((CvCNNRecurrentLayer*)hidden_layer)->Y:
-                                 ((CvCNNRecurrentLayer*)layer)->Y;
-        cvPrintf(stderr,"%.2f ", Y);
-        CV_SHOW(Y);
-      }// else{icvVisualizeCNNLayer(layer, X[k+1]);}
+      // if (ICV_IS_CNN_RECURRENT_LAYER(layer)){
+      //   CvCNNLayer * hidden_layer = ((CvCNNRecurrentLayer*)layer)->hidden_layer;
+      //   CvMat * Y = hidden_layer?((CvCNNRecurrentLayer*)hidden_layer)->Y:
+      //                            ((CvCNNRecurrentLayer*)layer)->Y;
+      //   cvPrintf(stderr,"%.2f ", Y);
+      //   CV_SHOW(Y);
+      // }// else{icvVisualizeCNNLayer(layer, X[k+1]);}
     }
     CV_CALL(layer->forward( layer, X[k], X[k+1] ));
-    // {icvVisualizeCNNLayer(layer, X[k+1]);fprintf(stderr,"\n");}
+    if (ICV_IS_CNN_RECURRENT_LAYER(layer)){
+      CvCNNLayer * hidden_layer = ((CvCNNRecurrentLayer*)layer)->hidden_layer;
+      CvMat * Y = hidden_layer?((CvCNNRecurrentLayer*)hidden_layer)->Y:((CvCNNRecurrentLayer*)layer)->Y;
+      fprintf(stderr,"input: ");cvPrintf(stderr,"%.0f ", X0_transpose);
+      fprintf(stderr,"output: ");cvPrintf(stderr,"%.2f ", Y);
+      CV_SHOW(Y);
+    }// else{icvVisualizeCNNLayer(layer, X[k+1]);fprintf(stderr,"\n");}
 #endif
 
     // 2) Compute the gradient
@@ -1101,33 +1107,35 @@ ML_IMPL CvCNNLayer* cvCreateCNNRecurrentLayer( const char * name,
   layer->time_index = time_index;
   layer->seq_length = seq_length;
   layer->n_hiddens = n_hiddens;
-  layer->H = 0;
-  layer->Y = 0;
-  layer->loss = 0;
   layer->Wxh = 0;
   layer->Whh = 0;
   layer->Why = 0;
   layer->activation_type = activation_type;
+  layer->H = 0;
+  layer->Y = 0;
+  layer->loss = 0;
+  layer->dE_dY = 0;
 
   int n_hiddens = layer->n_hiddens;
-  CV_CALL(layer->Wxh = cvCreateMat( n_hiddens, n_inputs , CV_32F ));
-  CV_CALL(layer->Whh = cvCreateMat( n_hiddens, n_hiddens+1, CV_32F ));
-  CV_CALL(layer->Why = cvCreateMat( n_outputs, n_hiddens+1, CV_32F ));
-
-  if ( Wxh || Whh || Why  ){
-    CV_CALL(cvCopy( Wxh, layer->Wxh ));
-    CV_CALL(cvCopy( Whh, layer->Whh ));
-    CV_CALL(cvCopy( Why, layer->Why ));
-  } else {
-    CvRNG rng = cvRNG( -1 );
-    cvRandArr( &rng, layer->Wxh, CV_RAND_UNI, 
-               cvScalar(-1.f/sqrt(n_inputs)), cvScalar(1.f/sqrt(n_inputs)) );
-    cvRandArr( &rng, layer->Whh, CV_RAND_UNI, 
-               cvScalar(-1.f/sqrt(n_hiddens)), cvScalar(1.f/sqrt(n_hiddens)) );
-    cvRandArr( &rng, layer->Why, CV_RAND_UNI, 
-               cvScalar(-1.f/sqrt(n_hiddens)), cvScalar(1.f/sqrt(n_hiddens)) );
-    for (int ii=0;ii<n_hiddens;ii++){ CV_MAT_ELEM(*layer->Whh,float,ii,n_hiddens)=0; }
-    for (int ii=0;ii<n_outputs;ii++){ CV_MAT_ELEM(*layer->Why,float,ii,n_hiddens)=0; }
+  if (!hidden_layer){
+    CV_CALL(layer->Wxh = cvCreateMat( n_hiddens, n_inputs , CV_32F ));
+    CV_CALL(layer->Whh = cvCreateMat( n_hiddens, n_hiddens+1, CV_32F ));
+    CV_CALL(layer->Why = cvCreateMat( n_outputs, n_hiddens+1, CV_32F ));
+    if ( Wxh || Whh || Why  ){
+      CV_CALL(cvCopy( Wxh, layer->Wxh ));
+      CV_CALL(cvCopy( Whh, layer->Whh ));
+      CV_CALL(cvCopy( Why, layer->Why ));
+    } else {
+      CvRNG rng = cvRNG( -1 );
+      cvRandArr( &rng, layer->Wxh, CV_RAND_UNI, 
+                 cvScalar(-1.f/sqrt(n_inputs)), cvScalar(1.f/sqrt(n_inputs)) );
+      cvRandArr( &rng, layer->Whh, CV_RAND_UNI, 
+                 cvScalar(-1.f/sqrt(n_hiddens)), cvScalar(1.f/sqrt(n_hiddens)) );
+      cvRandArr( &rng, layer->Why, CV_RAND_UNI, 
+                 cvScalar(-1.f/sqrt(n_hiddens)), cvScalar(1.f/sqrt(n_hiddens)) );
+      for (int ii=0;ii<n_hiddens;ii++){ CV_MAT_ELEM(*layer->Whh,float,ii,n_hiddens)=0; }
+      for (int ii=0;ii<n_outputs;ii++){ CV_MAT_ELEM(*layer->Why,float,ii,n_hiddens)=0; }
+    }
   }
 
   __END__;
@@ -1479,9 +1487,6 @@ static void icvCNNRecurrentForward( CvCNNLayer* _layer, const CvMat* X, CvMat * 
 
   CvCNNRecurrentLayer * layer = (CvCNNRecurrentLayer*)_layer;
   CvCNNRecurrentLayer * hidden_layer = (CvCNNRecurrentLayer*)layer->hidden_layer;
-  CvMat * Wxh = layer->Wxh;
-  CvMat * Whh = layer->Whh;
-  CvMat * Why = layer->Why;
   CvMat Wxh_submat, Whh_submat, hbiascol, Why_submat, ybiascol;
   int time_index = layer->time_index;
   int seq_length = layer->seq_length;
@@ -1500,11 +1505,14 @@ static void icvCNNRecurrentForward( CvCNNLayer* _layer, const CvMat* X, CvMat * 
     layer->WX = cvCreateMat( n_hiddens * batch_size, seq_length, CV_32F ); cvZero(layer->WX);
     layer->WH = cvCreateMat( n_outputs * batch_size, seq_length, CV_32F ); cvZero(layer->WH);
   }
-  CvMat * H = hidden_layer?hidden_layer->H:layer->H;
+  CvMat * Wxh = hidden_layer?hidden_layer->Wxh:layer->Wxh;
+  CvMat * Whh = hidden_layer?hidden_layer->Whh:layer->Whh;
+  CvMat * Why = hidden_layer?hidden_layer->Why:layer->Why;
+  CvMat * layerH = hidden_layer?hidden_layer->H:layer->H;
   CvMat * layerY = hidden_layer?hidden_layer->Y:layer->Y;
   CvMat * layerWX = hidden_layer?hidden_layer->WX:layer->WX;
   CvMat * layerWH = hidden_layer?hidden_layer->WH:layer->WH;
-  CV_ASSERT(cvGetSize(H)==cvGetSize(layerWX));
+  CV_ASSERT(cvGetSize(layerH)==cvGetSize(layerWX));
   CV_CALL(WX = cvCreateMat( n_hiddens, batch_size, CV_32F ));
   CV_CALL(WH = cvCreateMat( n_hiddens, batch_size, CV_32F ));
   CV_CALL(H_prev = cvCreateMat( n_hiddens * batch_size, 1, CV_32F ));
@@ -1526,7 +1534,7 @@ static void icvCNNRecurrentForward( CvCNNLayer* _layer, const CvMat* X, CvMat * 
   // hidden states
   CvMat H_prev_hdr, H_curr_hdr, WX_curr_hdr, WH_curr_hdr, Y_curr_hdr;
   if (layer->time_index==0){ cvZero(H_prev); cvZero(WX_curr); cvZero(WH_curr); }else{
-    cvGetCol(H,&H_prev_hdr,layer->time_index-1);      cvCopy(&H_prev_hdr,H_prev);
+    cvGetCol(layerH,&H_prev_hdr,layer->time_index-1); cvCopy(&H_prev_hdr,H_prev);
     cvGetCol(layerWX,&WX_curr_hdr,layer->time_index); cvCopy(&WX_curr_hdr,WX_curr);
     cvGetCol(layerWH,&WH_curr_hdr,layer->time_index); cvCopy(&WH_curr_hdr,WH_curr);
   }
@@ -1549,7 +1557,7 @@ static void icvCNNRecurrentForward( CvCNNLayer* _layer, const CvMat* X, CvMat * 
   }else{assert(false);}
 
   CV_ASSERT(batch_size==1);
-  cvGetCol(H,&H_curr_hdr,layer->time_index); cvCopy(H_curr,&H_curr_hdr);
+  cvGetCol(layerH,&H_curr_hdr,layer->time_index); cvCopy(H_curr,&H_curr_hdr);
   cvGetCol(layerY,&Y_curr_hdr,layer->time_index); 
 
   // Y = sigmoid(Why * H + by)
@@ -1576,8 +1584,9 @@ static void icvCNNInputDataForward( CvCNNLayer * _layer, const CvMat* X, CvMat* 
   CvCNNInputDataLayer * layer = (CvCNNInputDataLayer*)_layer;
   if (!layer->input_data){
     layer->input_data = cvCloneMat(X);
+  }else{
+    cvCopy(X,layer->input_data);
   }
-
   __END__;
 }
 
@@ -1887,35 +1896,52 @@ static void icvCNNRecurrentBackward( CvCNNLayer* _layer, int t,
 
   CvCNNRecurrentLayer * layer = (CvCNNRecurrentLayer*)_layer;
   CvCNNRecurrentLayer * hidden_layer = (CvCNNRecurrentLayer*)layer->hidden_layer;
-  CvMat * Wxh = layer->Wxh;
-  CvMat * Whh = layer->Whh;
-  CvMat * Why = layer->Why;
-  CvMat Wxh_submat, Whh_submat, hbiascol, Why_submat, ybiascol;
+  CvMat * Wxh = hidden_layer?hidden_layer->Wxh:layer->Wxh;
+  CvMat * Whh = hidden_layer?hidden_layer->Whh:layer->Whh;
+  CvMat * Why = hidden_layer?hidden_layer->Why:layer->Why;
+  CvMat * layerH = hidden_layer?hidden_layer->H:layer->H;
+  CvMat * layerY = hidden_layer?hidden_layer->Y:layer->Y;
+  CvMat * layerWX = hidden_layer?hidden_layer->WX:layer->WX;
+  CvMat * layerWH = hidden_layer?hidden_layer->WH:layer->WH;
+  CvMat * layer_dE_dY = hidden_layer?hidden_layer->dE_dY:layer->dE_dY;
+  CvMat * layer_dWxh = hidden_layer?hidden_layer->dWxh:layer->dWxh;
+  CvMat * layer_dWhh = hidden_layer?hidden_layer->dWhh:layer->dWhh;
+  CvMat * layer_dWhy = hidden_layer?hidden_layer->dWhy:layer->dWhy;
+  CvMat  Wxh_submat,  Whh_submat,  hbiascol,  Why_submat,  ybiascol;
+  CvMat dWxh_submat, dWhh_submat, dhbiascol, dWhy_submat, dybiascol;
   int time_index = layer->time_index;
   int seq_length = layer->seq_length;
   int n_inputs = layer->n_input_planes;
   int n_outputs = layer->n_output_planes;
   int n_hiddens = layer->n_hiddens;
   int batch_size = X->cols;
-  CvMat * WX = 0, * WH = 0, * H_prev = 0, * H_curr = 0, * WX_curr, * WH_curr;
-  CvMat * layerH = hidden_layer?hidden_layer->H:layer->H;
-  CvMat * layerY = hidden_layer?hidden_layer->Y:layer->Y;
-  CvMat * layerWX = hidden_layer?hidden_layer->WX:layer->WX;
-  CvMat * layerWH = hidden_layer?hidden_layer->WH:layer->WH;
-  CvMat * dE_dY_transpose = cvCreateMat(n_outputs, batch_size, CV_32F);
+  CvMat * WX = 0, * WH = 0, * H_prev = 0, * H_curr = 0, * WX_curr = 0, * WH_curr = 0;
+  CvMat * dE_dY_curr = 0, * dWxh = 0, * dWhh = 0, * dWhy = 0;
   
   CV_ASSERT( cvGetSize(layerH)==cvGetSize(layerWX) );
   if ( !hidden_layer ){ CV_ASSERT(layer->H && layer->Y && layer->WX && layer->WH); }
-
-  // bias on last column vector
-  CV_CALL(cvGetCols( Whh, &Whh_submat, 0, Whh->cols-1));
-  CV_CALL(cvGetCols( Why, &Why_submat, 0, Why->cols-1));
-  CV_CALL(cvGetCol( Whh, &hbiascol, Whh->cols-1));
-  CV_CALL(cvGetCol( Why, &ybiascol, Why->cols-1));
-  CvMat * hbias = cvCreateMat(hbiascol.rows,batch_size,CV_32F);
-  CvMat * ybias = cvCreateMat(ybiascol.rows,batch_size,CV_32F);
-  cvRepeat(&hbiascol,hbias);
-  cvRepeat(&ybiascol,ybias);
+  if ( hidden_layer ){
+    if ( layer->time_index==seq_length-1 ){  // assuming last layer
+      if (!hidden_layer->dE_dY){
+        CV_ASSERT(layer->time_index==seq_length-1 && dE_dY->cols==seq_length);
+        hidden_layer->dE_dY = cvCloneMat(dE_dY); layer_dE_dY = hidden_layer->dE_dY;
+      }else{ cvCopy(dE_dY,hidden_layer->dE_dY); }
+      if (!hidden_layer->dWxh){ CV_ASSERT(!hidden_layer->dWhh && !hidden_layer->dWhy);
+        hidden_layer->dWxh = cvCreateMat(Wxh->rows,Wxh->cols,CV_32F);
+        hidden_layer->dWhh = cvCreateMat(Whh->rows,Whh->cols,CV_32F);
+        hidden_layer->dWhy = cvCreateMat(Why->rows,Why->cols,CV_32F);
+      }
+      cvZero(hidden_layer->dWxh);
+      cvZero(hidden_layer->dWhh);
+      cvZero(hidden_layer->dWhy);
+    }else{ 
+      CV_ASSERT(dE_dY->cols==1 && layer_dE_dY==hidden_layer->dE_dY &&
+                layer_dWxh==hidden_layer->dWxh && layer_dWhh==hidden_layer->dWhh && 
+                layer_dWhy==hidden_layer->dWhy);
+    }
+  }else{ CV_ASSERT(dE_dY->cols==1 && layer_dE_dY==layer->dE_dY && 
+                   layer_dWxh==layer->dWxh && layer_dWhh==layer->dWhh && layer_dWhy==layer->dWhy); 
+  }
   
   // memory allocation
   CV_CALL(WX = cvCreateMat( n_hiddens, batch_size, CV_32F ));
@@ -1925,15 +1951,34 @@ static void icvCNNRecurrentBackward( CvCNNLayer* _layer, int t,
   CV_CALL(WX_curr = cvCreateMat( n_hiddens * batch_size, 1, CV_32F ));
   CV_CALL(WH_curr = cvCreateMat( n_outputs * batch_size, 1, CV_32F ));
   cvZero( WX ); cvZero( WH );
-  CV_CALL(dE_dY_afder = cvCreateMat( n_outputs, batch_size, CV_32F ));
-  CV_CALL(dE_dWxh = cvCreateMat( 1, Wxh->rows*Wxh->cols, CV_32F ));
+  CV_CALL(dE_dY_curr = cvCreateMat( n_outputs * batch_size, 1, CV_32F ));
+  CV_CALL(dE_dY_afder = cvCreateMat( n_outputs * batch_size, 1, CV_32F ));
+  CV_CALL(dWxh = cvCreateMat( Wxh->rows, Wxh->cols, CV_32F )); cvZero(dWxh);
+  CV_CALL(dWhh = cvCreateMat( Whh->rows, Whh->cols, CV_32F )); cvZero(dWhh);
+  CV_CALL(dWhy = cvCreateMat( Why->rows, Why->cols, CV_32F )); cvZero(dWhy);
+
+  // bias on last column vector
+  CV_CALL(cvGetCols( Whh, &Whh_submat, 0, Whh->cols-1));
+  CV_CALL(cvGetCols( Why, &Why_submat, 0, Why->cols-1));
+  CV_CALL(cvGetCol( Whh, &hbiascol, Whh->cols-1));
+  CV_CALL(cvGetCol( Why, &ybiascol, Why->cols-1));
+  CvMat * hbias = cvCreateMat(hbiascol.rows,batch_size,CV_32F); cvRepeat(&hbiascol,hbias);
+  CvMat * ybias = cvCreateMat(ybiascol.rows,batch_size,CV_32F); cvRepeat(&ybiascol,ybias);
+  CV_CALL(cvGetCols( dWhh, &dWhh_submat, 0, dWhh->cols-1));
+  CV_CALL(cvGetCols( dWhy, &dWhy_submat, 0, dWhy->cols-1));
+  CV_CALL(cvGetCol(  dWhh, &dhbiascol,      dWhh->cols-1));
+  CV_CALL(cvGetCol(  dWhy, &dybiascol,      dWhy->cols-1));
+  CvMat * dhbias = cvCreateMat(dhbiascol.rows,batch_size,CV_32F); cvRepeat(&dhbiascol,dhbias);
+  CvMat * dybias = cvCreateMat(dybiascol.rows,batch_size,CV_32F); cvRepeat(&dybiascol,dybias);
 
   // hidden states
   CvMat H_prev_hdr, H_curr_hdr, WX_curr_hdr, WH_curr_hdr, Y_curr_hdr;
+  CvMat dE_dY_curr_hdr;
   if (layer->time_index==0){ cvZero(H_prev); cvZero(WX_curr); cvZero(WH_curr); }else{
     cvGetCol(layerH,&H_prev_hdr,layer->time_index-1); cvCopy(&H_prev_hdr,H_prev);
     cvGetCol(layerWX,&WX_curr_hdr,layer->time_index); cvCopy(&WX_curr_hdr,WX_curr);
     cvGetCol(layerWH,&WH_curr_hdr,layer->time_index); cvCopy(&WH_curr_hdr,WH_curr);
+    cvGetCol(hidden_layer->dE_dY,&dE_dY_curr_hdr,layer->time_index); cvCopy(&dE_dY_curr_hdr,dE_dY_curr);
   }
   CvMat H_prev_reshaped = cvMat(n_hiddens, batch_size, CV_32F, H_prev->data.ptr);
   CvMat H_curr_reshaped = cvMat(n_hiddens, batch_size, CV_32F, H_curr->data.ptr);
@@ -1941,14 +1986,12 @@ static void icvCNNRecurrentBackward( CvCNNLayer* _layer, int t,
   CvMat WH_curr_reshaped = cvMat(n_outputs, batch_size, CV_32F, WH_curr->data.ptr);
   
   // compute (tanh'(WX))*dE_dY
-  if (layer->activation_type==CV_CNN_NONE){
-  }else if (layer->activation_type==CV_CNN_HYPERBOLIC){ cvTanhDer(layerWX,dE_dY_afder);
-  }else if (layer->activation_type==CV_CNN_LOGISTIC){   cvSigmoidDer(layerWX,dE_dY_afder);
-  }else if (layer->activation_type==CV_CNN_RELU){       cvReLUDer(layerWX,dE_dY_afder);
-  }else{assert(false);}
-  cvTranspose(dE_dY,dE_dY_transpose);
-  cvMul(dE_dY_afder,dE_dY_transpose,dE_dY_afder);
+  cvSigmoidDer(WH_curr,dE_dY_afder);
+  cvMul(dE_dY_afder,dE_dY_curr,dE_dY_afder);
 
+  // dWhy += dE_dY_afder .* H_curr_transpose
+  cvGEMM(dE_dY_afder,H_curr,1.f,0,1.f,&dWhy_submat,CV_GEMM_B_T);
+  cvAdd(layer_dWhy_submat,dWhy_submat,layer_dWhy_submat);
 
 
   __END__;
