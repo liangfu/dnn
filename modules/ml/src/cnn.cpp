@@ -1909,6 +1909,8 @@ static void icvCNNRecurrentBackward( CvCNNLayer* _layer, int t,
   CvMat * layer_dWhy = hidden_layer?hidden_layer->dWhy:layer->dWhy;
   CvMat  Wxh_submat,  Whh_submat,  hbiascol,  Why_submat,  ybiascol;
   CvMat dWxh_submat, dWhh_submat, dhbiascol, dWhy_submat, dybiascol;
+  CvMat layer_dWxh_submat, layer_dWhh_submat, layer_dhbiascol,
+                           layer_dWhy_submat, layer_dybiascol;
   int time_index = layer->time_index;
   int seq_length = layer->seq_length;
   int n_inputs = layer->n_input_planes;
@@ -1970,6 +1972,12 @@ static void icvCNNRecurrentBackward( CvCNNLayer* _layer, int t,
   CV_CALL(cvGetCol(  dWhy, &dybiascol,      dWhy->cols-1));
   CvMat * dhbias = cvCreateMat(dhbiascol.rows,batch_size,CV_32F); cvRepeat(&dhbiascol,dhbias);
   CvMat * dybias = cvCreateMat(dybiascol.rows,batch_size,CV_32F); cvRepeat(&dybiascol,dybias);
+  CV_CALL(cvGetCols( layer_dWhh, &layer_dWhh_submat, 0, layer_dWhh->cols-1));
+  CV_CALL(cvGetCols( layer_dWhy, &layer_dWhy_submat, 0, layer_dWhy->cols-1));
+  CV_CALL(cvGetCol(  layer_dWhh, &layer_dhbiascol,      layer_dWhh->cols-1));
+  CV_CALL(cvGetCol(  layer_dWhy, &layer_dybiascol,      layer_dWhy->cols-1));
+  CvMat * layer_dhbias = cvCreateMat(layer_dhbiascol.rows,batch_size,CV_32F); cvRepeat(&layer_dhbiascol,layer_dhbias);
+  CvMat * layer_dybias = cvCreateMat(layer_dybiascol.rows,batch_size,CV_32F); cvRepeat(&layer_dybiascol,layer_dybias);
 
   // hidden states
   CvMat H_prev_hdr, H_curr_hdr, WX_curr_hdr, WH_curr_hdr, Y_curr_hdr;
@@ -1989,10 +1997,15 @@ static void icvCNNRecurrentBackward( CvCNNLayer* _layer, int t,
   cvSigmoidDer(WH_curr,dE_dY_afder);
   cvMul(dE_dY_afder,dE_dY_curr,dE_dY_afder);
 
-  // dWhy += dE_dY_afder .* H_curr_transpose
+  // dWhy += dE_dY_afder .* H_curr'
   cvGEMM(dE_dY_afder,H_curr,1.f,0,1.f,&dWhy_submat,CV_GEMM_B_T);
-  cvAdd(layer_dWhy_submat,dWhy_submat,layer_dWhy_submat);
+  cvAdd(&layer_dWhy_submat,&dWhy_submat,&layer_dWhy_submat);
 
+  // dby += dy
+  CV_ASSERT(cvGetSize(&layer_dybiascol)==cvGetSize(dE_dY_afder));
+  cvAdd(&layer_dybiascol,dE_dY_afder,&layer_dybiascol);
+
+  
 
   __END__;
 
