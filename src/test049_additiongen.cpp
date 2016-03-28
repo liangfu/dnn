@@ -35,7 +35,7 @@ int main(int argc, char * argv[])
   const int n_test_samples = parser.get<int>("testsize");
   const int ndigits = 3;
 
-  CvRNG rng;
+  CvRNG rng = cvRNG(-1);
   CvMat * trainingInt = cvCreateMat(n_train_samples,2,CV_32S);
   CvMat * responseInt = cvCreateMat(n_train_samples,1,CV_32S);
   CvMat * testingInt  = cvCreateMat(n_test_samples,2,CV_32S);
