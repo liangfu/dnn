@@ -11,7 +11,7 @@
 
 typedef cv::CommandLineParser CvCommandLineParser;
 
-void icvConvertIntToDecimal(const int ndigits, CvMat * src, CvMat * dst);
+void icvConvertIntToBinary(CvMat * trainingInt, CvMat * training);
 
 int main(int argc, char * argv[])
 {
@@ -33,20 +33,19 @@ int main(int argc, char * argv[])
   const char * expected_filename_xml = cnn->solver()->expected_filename();
   const int n_train_samples = parser.get<int>("trainsize");
   const int n_test_samples = parser.get<int>("testsize");
-  const int ndigits = 3;
 
   CvRNG rng;
   CvMat * trainingInt = cvCreateMat(n_train_samples,2,CV_32S);
   CvMat * responseInt = cvCreateMat(n_train_samples,1,CV_32S);
-  CvMat * testingInt  = cvCreateMat(n_test_samples,2,CV_32S);
+  CvMat * testingInt = cvCreateMat(n_test_samples,2,CV_32S);
   CvMat * expectedInt = cvCreateMat(n_test_samples,1,CV_32S);
-  CvMat * training = cvCreateMat(n_train_samples,2*ndigits*10,CV_32F);
-  CvMat * response = cvCreateMat(n_train_samples,1*ndigits*10,CV_32F);
-  CvMat * testing  = cvCreateMat(n_test_samples, 2*ndigits*10,CV_32F);
-  CvMat * expected = cvCreateMat(n_test_samples, 1*ndigits*10,CV_32F);
+  CvMat * training = cvCreateMat(n_train_samples,20,CV_32F);
+  CvMat * response = cvCreateMat(n_train_samples,10,CV_32F);
+  CvMat * testing = cvCreateMat(n_test_samples,20,CV_32F);
+  CvMat * expected = cvCreateMat(n_test_samples,10,CV_32F);
 
-  cvRandArr(&rng,trainingInt,CV_RAND_UNI,cvScalar(10),cvScalar(pow(10.f,ndigits)*.5f));
-  cvRandArr(&rng,testingInt, CV_RAND_UNI,cvScalar(10),cvScalar(pow(10.f,ndigits)*.5f));
+  cvRandArr(&rng,trainingInt,CV_RAND_UNI,cvScalar(10),cvScalar(100));
+  cvRandArr(&rng,testingInt,CV_RAND_UNI,cvScalar(10),cvScalar(100));
 
   CvMat firstcol,secondcol;
   cvGetCol(trainingInt,&firstcol,0);
@@ -56,10 +55,10 @@ int main(int argc, char * argv[])
   cvGetCol(testingInt,&secondcol,1);
   cvAdd(&firstcol,&secondcol,expectedInt);
 
-  icvConvertIntToDecimal(ndigits,trainingInt,training);
-  icvConvertIntToDecimal(ndigits,responseInt,response);
-  icvConvertIntToDecimal(ndigits,testingInt,testing);
-  icvConvertIntToDecimal(ndigits,expectedInt,expected);
+  icvConvertIntToBinary(trainingInt,training);
+  icvConvertIntToBinary(responseInt,response);
+  icvConvertIntToBinary(testingInt,testing);
+  icvConvertIntToBinary(expectedInt,expected);
 
   cvSave(training_filename_xml,training);
   cvSave(response_filename_xml,response);
@@ -69,35 +68,28 @@ int main(int argc, char * argv[])
   return 0;
 }
 
-void icvConvertIntToDecimal(const int ndigits, CvMat * src, CvMat * dst)
+void icvConvertIntToBinary(CvMat * src, CvMat * dst)
 {
   const int nsamples = src->rows;
-  const int nnumbers = src->cols;
+  const int ndigits = src->cols;
+  const int nbinaries = dst->cols/ndigits;
+  int number = 0; float * binary = new float[nbinaries];
   assert(dst->rows==nsamples);
   assert(CV_MAT_TYPE(src->type)==CV_32S);
   assert(CV_MAT_TYPE(dst->type)==CV_32F);
-  CvMat * values = cvCreateMat(ndigits,10,CV_32F);
-  int stepsize = ndigits*10*sizeof(float);
   for (int ii=0;ii<nsamples;ii++){
-#if 0 // debug
-    fprintf(stderr,"number: ");
-    for (int jj=0;jj<nnumbers;jj++){
-      fprintf(stderr,"%d ",CV_MAT_ELEM(*src,int,ii,jj));
+  for (int jj=0;jj<ndigits;jj++){
+    number = CV_MAT_ELEM(*src,int,ii,jj);
+    for (int kk=0;kk<nbinaries;kk++){
+      binary[kk]=float(int((number>>kk)&0x01)); // reverse order
     }
-#endif
-    for (int jj=0;jj<nnumbers;jj++){
-      cvZero(values);
-      int number = CV_MAT_ELEM(*src,int,ii,jj);
-      for (int kk=0;kk<ndigits;kk++){
-        int pos = cvFloor((number%int(pow(10.f,kk+1)))/pow(10.f,kk));
-        CV_MAT_ELEM(*values,float,kk,pos)=1;
-      }
-      memcpy(dst->data.ptr+stepsize*(nnumbers*ii+jj),values->data.ptr,stepsize);
+    memcpy(dst->data.fl+ndigits*nbinaries*ii+nbinaries*jj,binary,sizeof(float)*nbinaries);
+    if (ii==0){
+      fprintf(stderr,"%d: %.0f %.0f %.0f %.0f %.0f %.0f %.0f %.0f %.0f %.0f\n",number,
+              binary[0],binary[1],binary[2],binary[3],binary[4],
+              binary[5],binary[6],binary[7],binary[8],binary[9]);
     }
-#if 0 // debug
-    fprintf(stderr,"\noutput:\n");
-    cvPrintf(stderr,"%.0f ",dst,cvRect(0,ii,dst->cols,1));
-#endif
   }
-  cvReleaseMat(&values);
+  }fprintf(stderr,"--\n");
+  delete [] binary;
 }

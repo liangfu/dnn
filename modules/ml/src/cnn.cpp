@@ -2040,8 +2040,8 @@ static void icvCNNRecurrentBackward( CvCNNLayer* _layer, int t,
     cvScaleAdd( layer_dWxh,        cvScalar(eta),  layer_Wxh,  layer_Wxh );
     cvScaleAdd(&layer_dWhh_submat, cvScalar(eta), &Whh_submat, &Whh_submat );
     cvScaleAdd(&layer_dWhy_submat, cvScalar(eta), &Why_submat, &Why_submat );
-    cvScaleAdd(&dhbiascol, cvScalar(eta), &hbiascol, &hbiascol );
-    cvScaleAdd(&dybiascol, cvScalar(eta), &ybiascol, &ybiascol );
+    cvScaleAdd(&dhbiascol,         cvScalar(eta), &hbiascol, &hbiascol );
+    cvScaleAdd(&dybiascol,         cvScalar(eta), &ybiascol, &ybiascol );
   }
 
   __END__;
