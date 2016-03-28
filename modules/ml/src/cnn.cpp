@@ -376,14 +376,14 @@ static void icvTrainCNNetwork( CvCNNetwork* network,const CvMat* images, const C
       // }// else{icvVisualizeCNNLayer(layer, X[k+1]);}
     }
     CV_CALL(layer->forward( layer, X[k], X[k+1] ));
-    if (ICV_IS_CNN_RECURRENT_LAYER(layer)){
+    if (ICV_IS_CNN_RECURRENT_LAYER(layer) && n==max_iter){
       CvCNNLayer * hidden_layer = ((CvCNNRecurrentLayer*)layer)->hidden_layer;
       CvMat * Y=hidden_layer?((CvCNNRecurrentLayer*)hidden_layer)->Y:((CvCNNRecurrentLayer*)layer)->Y;
       CvMat X0_reshaped = cvMat(X0_transpose->cols/first_layer->input_height,
                                 first_layer->input_height,CV_32F,X0_transpose->data.ptr);
       CV_ASSERT(X0_reshaped.rows*X0_reshaped.cols==X0_transpose->rows*X0_transpose->cols);
-      // fprintf(stderr,"input: \n");cvPrintf(stderr,"%.0f ", &X0_reshaped);
-      // fprintf(stderr,"output: ");cvPrintf(stderr,"%.2f ", Y);
+      fprintf(stderr,"input: \n");cvPrintf(stderr,"%.0f ", &X0_reshaped);
+      fprintf(stderr,"output: ");cvPrintf(stderr,"%.2f ", Y);
       // CV_SHOW(Y);
     }// else{icvVisualizeCNNLayer(layer, X[k+1]);fprintf(stderr,"\n");}
 #endif
@@ -396,12 +396,12 @@ static void icvTrainCNNetwork( CvCNNetwork* network,const CvMat* images, const C
       cvGetRow(etalon,&etalon_dst,k);
       cvCopy(&etalon_src, &etalon_dst);
     }
-    // {
-    //   CvMat etalon_reshaped = cvMat(3,10,CV_32F,etalon->data.ptr);
-    //   CV_ASSERT(etalon_reshaped.rows*etalon_reshaped.cols==etalon->rows*etalon->cols);
-    //   fprintf(stderr,"expect: \n");cvPrintf(stderr,"%.0f ", &etalon_reshaped);
-    //   fprintf(stderr,"----------------------------------------------\n");
-    // }
+    if (n==max_iter){
+      CvMat etalon_reshaped = cvMat(3,10,CV_32F,etalon->data.ptr);
+      CV_ASSERT(etalon_reshaped.rows*etalon_reshaped.cols==etalon->rows*etalon->cols);
+      fprintf(stderr,"expect: \n");cvPrintf(stderr,"%.0f ", &etalon_reshaped);
+      fprintf(stderr,"----------------------------------------------\n");
+    }
     cvSub( dE_dX[n_layers], etalon, dE_dX[n_layers] );
 
     // 3) Update weights by the gradient descent
