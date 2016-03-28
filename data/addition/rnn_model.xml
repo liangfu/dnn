@@ -23,6 +23,7 @@
 <layer-2>
 	<type>Recurrent</type>
 	<name>rnn1</name>
+	<n_input_planes>20</n_input_planes> <!-- TODO: set input plane size with information from previous layer -->
 	<n_hiddens>20</n_hiddens>
 	<n_output_planes>10</n_output_planes>
 	<seq_length>3</seq_length>

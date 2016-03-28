@@ -179,9 +179,11 @@ void CvNetwork::saveWeights(string outFile)
       sprintf(xhstr,"%s_step%d_Wxh",rnnlayer->name,rnnlayer->time_index);
       sprintf(hhstr,"%s_step%d_Whh",rnnlayer->name,rnnlayer->time_index);
       sprintf(hystr,"%s_step%d_Why",rnnlayer->name,rnnlayer->time_index);
-      cvWrite(fs,xhstr,rnnlayer->Wxh);
-      cvWrite(fs,hhstr,rnnlayer->Whh);
-      cvWrite(fs,hystr,rnnlayer->Why);
+      if (rnnlayer->Wxh){
+        cvWrite(fs,xhstr,rnnlayer->Wxh);
+        cvWrite(fs,hhstr,rnnlayer->Whh);
+        cvWrite(fs,hystr,rnnlayer->Why);
+      }else{assert(!rnnlayer->Wxh && !rnnlayer->Whh && !rnnlayer->Why);}
     }
   }
   // cvWrite(fs,"conv1",layer->weights);

@@ -379,28 +379,29 @@ static void icvTrainCNNetwork( CvCNNetwork* network,const CvMat* images, const C
     if (ICV_IS_CNN_RECURRENT_LAYER(layer)){
       CvCNNLayer * hidden_layer = ((CvCNNRecurrentLayer*)layer)->hidden_layer;
       CvMat * Y=hidden_layer?((CvCNNRecurrentLayer*)hidden_layer)->Y:((CvCNNRecurrentLayer*)layer)->Y;
-      CvMat X0_reshaped = cvMat(2,10,CV_32F,X0_transpose->data.ptr);
-      fprintf(stderr,"input: \n");cvPrintf(stderr,"%.0f ", &X0_reshaped);
-      fprintf(stderr,"output: ");cvPrintf(stderr,"%.2f ", Y);
-      CV_SHOW(Y);
+      CvMat X0_reshaped = cvMat(X0_transpose->cols/first_layer->input_height,
+                                first_layer->input_height,CV_32F,X0_transpose->data.ptr);
+      CV_ASSERT(X0_reshaped.rows*X0_reshaped.cols==X0_transpose->rows*X0_transpose->cols);
+      // fprintf(stderr,"input: \n");cvPrintf(stderr,"%.0f ", &X0_reshaped);
+      // fprintf(stderr,"output: ");cvPrintf(stderr,"%.2f ", Y);
+      // CV_SHOW(Y);
     }// else{icvVisualizeCNNLayer(layer, X[k+1]);fprintf(stderr,"\n");}
 #endif
 
     // 2) Compute the gradient
-    CvMat etalon_src,etalon_dst;
-    if (ICV_IS_CNN_RECURRENT_LAYER(layer)){
-      CvCNNLayer * reference_layer = ((CvCNNRecurrentLayer*)layer)->hidden_layer;
-      cvCopy(((CvCNNRecurrentLayer*)reference_layer)->Y,dE_dX[n_layers]);
-    }else{
-      cvTranspose( X[n_layers], dE_dX[n_layers] );
-    }
+    CvMat etalon_src, etalon_dst;
+    cvTranspose( X[n_layers], dE_dX[n_layers] );
     for ( k = 0; k < batch_size; k++ ){
-      // cvGetRow( etalons, &etalon_src, responses->data.i[worst_img_idx->data.i[k]] );
       cvGetRow(responses,&etalon_src,worst_img_idx->data.i[k]);
       cvGetRow(etalon,&etalon_dst,k);
       cvCopy(&etalon_src, &etalon_dst);
     }
-    fprintf(stderr,"expect: \n");cvPrintf(stderr,"%.0f ", etalon);fprintf(stderr,"--\n");
+    // {
+    //   CvMat etalon_reshaped = cvMat(3,10,CV_32F,etalon->data.ptr);
+    //   CV_ASSERT(etalon_reshaped.rows*etalon_reshaped.cols==etalon->rows*etalon->cols);
+    //   fprintf(stderr,"expect: \n");cvPrintf(stderr,"%.0f ", &etalon_reshaped);
+    //   fprintf(stderr,"----------------------------------------------\n");
+    // }
     cvSub( dE_dX[n_layers], etalon, dE_dX[n_layers] );
 
     // 3) Update weights by the gradient descent
@@ -418,17 +419,17 @@ static void icvTrainCNNetwork( CvCNNetwork* network,const CvMat* images, const C
 
 #if 1        
     // print progress
-    CvMat * mattemp = cvCreateMat(etalon->cols,etalon->rows,CV_MAT_TYPE(etalon->type));
-    cvTranspose(etalon, mattemp);
-    float trloss = cvNorm(X[n_layers], mattemp)/float(batch_size);
-    float top1 = icvEvalAccuracy(X[n_layers], mattemp);
+    CvMat * etalon_transpose = cvCreateMat(etalon->cols,etalon->rows,CV_32F);
+    cvTranspose(etalon,etalon_transpose);
+    float trloss = cvNorm(X[n_layers], etalon_transpose)/float(batch_size);
+    float top1 = icvEvalAccuracy(X[n_layers], etalon_transpose);
     static double sumloss = 0; sumloss += trloss;
     static double sumacc  = 0; sumacc  += top1;
     if (int(float(n*100)/float(max_iter))<int(float((n+1)*100)/float(max_iter))){
       fprintf(stderr, "%d/%d = %.0f%%,",n+1,max_iter,float(n*100.f)/float(max_iter));
       fprintf(stderr, "sumacc: %.1f%%[%.1f%%], sumloss: %f\n", sumacc/float(n),top1,sumloss/float(n));
     }
-    cvReleaseMat(&mattemp);
+    cvReleaseMat(&etalon_transpose);
 #endif
     if (etalon){cvReleaseMat(&etalon);etalon=0;}
   }
@@ -1552,11 +1553,12 @@ static void icvCNNRecurrentForward( CvCNNLayer* _layer, const CvMat* X, CvMat * 
   cvCopy(&H_curr_reshaped,&WX_curr_reshaped);
   
   // activation for hidden states, relu and tahn is preferred
-  if (layer->activation_type==CV_CNN_NONE){
-  }else if (layer->activation_type==CV_CNN_HYPERBOLIC){ CV_CALL(cvTanh( H_curr, H_curr ));
-  }else if (layer->activation_type==CV_CNN_LOGISTIC){   CV_CALL(cvSigmoid( H_curr, H_curr ));
-  }else if (layer->activation_type==CV_CNN_RELU){       CV_CALL(cvReLU( H_curr, H_curr ));
-  }else{assert(false);}
+  cvTanh( H_curr, H_curr );
+  // if (layer->activation_type==CV_CNN_NONE){
+  // }else if (layer->activation_type==CV_CNN_HYPERBOLIC){ CV_CALL(cvTanh( H_curr, H_curr ));
+  // }else if (layer->activation_type==CV_CNN_LOGISTIC){   CV_CALL(cvSigmoid( H_curr, H_curr ));
+  // }else if (layer->activation_type==CV_CNN_RELU){       CV_CALL(cvReLU( H_curr, H_curr ));
+  // }else{assert(false);}
 
   CV_ASSERT(batch_size==1);
   cvGetCol(layerH,&H_curr_hdr,layer->time_index); cvCopy(H_curr,&H_curr_hdr);
@@ -1566,7 +1568,15 @@ static void icvCNNRecurrentForward( CvCNNLayer* _layer, const CvMat* X, CvMat * 
   CV_CALL(cvGEMM( &Why_submat, &H_curr_reshaped, 1, ybias, 1, &Y_curr_hdr ));
   CV_CALL(cvCopy(&Y_curr_hdr,&WH_curr_reshaped));
   CV_CALL(cvSigmoid( &Y_curr_hdr, &Y_curr_hdr )); // output activation
-  if (layer->next_layer) {cvCopy(&Y_curr_hdr,Y); }else{ cvTranspose(hidden_layer->Y,Y); }
+  if (layer->next_layer) { cvCopy(&Y_curr_hdr,Y); }else{
+    int nr = hidden_layer->Y->rows;
+    int nc = hidden_layer->Y->cols;
+    CvMat * hidden_layer_Y_transpose = cvCreateMat(nc,nr,CV_32F);
+    cvTranspose(hidden_layer->Y,hidden_layer_Y_transpose);
+    CvMat hidden_layer_Y_reshaped = cvMat(nr*nc,1,CV_32F,hidden_layer_Y_transpose->data.ptr);
+    cvCopy(&hidden_layer_Y_reshaped,Y); 
+    cvReleaseMat(&hidden_layer_Y_transpose);
+  }
   
   if (WX){cvReleaseMat(&WX);WX=0;}
   if (WH){cvReleaseMat(&WH);WH=0;}
@@ -1928,7 +1938,7 @@ static void icvCNNRecurrentBackward( CvCNNLayer* _layer, int t,
   if ( hidden_layer ){
     if ( layer->time_index==seq_length-1 ){  // assuming last layer
       if (!hidden_layer->dE_dY){
-        CV_ASSERT(layer->time_index==seq_length-1 && dE_dY->cols==seq_length);
+        CV_ASSERT(layer->time_index==seq_length-1 && dE_dY->cols==seq_length*n_outputs);
         hidden_layer->dE_dY = cvCloneMat(dE_dY); layer_dE_dY = hidden_layer->dE_dY;
       }else{ cvCopy(dE_dY,hidden_layer->dE_dY); }
       if (!hidden_layer->dH){ 
@@ -1943,11 +1953,11 @@ static void icvCNNRecurrentBackward( CvCNNLayer* _layer, int t,
       cvZero(hidden_layer->dWhh); layer_dWhh=hidden_layer->dWhh;
       cvZero(hidden_layer->dWhy); layer_dWhy=hidden_layer->dWhy;
     }else{ 
-      CV_ASSERT(dE_dY->cols==1 && layer_dE_dY==hidden_layer->dE_dY && 
+      CV_ASSERT(dE_dY->cols==n_outputs && layer_dE_dY==hidden_layer->dE_dY && 
                 layer_dH==hidden_layer->dH && layer_dWxh==hidden_layer->dWxh && 
                 layer_dWhh==hidden_layer->dWhh   && layer_dWhy==hidden_layer->dWhy);
     }
-  }else{ CV_ASSERT(dE_dY->cols==1 && layer_dE_dY==layer->dE_dY && 
+  }else{ CV_ASSERT(dE_dY->cols==n_outputs && layer_dE_dY==layer->dE_dY && 
                    layer_dWxh==layer->dWxh && layer_dWhh==layer->dWhh && layer_dWhy==layer->dWhy); 
   }
   
@@ -1994,15 +2004,20 @@ static void icvCNNRecurrentBackward( CvCNNLayer* _layer, int t,
   CvMat H_prev_hdr, H_curr_hdr, dH_curr_hdr, dH_next_hdr;
   CvMat WX_curr_hdr, WH_curr_hdr, dE_dY_curr_hdr;
   if (layer->time_index==seq_length-1){ 
-    cvZero(dH_curr); cvZero(dH_next); cvZero(WX_curr); cvZero(WH_curr); 
+    cvZero(dH_next); cvZero(WX_curr); cvZero(WH_curr); 
   }else{
     cvGetCol(layer_dH,&dH_next_hdr,layer->time_index+1); cvCopy(&dH_next_hdr,dH_next);
     cvGetCol(layer_WX,&WX_curr_hdr,layer->time_index); cvCopy(&WX_curr_hdr,WX_curr);
     cvGetCol(layer_WH,&WH_curr_hdr,layer->time_index); cvCopy(&WH_curr_hdr,WH_curr);
-    cvGetCol(layer_dE_dY,&dE_dY_curr_hdr,layer->time_index); 
-    cvCopy(&dE_dY_curr_hdr,dE_dY_curr);
   }
   cvGetCol(layer_dH,&dH_curr_hdr,layer->time_index); 
+  CV_ASSERT(layer_dE_dY->rows*layer_dE_dY->cols==seq_length*n_outputs &&
+            CV_MAT_TYPE(layer_dE_dY->type)==CV_32F);
+  CvMat layer_dE_dY_reshaped = cvMat(seq_length,n_outputs,CV_32F,layer_dE_dY->data.ptr);
+  CvMat * layer_dE_dY_transpose = cvCreateMat(n_outputs,seq_length,CV_32F);
+  cvTranspose(&layer_dE_dY_reshaped,layer_dE_dY_transpose);
+  cvGetCol(layer_dE_dY_transpose,&dE_dY_curr_hdr,layer->time_index); 
+  cvCopy(&dE_dY_curr_hdr,dE_dY_curr);
     
   // compute (tanh'(WX))*dE_dY
   cvSigmoidDer(WH_curr,dE_dY_afder);
