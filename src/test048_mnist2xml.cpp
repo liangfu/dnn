@@ -69,6 +69,8 @@ CvMat * read_Mnist_Labels(char * filename)
   return data;
 }
 
+void cvPrepareResponse(CvMat * response, CvMat * responseMat);
+
 int main(int argc, char * argv[])
 {
   char keys[1<<12];
@@ -95,16 +97,52 @@ int main(int argc, char * argv[])
   cvGetBaseName((char*) testing_filename_xml,(char*) testing_filename);
   cvGetBaseName((char*)expected_filename_xml,(char*)expected_filename);
 
-  CvMat * training = read_Mnist_Images((char*)training_filename);
-  CvMat * response = read_Mnist_Labels((char*)response_filename);
-  CvMat * testing  = read_Mnist_Images((char*)testing_filename);
-  CvMat * expected = read_Mnist_Labels((char*)expected_filename);
+  const int nclasses = 10;
+  CvMat * training    = read_Mnist_Images((char*)training_filename);
+  CvMat * response    = read_Mnist_Labels((char*)response_filename);
+  CvMat * testing     = read_Mnist_Images((char*)testing_filename);
+  CvMat * expected    = read_Mnist_Labels((char*)expected_filename);
+  CvMat * responseMat = cvCreateMat(response->rows,nclasses,CV_32F);
+  CvMat * expectedMat = cvCreateMat(expected->rows,nclasses,CV_32F);
+  assert(training->rows==response->rows && testing->rows==expected->rows);
+
+  cvPrepareResponse(response,responseMat);
+  cvPrepareResponse(expected,expectedMat);
+
   cvSave(training_filename_xml,training);
-  cvSave(response_filename_xml,response);
-  cvSave(testing_filename_xml,testing);
-  cvSave(expected_filename_xml,expected);
+  cvSave(response_filename_xml,responseMat);
+  cvSave( testing_filename_xml,testing );
+  cvSave(expected_filename_xml,expectedMat);
+
+  cvReleaseMat(&training   );
+  cvReleaseMat(&response   );
+  cvReleaseMat(&testing    );
+  cvReleaseMat(&expected   );
+  cvReleaseMat(&responseMat);
+  cvReleaseMat(&expectedMat);
 
   return 0;
+}
+
+void cvPrepareResponse(CvMat * response, CvMat * responseMat)
+{
+  CV_FUNCNAME("cvPrepareResponse");
+  int nsamples = response->rows;
+  int nclasses = responseMat->cols;
+  CV_ASSERT(responseMat->rows==nsamples && response->cols==1 && 
+            CV_MAT_TYPE(responseMat->type)==CV_32F);
+  __BEGIN__;
+  cvZero(responseMat);
+  for (int ii=0;ii<nsamples;ii++){
+    int label = 0;
+    if (CV_MAT_TYPE(response->type)==CV_8U){label=CV_MAT_ELEM(*response,uchar,ii,0);}
+    else if (CV_MAT_TYPE(response->type)==CV_32S){label=CV_MAT_ELEM(*response,int,ii,0);}
+    else if (CV_MAT_TYPE(response->type)==CV_32F){label=CV_MAT_ELEM(*response,float,ii,0);}
+    else {CV_ERROR(CV_StsBadArg,"");}
+    CV_MAT_ELEM(*responseMat,float,ii,label)=1;
+  }
+  fprintf(stderr,"samples:\n");cvPrintf(stderr,"%.0f ",responseMat,cvRect(0,0,nclasses,10));
+  __END__;
 }
 
 

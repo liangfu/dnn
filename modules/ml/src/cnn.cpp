@@ -121,7 +121,7 @@ static void icvCNNInputDataForward( CvCNNLayer* layer, const CvMat* X, CvMat* Y 
 static void icvCNNInputDataBackward( CvCNNLayer* layer, int t, const CvMat*, const CvMat* dE_dY, CvMat* dE_dX );
 
 /*--------------------------- utility functions -----------------------*/
-static float icvEvalAccuracy(CvMat * result, CvMat * expected);
+static float icvEvalAccuracy(CvCNNLayer * last_layer, CvMat * result, CvMat * expected);
 
 /*------------------------ activation functions -----------------------*/
 static void cvTanh(CvMat * src, CvMat * dst);
@@ -314,7 +314,7 @@ static void icvTrainCNNetwork( CvCNNetwork* network,const CvMat* images, const C
   const int img_height = first_layer->input_height;
   const int img_width  = first_layer->input_width;
   const int img_size   = first_layer->n_input_planes*img_width*img_height*seq_length;
-  const int n_images   = responses->cols;
+  const int n_images   = responses->cols; CV_ASSERT(n_images!=1);
   CvMat * X0_transpose = cvCreateMat( batch_size, img_size, CV_32FC1 );
   CvCNNLayer* layer;
   int n;
@@ -426,7 +426,7 @@ static void icvTrainCNNetwork( CvCNNetwork* network,const CvMat* images, const C
     CvMat * etalon_transpose = cvCreateMat(etalon->cols,etalon->rows,CV_32F);
     cvTranspose(etalon,etalon_transpose);
     float trloss = cvNorm(X[n_layers], etalon_transpose)/float(batch_size);
-    float top1 = icvEvalAccuracy(X[n_layers], etalon_transpose);
+    float top1 = icvEvalAccuracy(last_layer, X[n_layers], etalon_transpose);
     static double sumloss = 0; sumloss += trloss;
     static double sumacc  = 0; sumacc  += top1;
     if (int(float(n*100)/float(max_iter))<int(float((n+1)*100)/float(max_iter))){
@@ -448,9 +448,13 @@ static void icvTrainCNNetwork( CvCNNetwork* network,const CvMat* images, const C
   cvFree( &dE_dX );
 }
 
-static float icvEvalAccuracy(CvMat * result, CvMat * mattemp)
+static float icvEvalAccuracy(CvCNNLayer * last_layer, CvMat * result, CvMat * expected)
 {
+  CV_FUNCNAME("icvEvalAccuracy");
   float top1 = 0;
+  int n_outputs = last_layer->n_output_planes;
+  int seq_length = ICV_IS_CNN_RECURRENT_LAYER(last_layer)?
+    ((CvCNNRecurrentLayer*)last_layer)->seq_length:1;
   int batch_size = result->cols;
   CvMat * sorted = cvCreateMat(result->rows,result->cols,CV_32F);
   CvMat * indices = cvCreateMat(result->rows,result->cols,CV_32S);
@@ -458,15 +462,17 @@ static float icvEvalAccuracy(CvMat * result, CvMat * mattemp)
   CvMat * expectedmat = cvCreateMat(1,result->cols,CV_32S);
   CvMat * indtop1true = cvCreateMat(result->rows,result->cols,CV_32S);
   CvMat * indtop1res = cvCreateMat(1,result->cols,CV_8U);
+  __BEGIN__;
   cvSort(result,sorted,indices,CV_SORT_DESCENDING|CV_SORT_EVERY_COLUMN);
   cvGetRow(indices,indtop1,0);
-  cvSort(mattemp,0,indtop1true,CV_SORT_DESCENDING|CV_SORT_EVERY_COLUMN);
+  cvSort(expected,0,indtop1true,CV_SORT_DESCENDING|CV_SORT_EVERY_COLUMN);
   assert( CV_MAT_TYPE(indtop1true->type) == CV_32S && CV_MAT_TYPE(expectedmat->type) == CV_32S );
   for (int ii=0;ii<indtop1true->cols;ii++){
     CV_MAT_ELEM(*expectedmat,int,0,ii)=CV_MAT_ELEM(*indtop1true,int,0,ii); // transpose and convert
   }
   cvCmp(indtop1,expectedmat,indtop1res,CV_CMP_EQ);
   top1=cvSum(indtop1res).val[0]*100.f/float(batch_size)/255.f;
+  __END__;
   cvReleaseMat(&sorted);
   cvReleaseMat(&indices);
   cvReleaseMat(&indtop1);
@@ -477,9 +483,7 @@ static float icvEvalAccuracy(CvMat * result, CvMat * mattemp)
 }
 
 /*************************************************************************/
-static float icvCNNModelPredict( const CvCNNStatModel* model,
-                                 const CvMat* _image,
-                                 CvMat* probs )
+static float icvCNNModelPredict( const CvCNNStatModel* model, const CvMat* _image, CvMat* probs )
 {
   CvMat** X       = 0;
   float* img_data = 0;
@@ -1568,10 +1572,10 @@ static void icvCNNRecurrentForward( CvCNNLayer* _layer, const CvMat* X, CvMat * 
   CV_CALL(cvCopy(&Y_curr_hdr,&WH_curr_reshaped)); CV_ASSERT(cvCountNonZero(&WH_curr_reshaped)>1);
   CV_CALL(cvCopy(WH_curr,&WH_curr_hdr));          // copy to layer->WH
 #if 0
-  CV_CALL(cvSigmoid( &Y_curr_hdr, &Y_curr_hdr )); // output activation
+  CV_CALL(cvSigmoid( &Y_curr_hdr, &Y_curr_hdr )); // output activation - logistic regression
 #else
   cvExp(&Y_curr_hdr,&Y_curr_hdr); double Ysum = cvSum(&Y_curr_hdr).val[0];
-  cvScale(&Y_curr_hdr,&Y_curr_hdr,1.f/Ysum);
+  cvScale(&Y_curr_hdr,&Y_curr_hdr,1.f/Ysum);      // softmax - for classification
 #endif
   if (layer->next_layer) { cvCopy(&Y_curr_hdr,Y); }else{
     int nr = hidden_layer->Y->rows;
@@ -2026,10 +2030,10 @@ static void icvCNNRecurrentBackward( CvCNNLayer* _layer, int t,
     
   // compute (sig'(WX))*dE_dY
 #if 0
-  cvSigmoidDer(WH_curr,dE_dY_afder);
+  cvSigmoidDer(WH_curr,dE_dY_afder); // logistic regression
   cvMul(dE_dY_afder,dE_dY_curr,dE_dY_afder);
 #else
-  cvCopy(dE_dY_curr,dE_dY_afder);
+  cvCopy(dE_dY_curr,dE_dY_afder);    // softmax for classification
 #endif
 
   // dWhy += dE_dY_afder * H_curr'

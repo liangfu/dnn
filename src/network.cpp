@@ -92,6 +92,7 @@ void CvNetwork::loadModel(string inFile)
       input_height = input_height/ksize;
       input_width = input_width/ksize;
     }else if (!strcmp(type,"FullConnect")){ // full connection layer
+      n_input_planes = n_input_planes*input_height*input_width;
       n_output_planes = cvReadIntByName(fs,node,"n_output_planes");
       layer = cvCreateCNNFullConnectLayer( name, 
         n_input_planes, n_output_planes, 1, 1, 
@@ -131,7 +132,6 @@ void CvNetwork::loadModel(string inFile)
       layer = cvCreateCNNInputDataLayer( name, 
         n_input_planes, input_height, input_width, seq_length,
         lr_init, decay_type );
-      n_input_planes = n_output_planes; input_height = 1; input_width = 1;
     }else{
       fprintf(stderr,"ERROR: unknown layer type %s\n",type);
     }

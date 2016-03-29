@@ -1,11 +1,13 @@
 <?xml version="1.0"?>
 <opencv_storage>
-<data>
+<layers>
+<layer-0>
+	<type>InputData</type>
+	<name>input1</name>
 	<n_input_planes>1</n_input_planes>
 	<input_height>28</input_height>
 	<input_width>28</input_width>
-</data>
-<layers>
+</layer-0>
 <layer-1>
 	<type>Convolution</type>
 	<name>conv1</name>
