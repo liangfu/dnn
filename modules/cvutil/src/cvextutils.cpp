@@ -10,6 +10,21 @@
 
 #include "cvext.h"
 
+int cvCountNAN(CvMat * src)
+{
+  int nr = src->rows;
+  int nc = src->cols;
+  int sum = 0;
+  for (int ii=0;ii<nr*nc;ii++){
+    if (CV_MAT_TYPE(src->type)==CV_32F){
+      if (cvIsNaN(src->data.fl[ii])||cvIsInf(src->data.fl[ii])){sum++;} 
+    }else if (CV_MAT_TYPE(src->type)==CV_64F){
+      if (cvIsNaN(src->data.db[ii])||cvIsInf(src->data.db[ii])){sum++;}
+    }
+  }
+  return sum;
+}
+
 /** 
  * Calculate gradient of source image.
  * In case of destinate image is CV_8UC1, the result would be

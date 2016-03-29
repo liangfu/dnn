@@ -432,6 +432,8 @@ void icvTranspose(CvMat * src, CvMat * dst)
   }
 }
 
+CVAPI(int) cvCountNAN(CvMat * src);
+
 /** 
  * convert between diagonal matrix and its vector form
  */
