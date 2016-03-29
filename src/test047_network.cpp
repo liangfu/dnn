@@ -82,9 +82,9 @@ int main(int argc, char * argv[])
     cnn->loadWeights(weights_filename);
   }
   
-  // int nsamples = MIN(5000,testing->rows);
-  // float top1 = cnn->evaluate(testing,expected,nsamples);
-  // fprintf(stderr,"top-1: %.1f%%\n",float(top1*100.f)/float(nsamples));
+  int nsamples = MIN(5000,testing->rows);
+  float top1 = cnn->evaluate(testing,expected,nsamples);
+  fprintf(stderr,"top-1: %.1f%%\n",float(top1*100.f)/float(nsamples));
 
   CV_TIMER_SHOW();
 

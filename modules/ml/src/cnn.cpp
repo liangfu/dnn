@@ -266,14 +266,14 @@ cvTrainCNNClassifier( const CvMat* _train_data, int tflag,
   CV_ASSERT(CV_MAT_TYPE(train_data->type)==CV_32F);
 
   // normalize image value range
-  // if (ICV_IS_CNN_CONVOLUTION_LAYER(params->network->first_layer->next_layer))
-  // {
-  //   double minval, maxval;
-  //   cvMinMaxLoc(train_data,&minval,&maxval,0,0);
-  //   cvSubS(train_data,cvScalar(minval),train_data);
-  //   cvScale(train_data,train_data,10./((maxval-minval)*.5f));
-  //   cvAddS(train_data,cvScalar(-1.f),train_data);
-  // }
+  if (ICV_IS_CNN_CONVOLUTION_LAYER(params->network->first_layer->next_layer))
+  {
+    double minval, maxval;
+    cvMinMaxLoc(train_data,&minval,&maxval,0,0);
+    cvSubS(train_data,cvScalar(minval),train_data);
+    cvScale(train_data,train_data,10./((maxval-minval)*.5f));
+    cvAddS(train_data,cvScalar(-1.f),train_data);
+  }
 
   icvCheckCNNModelParams(params,cnn_model,cvFuncName);
   icvCheckCNNetwork(params->network,params,img_size,cvFuncName);
@@ -362,19 +362,18 @@ static void icvTrainCNNetwork( CvCNNetwork* network,const CvMat* images, const C
     CV_CALL(cvTranspose( X0_transpose, X[0] ));
 
     for ( k = 0, layer = first_layer; k < n_layers - 1; k++, layer = layer->next_layer )
-#if 1
+#if 0
     { CV_CALL(layer->forward( layer, X[k], X[k+1] )); 
     }
     CV_CALL(layer->forward( layer, X[k], X[k+1] ));
 #else
     { CV_CALL(layer->forward( layer, X[k], X[k+1] ));
-      if (ICV_IS_CNN_RECURRENT_LAYER(layer)){
+      if (ICV_IS_CNN_RECURRENT_LAYER(layer) && n==max_iter){
         CvCNNLayer * hidden_layer = ((CvCNNRecurrentLayer*)layer)->hidden_layer;
         CvMat * Y = hidden_layer?((CvCNNRecurrentLayer*)hidden_layer)->Y:
                                  ((CvCNNRecurrentLayer*)layer)->Y;
-        cvPrintf(stderr,"%.2f ", Y);
-        CV_SHOW(Y);
-      }else{
+        cvPrintf(stderr,"%.2f ", Y); // CV_SHOW(Y);
+      }else if (!ICV_IS_CNN_IMGCROPPING_LAYER(layer) && n==max_iter){
         icvVisualizeCNNLayer(layer, X[k+1]);
       }
     }
@@ -391,7 +390,7 @@ static void icvTrainCNNetwork( CvCNNetwork* network,const CvMat* images, const C
       fprintf(stderr,"input: \n");cvPrintf(stderr,"%.0f ", &X0_reshaped);
       fprintf(stderr,"output: \n");cvPrintf(stderr,"%.2f ", Y_transpose); // CV_SHOW(Y);
       cvReleaseMat(&Y_transpose);
-    }else if (!ICV_IS_CNN_IMGCROPPING_LAYER(layer)){
+    }else if (!ICV_IS_CNN_IMGCROPPING_LAYER(layer) && n==max_iter){
       icvVisualizeCNNLayer(layer, X[k+1]);fprintf(stderr,"\n");
     }
 #endif
@@ -404,12 +403,12 @@ static void icvTrainCNNetwork( CvCNNetwork* network,const CvMat* images, const C
       cvGetRow(etalon,&etalon_dst,k);
       cvCopy(&etalon_src, &etalon_dst);
     }
-    // if (ICV_IS_CNN_RECURRENT_LAYER(layer) && n==max_iter){
-    //   CvMat etalon_reshaped = cvMat(3,10,CV_32F,etalon->data.ptr);
-    //   CV_ASSERT(etalon_reshaped.rows*etalon_reshaped.cols==etalon->rows*etalon->cols);
-    //   fprintf(stderr,"expect: \n");cvPrintf(stderr,"%.0f ", &etalon_reshaped);
-    //   fprintf(stderr,"----------------------------------------------\n");
-    // }
+    if (ICV_IS_CNN_RECURRENT_LAYER(layer) && n==max_iter){
+      CvMat etalon_reshaped = cvMat(3,10,CV_32F,etalon->data.ptr);
+      CV_ASSERT(etalon_reshaped.rows*etalon_reshaped.cols==etalon->rows*etalon->cols);
+      fprintf(stderr,"expect: \n");cvPrintf(stderr,"%.0f ", &etalon_reshaped);
+      fprintf(stderr,"----------------------------------------------\n");
+    }
     cvSub( dE_dX[n_layers], etalon, dE_dX[n_layers] );
 
     // 3) Update weights by the gradient descent
@@ -499,23 +498,26 @@ static float icvCNNModelPredict( const CvCNNStatModel* model, const CvMat* _imag
   __BEGIN__;
 
   CvCNNStatModel* cnn_model = (CvCNNStatModel*)model;
-  CvCNNLayer* first_layer, *layer = 0;
+  CvCNNLayer* first_layer=0, *layer = 0;
   int img_height, img_width, img_size;
   int nclasses, i;
   float loss, min_loss = FLT_MAX;
   float* probs_data;
   CvMat etalon, X0_transpose;
   int nsamples;
+  int n_inputs, seq_length;
 
-  if ( !CV_IS_CNN(model) )
-    CV_ERROR( CV_StsBadArg, "Invalid model" );
+  if ( !CV_IS_CNN(model) ) { CV_ERROR( CV_StsBadArg, "Invalid model" ); }
 
   nclasses = cnn_model->cls_labels->cols;
   n_layers = cnn_model->network->n_layers;
-  first_layer   = cnn_model->network->first_layer;
+  first_layer = cnn_model->network->first_layer;
+  n_inputs = first_layer->n_input_planes;
+  seq_length = ICV_IS_CNN_INPUTDATA_LAYER(first_layer)?
+    ((CvCNNInputDataLayer*)first_layer)->seq_length:1;
   img_height = first_layer->input_height;
-  img_width  = first_layer->input_width;
-  img_size   = img_height*img_width;
+  img_width = first_layer->input_width;
+  img_size = img_height*img_width*n_inputs*seq_length;
   nsamples = _image->rows;
   
 #if 0
@@ -529,11 +531,13 @@ static float icvCNNModelPredict( const CvCNNStatModel* model, const CvMat* _imag
 #endif
 
   // normalize image value range
-  double minval, maxval;
-  cvMinMaxLoc(&imghdr,&minval,&maxval,0,0);
-  cvAddS(&imghdr,cvScalar(-minval),&imghdr);
-  cvScale(&imghdr,&imghdr,10./((maxval-minval)*.5f));
-  cvAddS(&imghdr,cvScalar(-1.f),&imghdr);
+  if (ICV_IS_CNN_CONVOLUTION_LAYER(cnn_model->network->first_layer->next_layer)){
+    double minval, maxval;
+    cvMinMaxLoc(&imghdr,&minval,&maxval,0,0);
+    cvAddS(&imghdr,cvScalar(-minval),&imghdr);
+    cvScale(&imghdr,&imghdr,10./((maxval-minval)*.5f));
+    cvAddS(&imghdr,cvScalar(-1.f),&imghdr);
+  }
 
   CV_CALL(X = (CvMat**)cvAlloc( (n_layers+1)*sizeof(CvMat*) ));
   memset( X, 0, (n_layers+1)*sizeof(CvMat*) );
@@ -548,13 +552,12 @@ static float icvCNNModelPredict( const CvCNNStatModel* model, const CvMat* _imag
   cvTranspose( &X0_transpose, X[0] );
   for ( k = 0, layer = first_layer; k < n_layers; k++, layer = layer->next_layer ) 
 #if 1
-    {CV_CALL(layer->forward( layer, X[k], X[k+1] ));}
+  {CV_CALL(layer->forward( layer, X[k], X[k+1] ));}
 #else
-    { // if (k==4){cvScale(X[k],X[k],1./255.);}
-      CV_CALL(layer->forward( layer, X[k], X[k+1] ));
-      icvVisualizeCNNLayer(layer, X[k+1]);
-    }
-    fprintf(stderr,"\n");
+  { // if (k==4){cvScale(X[k],X[k],1./255.);}
+    CV_CALL(layer->forward( layer, X[k], X[k+1] ));
+    icvVisualizeCNNLayer(layer, X[k+1]);
+  }fprintf(stderr,"\n");
 #endif
 
   cvCopy(X[n_layers],probs);
