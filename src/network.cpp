@@ -235,8 +235,10 @@ float CvNetwork::evaluate(CvMat * testing, CvMat * expected, int nsamples)
   CvMat * sorted = cvCreateMat(result->rows,result->cols,CV_32F);
   CvMat * indices = cvCreateMat(result->rows,result->cols,CV_32S);
   CvMat * indtop1 = cvCreateMat(1,result->cols,CV_32S);
-  CvMat * expected_submat = cvCreateMat(nsamples,1,CV_8U);
-  CvMat * expected_converted = cvCreateMat(nsamples,1,CV_32S);
+  CvMat expected_submat_hdr;
+  CvMat * expected_sorted = cvCreateMat(nsamples,expected->cols,CV_32F);
+  CvMat * expected_index  = cvCreateMat(nsamples,expected->cols,CV_32S);
+  CvMat expected_index_submat_hdr;
   CvMat * expected_transposed = cvCreateMat(1,result->cols,CV_32S);
   CvMat * indtop1res = cvCreateMat(1,result->cols,CV_8U);
   // testing data
@@ -245,9 +247,10 @@ float CvNetwork::evaluate(CvMat * testing, CvMat * expected, int nsamples)
   cvSort(result,sorted,indices,CV_SORT_DESCENDING|CV_SORT_EVERY_COLUMN);
   cvGetRow(indices,indtop1,0);
   // expected data
-  cvGetRows(expected,expected_submat,0,nsamples);
-  cvConvert(expected_submat,expected_converted);
-  cvTranspose(expected_converted,expected_transposed);
+  cvGetRows(expected,&expected_submat_hdr,0,nsamples);
+  cvSort(&expected_submat_hdr,expected_sorted,expected_index,CV_SORT_DESCENDING|CV_SORT_EVERY_ROW);
+  cvGetCol(expected_index,&expected_index_submat_hdr,0);
+  cvTranspose(&expected_index_submat_hdr,expected_transposed);
   cvCmp(indtop1,expected_transposed,indtop1res,CV_CMP_EQ);
 #if 0
   fprintf(stderr,"expected:\n\t");
@@ -261,8 +264,8 @@ float CvNetwork::evaluate(CvMat * testing, CvMat * expected, int nsamples)
   cvReleaseMat(&sorted);
   cvReleaseMat(&indices);
   cvReleaseMat(&indtop1);
-  cvReleaseMat(&expected_submat);
-  cvReleaseMat(&expected_converted);
+  cvReleaseMat(&expected_sorted);
+  cvReleaseMat(&expected_index);
   cvReleaseMat(&expected_transposed);
   cvReleaseMat(&indtop1res);
   return top1;
