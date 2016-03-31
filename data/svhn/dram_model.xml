@@ -1,0 +1,130 @@
+<?xml version="1.0"?>
+<opencv_storage>
+<layers>
+<layer-0>
+	<type>InputData</type>
+	<name>input1</name>
+	<n_input_planes>1</n_input_planes> <!-- number of values to add -->
+	<input_height>64</input_height>    <!-- decimal -->
+	<input_width>64</input_width>
+	<seq_length>1</seq_length>         <!-- three digits -->
+</layer-0>
+<layer-1> <!-- CONTEXT NETWORK -->
+	<type>Convolution</type>
+	<name>conv1</name>
+	<n_output_planes>6</n_output_planes>
+	<ksize>5</ksize>
+	<stride>1</stride>
+</layer-1>
+<layer-2>
+	<type>SubSampling</type>
+	<name>pool1</name>
+	<ksize>2</ksize>
+	<stride>2</stride>
+</layer-2>
+<layer-3>
+	<type>Convolution</type>
+	<name>conv2</name>
+	<n_output_planes>16</n_output_planes>
+	<ksize>5</ksize>
+	<stride>1</stride>
+</layer-3>
+<layer-4>
+	<type>SubSampling</type>
+	<name>pool2</name>
+	<ksize>2</ksize>
+	<stride>2</stride>
+</layer-4>
+<layer-5> <!-- RECURRENT NETWORK II -->
+	<type>Recurrent</type>
+	<name>rnn2</name>
+	<n_output_planes>10</n_output_planes>
+	<seq_length>3</seq_length>
+	<time_index>0</time_index>
+	<activation_type>tanh</activation_type>
+</layer-5>
+<layer-6> <!-- EMISSION NETWORK -->
+	<type>FullConnect</type>
+	<name>fc1</name>
+	<n_output_planes>3</n_output_planes> <!-- (x,y,scale) tuple -->
+	<activation_type>tanh</activation_type>
+</layer-6>
+<layer-7>  <!-- GLIMPSE NETWORK -->
+	<type>ImgCropping</type> <!-- [ImgCropping] -> [(Convolution+FullConnect)*FullConnect] -->
+	<name>crop1</name>
+	<input_layer>input1</input_layer>
+	<n_output_planes>2</n_output_planes>
+	<output_height>10</output_height>
+	<output_width>1</output_width>
+	<seq_length>1</seq_length>
+	<time_index>0</time_index>
+</layer-7>
+<layer-8>
+	<type>Convolution</type>
+	<name>conv3</name>
+	<n_output_planes>6</n_output_planes>
+	<ksize>5</ksize>
+	<stride>1</stride>
+</layer-8>
+<layer-9>
+	<type>SubSampling</type>
+	<name>pool3</name>
+	<ksize>2</ksize>
+	<stride>2</stride>
+</layer-9>
+<layer-10>
+	<type>Convolution</type>
+	<name>conv4</name>
+	<n_output_planes>16</n_output_planes>
+	<ksize>5</ksize>
+	<stride>1</stride>
+</layer-10>
+<layer-11>
+	<type>SubSampling</type>
+	<name>pool4</name>
+	<ksize>2</ksize>
+	<stride>2</stride>
+</layer-11>
+<layer-12>
+	<type>FullConnect</type>
+	<name>fc2</name>
+	<n_output_planes>84</n_output_planes>
+	<activation_type>tanh</activation_type>
+</layer-12>
+<layer-13> <!-- RECURRENT NETWORK I -->
+	<type>Recurrent</type>
+	<name>rnn1</name>
+	<n_output_planes>10</n_output_planes>
+	<seq_length>3</seq_length>
+	<time_index>0</time_index>
+	<activation_type>tanh</activation_type>
+</layer-13>
+
+<layer-14><predefined>rnn2</predefined><time_index>1</time_index></layer-14> 
+<layer-15><predefined>fc1</predefined></layer-15>
+<layer-16><predefined>crop1</predefined></layer-16>
+<layer-17><predefined>conv3</predefined></layer-17>
+<layer-18><predefined>pool3</predefined></layer-18>
+<layer-19><predefined>conv4</predefined></layer-19>
+<layer-20><predefined>pool4</predefined></layer-20>
+<layer-21><predefined>fc2</predefined></layer-21>
+<layer-22><predefined>rnn1</predefined><time_index>1</time_index></layer-22>
+
+<layer-23><predefined>rnn2</predefined><time_index>1</time_index></layer-23> 
+<layer-24><predefined>fc1</predefined></layer-24>
+<layer-25><predefined>crop1</predefined></layer-25>
+<layer-26><predefined>conv3</predefined></layer-26>
+<layer-27><predefined>pool3</predefined></layer-27>
+<layer-28><predefined>conv4</predefined></layer-28>
+<layer-29><predefined>pool4</predefined></layer-29>
+<layer-30><predefined>fc2</predefined></layer-30>
+<layer-31><predefined>rnn1</predefined><time_index>1</time_index></layer-31>
+
+<layer-32> <!-- CLASSIFICATION NETWORK -->
+	<type>FullConnect</type>
+	<name>fc2</name>
+	<n_output_planes>84</n_output_planes>
+	<activation_type>tanh</activation_type>
+</layer-32>
+</layers>
+</opencv_storage>
