@@ -9,5 +9,16 @@ before_install:
 
 install:
  - mkdir build && cd build
- - cmake .. && make
+ - cmake .. 
+
+script: make -j2 && cd ..
+
+after_success:
+ - export PATH=$PATH:$TRAVIS_BUILD_DIR/bin
+ - ./data/mnist/get_mnist.sh
+ - transfer_mnist2xml --solver data/mnist/lenet_solver.xml
+ - network train --solver data/mnist/lenet_solver.xml
+ - transfer_addition --solver data/addition/rnn_solver.xml
+ - network train --solver data/addition/rnn_solver.xml
+
 
