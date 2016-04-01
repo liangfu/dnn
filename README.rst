@@ -2,9 +2,8 @@
 The CompVis Library
 ===================
 
-.. image:: https://travis-ci.org/liangfu/compvis.svg   :target: 
-
-.. image:: https://img.shields.io/github/license/mashape/apistatus.svg   :target: 
+.. image:: https://travis-ci.org/liangfu/compvis.svg  
+ :target: https://travis-ci.org/liangfu/compvis
 
 Introduction
 ============
