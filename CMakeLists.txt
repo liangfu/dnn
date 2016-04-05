@@ -191,20 +191,23 @@ else( OPENMP_FOUND )
   set( OPENMP_LIBRARIES "")
 endif( OPENMP_FOUND )
 
-add_executable(test044_cnn src/test044_cnn.cpp src/ConvNN.cpp)
-target_link_libraries(test044_cnn cxcore cvutil cv highgui ml ${FFMPEG_LIBRARIES} ${OPENMP_LIBRARIES})
+# add_executable(test044_cnn src/test044_cnn.cpp src/ConvNN.cpp)
+# target_link_libraries(test044_cnn cxcore cvutil cv highgui ml ${FFMPEG_LIBRARIES} ${OPENMP_LIBRARIES})
 
-add_executable(test046_dram src/test046_dram.cpp src/dram.cpp)
-target_link_libraries(test046_dram cxcore cvutil cv highgui ml ${FFMPEG_LIBRARIES} ${OPENMP_LIBRARIES}) # video
+# add_executable(test046_dram src/test046_dram.cpp src/dram.cpp)
+# target_link_libraries(test046_dram cxcore cvutil cv highgui ml ${FFMPEG_LIBRARIES} ${OPENMP_LIBRARIES}) # video
 
-add_executable(network src/test047_network.cpp src/network.cpp)
-target_link_libraries(network cxcore cvutil cv highgui ml ${FFMPEG_LIBRARIES} ${OPENMP_LIBRARIES}) # video
+add_executable(network src/network_main.cpp src/network.cpp)
+target_link_libraries(network cxcore cvutil cv highgui ml ${FFMPEG_LIBRARIES} ${OPENMP_LIBRARIES})
 
-add_executable(transfer_mnist2xml src/test048_mnist2xml.cpp  src/network.cpp)
-target_link_libraries(transfer_mnist2xml cxcore cvutil cv highgui ml ${FFMPEG_LIBRARIES} ${OPENMP_LIBRARIES})
+add_executable(transfer_mnist src/transfer_mnist.cpp  src/network.cpp)
+target_link_libraries(transfer_mnist cxcore cvutil cv highgui ml ${FFMPEG_LIBRARIES} ${OPENMP_LIBRARIES})
 
-add_executable(transfer_addition src/test049_additiongen.cpp  src/network.cpp)
+add_executable(transfer_addition src/transfer_addition.cpp  src/network.cpp)
 target_link_libraries(transfer_addition cxcore cvutil cv highgui ml ${FFMPEG_LIBRARIES} ${OPENMP_LIBRARIES})
+
+add_executable(transfer_svhn src/transfer_svhn.cpp  src/network.cpp)
+target_link_libraries(transfer_svhn cxcore cvutil cv highgui ml ${FFMPEG_LIBRARIES} ${OPENMP_LIBRARIES})
 
 
 

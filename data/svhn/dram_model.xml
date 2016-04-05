@@ -4,10 +4,10 @@
 <layer-0>
 	<type>InputData</type>
 	<name>input1</name>
-	<n_input_planes>1</n_input_planes> <!-- number of values to add -->
-	<input_height>64</input_height>    <!-- decimal -->
+	<n_input_planes>1</n_input_planes>
+	<input_height>64</input_height>
 	<input_width>64</input_width>
-	<seq_length>1</seq_length>         <!-- three digits -->
+	<seq_length>1</seq_length>
 </layer-0>
 <layer-1> <!-- CONTEXT NETWORK -->
 	<type>Convolution</type>
