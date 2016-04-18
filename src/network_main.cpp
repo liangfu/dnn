@@ -64,6 +64,11 @@ int main(int argc, char * argv[])
   CvMat * training = (CvMat*)cvLoad((char*)training_filename);
   CvMat * expected = (CvMat*)cvLoad((char*)expected_filename);
   CvMat * testing  = (CvMat*)cvLoad((char*)testing_filename);
+
+  if (!response || !training || !expected || !testing){
+    LOGE("Error: not all training/testing files available, try transfer data first.\n"); 
+    exit(1);
+  }
   
   assert(CV_MAT_TYPE(training->type)==CV_32F);
   assert(training->rows==response->rows);

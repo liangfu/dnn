@@ -48,6 +48,9 @@ int main(int argc, char * argv[])
   CvMat * expected = icvReadSVHNLabels((char*)expected_filename,n_test_samples);
   CvMat * testing  = icvReadSVHNImages((char*) testing_filename,expected);
 
+  fprintf(stderr,"%d training samples generated!\n", training->rows);
+  fprintf(stderr,"%d testing samples generated!\n", testing->rows);
+
   cvSave(training_filename_xml,training);
   cvSave(response_filename_xml,response);
   cvSave( testing_filename_xml,testing);
