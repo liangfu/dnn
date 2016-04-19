@@ -64,12 +64,26 @@ void CvNetwork::loadModel(string inFile)
         int time_index = cvReadIntByName(fs,node,"time_index",0);
         CvCNNImgCroppingLayer * crop_layer = (CvCNNImgCroppingLayer*)predefined_layer;
         CvCNNLayer * input_layer = crop_layer->input_layer;
-        layer = cvCreateCNNImgCroppingLayer( name, input_layer, 
+        layer = cvCreateCNNImgCroppingLayer( crop_layer->name, input_layer, 
           crop_layer->n_output_planes, crop_layer->output_height, crop_layer->output_width, 
           time_index, lr_init, decay_type );
+      }else if (ICV_IS_CNN_FULLCONNECT_LAYER(predefined_layer)){
+        CvCNNFullConnectLayer * this_layer = (CvCNNFullConnectLayer*)predefined_layer;
+        layer = cvCreateCNNFullConnectLayer( this_layer->name, 
+          this_layer->n_input_planes, this_layer->n_output_planes, 1, 1,
+          lr_init, decay_type, activation_type, NULL );
+      }else if (ICV_IS_CNN_CONVOLUTION_LAYER(predefined_layer)){
+        CvCNNConvolutionLayer * this_layer = (CvCNNConvolutionLayer*)predefined_layer;
+        layer = cvCreateCNNConvolutionLayer( this_layer->name, 
+          this_layer->n_input_planes, this_layer->input_height, this_layer->input_width,
+          this_layer->n_output_planes, this_layer->K, lr_init, decay_type, NULL, NULL );
+      }else if (ICV_IS_CNN_SUBSAMPLING_LAYER(predefined_layer)){
+        CvCNNSubSamplingLayer * this_layer = (CvCNNSubSamplingLayer*)predefined_layer;
+        layer = cvCreateCNNSubSamplingLayer( this_layer->name, 
+          this_layer->n_input_planes, this_layer->input_height, this_layer->input_width,
+          this_layer->sub_samp_scale, 1, 1, lr_init, decay_type, NULL );
       }else{
-        //layer = predefined_layer;
-        assert(false); // unexpected!
+        assert(false);
       }
       n_input_planes = layer->n_output_planes; 
       input_height = layer->output_height; 
@@ -111,7 +125,8 @@ void CvNetwork::loadModel(string inFile)
       layer = cvCreateCNNImgCroppingLayer( name, input_layer, 
         n_output_planes, output_height, output_width, time_index, 
         lr_init, decay_type );
-      n_input_planes = n_output_planes; input_height = 1; input_width = 1;
+      n_input_planes = n_output_planes; // input_height = 1; input_width = 1;
+      input_height = output_height; input_width = output_width;
     }else if (!strcmp(type,"Recurrent")){ // recurrent layer
       const int n_input_planes_default = n_input_planes * input_height * input_width;
       n_input_planes = cvReadIntByName(fs,node,"n_input_planes",n_input_planes_default);

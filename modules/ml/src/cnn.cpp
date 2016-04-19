@@ -913,7 +913,7 @@ ML_IMPL CvCNNLayer* cvCreateCNNConvolutionLayer( const char * name,
 
   const int output_height = input_height - K + 1;
   const int output_width = input_width - K + 1;
-  fprintf(stderr,"ConvolutionLayer: input (%d@%dx%d), output (%d@%dx%d)\n",
+  fprintf(stderr,"ConvolutionLayer(%s): input (%d@%dx%d), output (%d@%dx%d)\n", name,
           n_input_planes,input_width,input_height,
           n_output_planes,output_width,output_height);
 
@@ -992,7 +992,7 @@ ML_IMPL CvCNNLayer* cvCreateCNNSubSamplingLayer( const char * name,
     const int output_height   = input_height/sub_samp_scale;
     const int output_width    = input_width/sub_samp_scale;
     const int n_output_planes = n_input_planes;
-    fprintf(stderr,"SubSamplingLayer: input (%d@%dx%d), output (%d@%dx%d)\n",
+    fprintf(stderr,"SubSamplingLayer(%s): input (%d@%dx%d), output (%d@%dx%d)\n", name,
             n_input_planes,input_width,input_height,n_output_planes,output_width,output_height);
 
     if ( sub_samp_scale < 1 || a <= 0 || s <= 0)
@@ -1057,7 +1057,7 @@ ML_IMPL CvCNNLayer* cvCreateCNNFullConnectLayer( const char * name,
     CV_ERROR( CV_StsBadArg, "Incorrect parameters" );
   }
 
-  fprintf(stderr,"FullConnectLayer: input (%d), output (%d)\n",
+  fprintf(stderr,"FullConnectLayer(%s): input (%d), output (%d)\n", name,
           n_inputs,n_outputs);
   
   CV_CALL(layer = (CvCNNFullConnectLayer*)icvCreateCNNLayer( ICV_CNN_FULLCONNECT_LAYER, name, 
@@ -1112,7 +1112,8 @@ ML_IMPL CvCNNLayer* cvCreateCNNRecurrentLayer( const char * name,
 
   if ( init_learn_rate <= 0) { CV_ERROR( CV_StsBadArg, "Incorrect parameters" ); }
 
-  fprintf(stderr,"RecurrentLayer: input(%d), hidden(%d), output(%d), seq_length(%d), time_index(%d)\n",
+  fprintf(stderr,"RecurrentNNLayer(%s): input(%d), hidden(%d), output(%d), "
+          "seq_length(%d), time_index(%d)\n", name,
           n_inputs, n_hiddens, n_outputs, seq_length, time_index);
   
   CV_CALL(layer = (CvCNNRecurrentLayer*)icvCreateCNNLayer( ICV_CNN_RECURRENT_LAYER, name, 
@@ -1184,8 +1185,8 @@ CvCNNLayer * cvCreateCNNImgCroppingLayer( const char * name, const CvCNNLayer * 
   if ( init_learn_rate <= 0) { CV_ERROR( CV_StsBadArg, "Incorrect parameters" ); }
   CV_ASSERT(ICV_IS_CNN_INPUTDATA_LAYER(_image_layer));
 
-  fprintf(stderr,"ImgCroppingLayer: "
-          "input (%d@%dx%d), output (%d@%dx%d), seq_length: %d, time_index: %d\n",
+  fprintf(stderr,"ImgCroppingLayer(%s): "
+          "input (%d@%dx%d), output (%d@%dx%d), seq_length: %d, time_index: %d\n", name,
           n_inputs,input_layer->input_height,input_layer->input_width,
           n_outputs,output_height,output_width,input_layer->seq_length,time_index);
   
@@ -1224,7 +1225,7 @@ CvCNNLayer * cvCreateCNNInputDataLayer( const char * name,
     CV_ERROR( CV_StsBadArg, "Incorrect parameters" );
   }
 
-  fprintf(stderr,"InputDataLayer: input (%d@%dx%d), output (%d@%dx%d), seq_length: %d\n",
+  fprintf(stderr,"InputDataLayer(%s): input (%d@%dx%d), output (%d@%dx%d), seq_length: %d\n", name,
           n_inputs,input_height,input_width,
           n_outputs,output_height,output_width,seq_length);
   

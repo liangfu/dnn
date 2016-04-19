@@ -59,19 +59,20 @@ int main(int argc, char * argv[])
   const char * testing_filename  = cnn->solver()->testing_filename();
   const char * expected_filename = cnn->solver()->expected_filename();
 
-  fprintf(stderr,"Loading MNIST Images ...\n");
+  fprintf(stderr,"Loading Dataset ...\n");
   CvMat * response = (CvMat*)cvLoad((char*)response_filename);
   CvMat * training = (CvMat*)cvLoad((char*)training_filename);
   CvMat * expected = (CvMat*)cvLoad((char*)expected_filename);
-  CvMat * testing  = (CvMat*)cvLoad((char*)testing_filename);
+  CvMat * testing  = (CvMat*)cvLoad((char*) testing_filename);
 
   if (!response || !training || !expected || !testing){
     LOGE("Error: not all training/testing files available, try transfer data first.\n"); 
-    exit(1);
+    return 1;
   }
   
   assert(CV_MAT_TYPE(training->type)==CV_32F);
   assert(training->rows==response->rows);
+  assert( testing->rows==expected->rows);
   
   fprintf(stderr,"%d Training Images Loaded!\n",training->rows);
   fprintf(stderr,"%d Testing Images Loaded!\n",testing->rows);
@@ -85,11 +86,10 @@ int main(int argc, char * argv[])
   }else{
     cnn->loadModel(model_filename);
     cnn->loadWeights(weights_filename);
+    int nsamples = MIN(5000,testing->rows);
+    float top1 = cnn->evaluate(testing,expected,nsamples);
+    fprintf(stderr,"top-1: %.1f%%\n",float(top1*100.f)/float(nsamples));
   }
-  
-  int nsamples = MIN(5000,testing->rows);
-  float top1 = cnn->evaluate(testing,expected,nsamples);
-  fprintf(stderr,"top-1: %.1f%%\n",float(top1*100.f)/float(nsamples));
 
   CV_TIMER_SHOW();
 
