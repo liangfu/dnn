@@ -14,6 +14,7 @@ typedef cv::CommandLineParser CvCommandLineParser;
 void icvConvertIntToDecimal(const int ndigits, CvMat * src, CvMat * dst);
 CvMat * icvReadSVHNImages(char * filename, CvMat * response);
 CvMat * icvReadSVHNLabels(char * filename, const int max_samples);
+CvMat * icvConvertLabels(CvMat * src);
 
 int main(int argc, char * argv[])
 {
@@ -47,19 +48,23 @@ int main(int argc, char * argv[])
   assert(CV_MAT_TYPE(training->type)==CV_32F);
   CvMat * expected = icvReadSVHNLabels((char*)expected_filename,n_test_samples);
   CvMat * testing  = icvReadSVHNImages((char*) testing_filename,expected);
+  CvMat * response_mat = icvConvertLabels(response);
+  CvMat * expected_mat = icvConvertLabels(expected);
 
   fprintf(stderr,"%d training samples generated!\n", training->rows);
   fprintf(stderr,"%d testing samples generated!\n", testing->rows);
 
   cvSave(training_filename_xml,training);
-  cvSave(response_filename_xml,response);
+  cvSave(response_filename_xml,response_mat);
   cvSave( testing_filename_xml,testing);
-  cvSave(expected_filename_xml,expected);
+  cvSave(expected_filename_xml,expected_mat);
 
   cvReleaseMat(&training);
   cvReleaseMat(&response);
+  cvReleaseMat(&response_mat);
   cvReleaseMat(&testing);
   cvReleaseMat(&expected);
+  cvReleaseMat(&expected_mat);
   
   return 0;
 }
@@ -183,4 +188,27 @@ CvMat * icvReadSVHNLabels(char * filename, const int max_samples)
   data->rows = ii;
   cvReleaseFileStorage(&fs);
   return data;
+}
+
+CvMat * icvConvertLabels(CvMat * src)
+{
+  CV_FUNCNAME("icvConvertLabels");
+  CvMat * dst = 0;
+  __BEGIN__;
+  const int nsamples = src->rows;
+  const int ntargets = 5;
+  const int nclasses = 10; // decimal
+  const int nparams = 4;
+  CV_ASSERT(CV_MAT_TYPE(src->type)==CV_32S);
+  dst = cvCreateMat(nsamples,(ntargets+1)*nclasses,CV_32F); cvZero(dst);
+  for (int ii=0;ii<nsamples;ii++){
+  int nlabels = CV_MAT_ELEM(*src,int,ii,0);
+  CV_MAT_ELEM(*dst,float,ii,nlabels)=1;
+  for (int jj=0;jj<nlabels;jj++){
+    int label = CV_MAT_ELEM(*src,int,ii,1+nparams*jj+3); // label
+    CV_MAT_ELEM(*dst,float,ii,10+nclasses*jj+label)=1;
+  }
+  }
+  __END__;
+  return dst;
 }

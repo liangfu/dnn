@@ -14,10 +14,11 @@
 	<name>crop1</name>
 	<input_layer>input1</input_layer>
 	<n_output_planes>1</n_output_planes>
-	<output_height>52</output_height>
-	<output_width>52</output_width>
+	<output_height>48</output_height>
+	<output_width>48</output_width>
 	<seq_length>1</seq_length>
 	<time_index>0</time_index>
+	<visualize>1</visualize>
 </layer-1>
 <layer-2> <!-- CONTEXT NETWORK -->
 	<type>Convolution</type>
@@ -25,12 +26,14 @@
 	<n_output_planes>6</n_output_planes>
 	<ksize>5</ksize>
 	<stride>1</stride>
+	<visualize>1</visualize>
 </layer-2>
 <layer-3>
 	<type>SubSampling</type>
 	<name>pool1</name>
 	<ksize>2</ksize>
 	<stride>2</stride>
+	<visualize>1</visualize>
 </layer-3>
 <layer-4>
 	<type>Convolution</type>
@@ -38,12 +41,14 @@
 	<n_output_planes>16</n_output_planes>
 	<ksize>5</ksize>
 	<stride>1</stride>
+	<visualize>1</visualize>
 </layer-4>
 <layer-5>
 	<type>SubSampling</type>
 	<name>pool2</name>
 	<ksize>2</ksize>
 	<stride>2</stride>
+	<visualize>1</visualize>
 </layer-5>
 <layer-6>
 	<type>FullConnect</type>
@@ -51,7 +56,7 @@
 	<n_output_planes>128</n_output_planes>
 	<activation_type>tanh</activation_type>
 </layer-6>
-<layer-7> <!-- RECURRENT NETWORK II -->
+<layer-7> <!-- RECURRENT NETWORK II : GLIMPSE LOCALIZATION TASK  -->
 	<type>Recurrent</type>
 	<name>rnn2</name>
 	<n_output_planes>128</n_output_planes>
@@ -64,16 +69,18 @@
 	<name>fc2</name>
 	<n_output_planes>2</n_output_planes> <!-- (x,y,scale) tuple -->
 	<activation_type>tanh</activation_type>
+	<visualize>2</visualize>
 </layer-8>
 <layer-9>  <!-- GLIMPSE NETWORK -->
 	<type>ImgCropping</type> <!-- [ImgCropping] -> [(Convolution+FullConnect)*FullConnect] -->
 	<name>crop2</name>
 	<input_layer>input1</input_layer>
 	<n_output_planes>1</n_output_planes>
-	<output_height>52</output_height>
-	<output_width>52</output_width>
+	<output_height>48</output_height>
+	<output_width>48</output_width>
 	<seq_length>1</seq_length>
 	<time_index>0</time_index>
+	<visualize>1</visualize>
 </layer-9>
 <layer-10>
 	<type>Convolution</type>
@@ -81,12 +88,14 @@
 	<n_output_planes>6</n_output_planes>
 	<ksize>5</ksize>
 	<stride>1</stride>
+	<visualize>1</visualize>
 </layer-10>
 <layer-11>
 	<type>SubSampling</type>
 	<name>pool3</name>
 	<ksize>2</ksize>
 	<stride>2</stride>
+	<visualize>1</visualize>
 </layer-11>
 <layer-12>
 	<type>Convolution</type>
@@ -94,12 +103,14 @@
 	<n_output_planes>16</n_output_planes>
 	<ksize>5</ksize>
 	<stride>1</stride>
+	<visualize>1</visualize>
 </layer-12>
 <layer-13>
 	<type>SubSampling</type>
 	<name>pool4</name>
 	<ksize>2</ksize>
 	<stride>2</stride>
+	<visualize>1</visualize>
 </layer-13>
 <layer-14>
 	<type>FullConnect</type>
@@ -107,7 +118,7 @@
 	<n_output_planes>128</n_output_planes>
 	<activation_type>tanh</activation_type>
 </layer-14>
-<layer-15> <!-- RECURRENT NETWORK I -->
+<layer-15> <!-- RECURRENT NETWORK I : CLASSIFICATION TASK -->
 	<type>Recurrent</type>
 	<name>rnn1</name>
 	<n_output_planes>128</n_output_planes>
@@ -139,7 +150,7 @@
 <layer-34> <!-- CLASSIFICATION NETWORK -->
 	<type>FullConnect</type>
 	<name>fc2</name>
-	<n_output_planes>10</n_output_planes>
+	<n_output_planes>60</n_output_planes>
 	<activation_type>tanh</activation_type>
 </layer-34>
 </layers>
