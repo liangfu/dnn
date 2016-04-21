@@ -130,6 +130,7 @@ static void cvSigmoid(CvMat * src, CvMat * dst);
 static void cvSigmoidDer(CvMat * src, CvMat * dst);
 static void cvReLU(CvMat * src, CvMat * dst){cvMaxS( src, 0, dst );}
 static void cvReLUDer(CvMat * src, CvMat * dst);
+static void cvSoftmax(CvMat * src, CvMat * dst);
 
 /**************************************************************************\
  *                 Functions implementations                              *
@@ -981,7 +982,7 @@ ML_IMPL CvCNNLayer* cvCreateCNNConvolutionLayer( const char * name, const int vi
 /*************************************************************************/
 ML_IMPL CvCNNLayer* cvCreateCNNSubSamplingLayer( const char * name, const int visualize,
     int n_input_planes, int input_height, int input_width,
-    int sub_samp_scale, float a, float s, 
+    int sub_samp_scale, 
     float init_learn_rate, int learn_rate_decrease_type, CvMat* weights )
 
 {
@@ -996,7 +997,7 @@ ML_IMPL CvCNNLayer* cvCreateCNNSubSamplingLayer( const char * name, const int vi
     fprintf(stderr,"SubSamplingLayer(%s): input (%d@%dx%d), output (%d@%dx%d)\n", name,
             n_input_planes,input_width,input_height,n_output_planes,output_width,output_height);
 
-    if ( sub_samp_scale < 1 || a <= 0 || s <= 0)
+    if ( sub_samp_scale < 1 )
         CV_ERROR( CV_StsBadArg, "Incorrect parameters" );
 
     CV_CALL(layer = (CvCNNSubSamplingLayer*)icvCreateCNNLayer( ICV_CNN_SUBSAMPLING_LAYER, name, 
@@ -1007,17 +1008,15 @@ ML_IMPL CvCNNLayer* cvCreateCNNSubSamplingLayer( const char * name, const int vi
 
     layer->sub_samp_scale  = sub_samp_scale;
     layer->visualize = visualize;
-    layer->a               = a;
-    layer->s               = s;
     layer->mask = 0;
 
     CV_CALL(layer->sumX =
         cvCreateMat( n_output_planes*output_width*output_height, 1, CV_32FC1 ));
-    CV_CALL(layer->exp2ssumWX =
+    CV_CALL(layer->WX =
         cvCreateMat( n_output_planes*output_width*output_height, 1, CV_32FC1 ));
     
     cvZero( layer->sumX );
-    cvZero( layer->exp2ssumWX );
+    cvZero( layer->WX );
 
     CV_CALL(layer->weights = cvCreateMat( n_output_planes, 2, CV_32FC1 ));
     if ( weights )
@@ -1038,7 +1037,7 @@ ML_IMPL CvCNNLayer* cvCreateCNNSubSamplingLayer( const char * name, const int vi
 
     if ( cvGetErrStatus() < 0 && layer )
     {
-        cvReleaseMat( &layer->exp2ssumWX );
+        cvReleaseMat( &layer->WX );
         cvFree( &layer );
     }
 
@@ -1047,7 +1046,7 @@ ML_IMPL CvCNNLayer* cvCreateCNNSubSamplingLayer( const char * name, const int vi
 
 /*************************************************************************/
 ML_IMPL CvCNNLayer* cvCreateCNNFullConnectLayer( const char * name, const int visualize,
-    int n_inputs, int n_outputs, float a, float s, 
+    const CvCNNLayer * input_layer, int n_inputs, int n_outputs, 
     float init_learn_rate, int learn_rate_decrease_type, int activation_type, CvMat* weights )
 {
   CvCNNFullConnectLayer* layer = 0;
@@ -1055,7 +1054,7 @@ ML_IMPL CvCNNLayer* cvCreateCNNFullConnectLayer( const char * name, const int vi
   CV_FUNCNAME("cvCreateCNNFullConnectLayer");
   __BEGIN__;
 
-  if ( a <= 0 || s <= 0 || init_learn_rate <= 0) {
+  if ( init_learn_rate <= 0) {
     CV_ERROR( CV_StsBadArg, "Incorrect parameters" );
   }
 
@@ -1067,11 +1066,10 @@ ML_IMPL CvCNNLayer* cvCreateCNNFullConnectLayer( const char * name, const int vi
       init_learn_rate, learn_rate_decrease_type,
       icvCNNFullConnectRelease, icvCNNFullConnectForward, icvCNNFullConnectBackward ));
 
-  layer->a = a;
-  layer->s = s;
-  layer->exp2ssumWX = 0;
+  layer->WX = 0;
   layer->activation_type = activation_type;//CV_CNN_HYPERBOLIC;
   layer->visualize = visualize;
+  layer->input_layer = (CvCNNLayer*)input_layer;
 
   CV_CALL(layer->weights = cvCreateMat( n_outputs, n_inputs+1, CV_32FC1 ));
   if ( weights ){
@@ -1093,7 +1091,7 @@ ML_IMPL CvCNNLayer* cvCreateCNNFullConnectLayer( const char * name, const int vi
   __END__;
 
   if ( cvGetErrStatus() < 0 && layer ){
-    cvReleaseMat( &layer->exp2ssumWX );
+    cvReleaseMat( &layer->WX );
     cvReleaseMat( &layer->weights );
     cvFree( &layer );
   }
@@ -1367,18 +1365,18 @@ icvCNNSubSamplingForward( CvCNNLayer* _layer, const CvMat* X, CvMat* Y )
 
   int xx, yy, ni, kx, ky;
   float* sumX_data = 0, *w = 0;
-  CvMat sumX_sub_col, exp2ssumWX_sub_col;
+  CvMat sumX_sub_col, WX_sub_col;
 
   CV_ASSERT(X->rows == nplanes*Xsize && X->cols == nsamples);
   CV_ASSERT(Y->cols == nsamples);
-  CV_ASSERT((layer->exp2ssumWX->cols == 1) &&
-            (layer->exp2ssumWX->rows == nplanes*Ysize));
+  CV_ASSERT((layer->WX->cols == 1) &&
+            (layer->WX->rows == nplanes*Ysize));
 
   CV_CALL(layer->mask = cvCreateMat(Ysize*nplanes, batch_size, CV_32S));
   
   // update inner variable used in back-propagation
   cvZero( layer->sumX );
-  cvZero( layer->exp2ssumWX );
+  cvZero( layer->WX );
   cvZero( layer->mask );
   
   int * mptr = layer->mask->data.i;
@@ -1423,7 +1421,7 @@ icvCNNSubSamplingForward( CvCNNLayer* _layer, const CvMat* X, CvMat* Y )
 }
 
 /****************************************************************************************/
-static void icvCNNFullConnectForward( CvCNNLayer* _layer, const CvMat* X, CvMat* Y )
+static void icvCNNFullConnectForward( CvCNNLayer* _layer, const CvMat* _X, CvMat* _Y )
 {
   CV_FUNCNAME("icvCNNFullConnectForward");
 
@@ -1434,52 +1432,72 @@ static void icvCNNFullConnectForward( CvCNNLayer* _layer, const CvMat* X, CvMat*
   __BEGIN__;
 
   CvCNNFullConnectLayer * layer = (CvCNNFullConnectLayer*)_layer;
+  CvCNNLayer * input_layer = layer->input_layer;
   CvMat * weights = layer->weights;
   CvMat sub_weights, biascol;
+  CvMat * X = (CvMat*)_X;
+  CvMat * Y = (CvMat*)_Y;
+  int n_inputs = layer->n_input_planes;
   int n_outputs = Y->rows;
   int batch_size = X->cols;
+  int seq_length = 1;
+  
+  if (input_layer && ICV_IS_CNN_RECURRENT_LAYER(input_layer)){
+    seq_length = ((CvCNNRecurrentLayer*)input_layer)->seq_length;
+    CvMat * Xsrc = ((CvCNNRecurrentLayer*)input_layer)->Y;
+    CvMat * Xsrc_transpose = cvCreateMat(Xsrc->cols,Xsrc->rows,CV_32F);
+    cvTranspose(Xsrc,Xsrc_transpose);
+    X = cvCreateMat(n_inputs*seq_length,batch_size,CV_32F);
+    CV_ASSERT(n_inputs*seq_length*batch_size==Xsrc->rows*Xsrc->cols);
+    memcpy(X->data.ptr,Xsrc_transpose->data.ptr,sizeof(float)*n_inputs*seq_length*batch_size);
+    cvReleaseMat(&Xsrc_transpose);
+    n_outputs=layer->n_output_planes/seq_length;
+    CV_ASSERT(n_outputs*seq_length==layer->n_output_planes);
+  }
 
-  CV_ASSERT(X->cols == batch_size && X->rows == layer->n_input_planes);
+  CV_ASSERT(X->cols == batch_size && X->rows == layer->n_input_planes*seq_length);
   CV_ASSERT(Y->cols == batch_size && Y->rows == layer->n_output_planes);
 
-  // bias on last column vector
-  CvRect roi = cvRect(0, 0, weights->cols-1, weights->rows );
-  CV_CALL(cvGetSubRect( weights, &sub_weights, roi));
-  CV_CALL(cvGetCol( weights, &biascol, weights->cols-1));
-  CV_ASSERT(CV_MAT_TYPE(biascol.type)==CV_32F);
-  CvMat * bias = cvCreateMat(biascol.rows,batch_size,CV_32F);
-  cvRepeat(&biascol,bias);
-  
-  CV_CALL(layer->exp2ssumWX = cvCreateMat( n_outputs, batch_size, CV_32FC1 ));
-  cvZero( layer->exp2ssumWX );
+  if (seq_length==1){
+    CvRect roi = cvRect(0, 0, weights->cols-1, weights->rows );
+    CV_CALL(cvGetSubRect( weights, &sub_weights, roi));
+    CV_CALL(cvGetCol( weights, &biascol, weights->cols-1));
+    CV_ASSERT(CV_MAT_TYPE(biascol.type)==CV_32F);
+    CvMat * bias = cvCreateMat(biascol.rows,batch_size,CV_32F);
+    cvRepeat(&biascol,bias);
+    CV_CALL(layer->WX = cvCreateMat( n_outputs, batch_size, CV_32FC1 ));
+    cvZero( layer->WX );
+    CV_CALL(cvGEMM( &sub_weights, X, 1, bias, 1, layer->WX ));
+    if (bias){cvReleaseMat(&bias);bias=0;}
+  }else{
+    layer->WX = cvCreateMat( n_outputs*seq_length, batch_size, CV_32F ); cvZero( layer->WX );
+    CV_ASSERT(layer->activation_type==CV_CNN_NONE);
+    for (int seqidx=0;seqidx<seq_length;seqidx++){
+      CvRect wroi = cvRect(0, n_outputs*seqidx, weights->cols-1, n_outputs );
+      CvRect broi = cvRect(weights->cols-1, n_outputs*seqidx, 1, n_outputs );
+      CvRect xroi = cvRect(0, n_inputs*seqidx, batch_size, n_inputs);
+      CvRect yroi = cvRect(0, n_outputs*seqidx, batch_size, n_outputs);
+      CvMat X_submat,WX_submat,Y_submat;
+      cvGetSubRect( weights, &sub_weights, wroi);
+      cvGetSubRect( weights, &biascol, broi);
+      cvGetSubRect( X, &X_submat, xroi );
+      cvGetSubRect( layer->WX, &WX_submat, yroi );
+      cvGetSubRect( Y, &Y_submat, yroi );
+      CvMat * bias = cvCreateMat(biascol.rows,batch_size,CV_32F); cvRepeat(&biascol,bias);
+      CV_CALL(cvGEMM( &sub_weights, &X_submat, 1, bias, 1, &WX_submat ));
+      cvSoftmax(&WX_submat,&Y_submat); // WARNING: explicitly applying softmax
+      if (bias){cvReleaseMat(&bias);bias=0;}
+    } // CV_SHOW(Y);
+  }
 
-  // update inner variables used in back-propagation
-  CV_CALL(cvGEMM( &sub_weights, X, 1, bias, 1, layer->exp2ssumWX ));
-  if (layer->activation_type==CV_CNN_NONE){
-    // do nothing
+  if (layer->activation_type==CV_CNN_NONE){ // do nothing
   }else if (layer->activation_type==CV_CNN_HYPERBOLIC){
-    CV_CALL(cvTanh( layer->exp2ssumWX, Y ));
+    CV_CALL(cvTanh( layer->WX, Y ));
   }else if (layer->activation_type==CV_CNN_LOGISTIC){
-    CV_CALL(cvSigmoid( layer->exp2ssumWX, Y ));
+    CV_CALL(cvSigmoid( layer->WX, Y ));
   }else if (layer->activation_type==CV_CNN_RELU){
-    CV_CALL(cvReLU( layer->exp2ssumWX, Y ));
+    CV_CALL(cvReLU( layer->WX, Y ));
   }else{assert(false);}
-
-  //// check numerical stability
-  // CV_CALL(cvMinS( layer->exp2ssumWX, FLT_MAX, layer->exp2ssumWX ));
-  // for ( int ii = 0; ii < layer->exp2ssumWX->rows; ii++ ){
-  //   CV_ASSERT ( layer->exp2ssumWX->data.fl[ii] != FLT_MAX );
-  // }
-
-  //// compute the output variable
-  // CvMat * sum = cvCreateMat(1,batch_size,CV_32F);
-  // CvMat * sumrep = cvCreateMat(n_outputs,batch_size,CV_32F);
-  // cvReduce(layer->exp2ssumWX,sum,-1,CV_REDUCE_SUM);cvRepeat(sum,sumrep);
-  // cvDiv(layer->exp2ssumWX,sumrep,Y);
-  // cvReleaseMat(&sum);
-  // cvReleaseMat(&sumrep);
-
-  if (bias){cvReleaseMat(&bias);bias=0;}
 
   if (layer->visualize==1){icvVisualizeCNNLayer((CvCNNLayer*)layer,Y);}
   else if (layer->visualize==2){fprintf(stderr,"\n");cvPrintf(stderr,"%f ",Y);}
@@ -1515,7 +1533,7 @@ static void icvCNNImgCroppingForward( CvCNNLayer * _layer, const CvMat* X, CvMat
       float ty = float(input_height-output_height)*(CV_MAT_ELEM(*X,float,1,0)+1.f)*.5f;
       CV_MAT_ELEM(*p,float,0,0)=CV_MAT_ELEM(*p,float,1,1)=1.f;
       CV_MAT_ELEM(*p,float,0,2)=tx;
-      CV_MAT_ELEM(*p,float,1,2)=ty; fprintf(stderr,"--\n"); cvPrintf(stderr,"%f ",p);
+      CV_MAT_ELEM(*p,float,1,2)=ty; // fprintf(stderr,"--\n"); cvPrintf(stderr,"%f ",p);
       CV_ASSERT(I->rows==input_height*input_width && CV_MAT_TYPE(I->type)==CV_32F);
       CV_ASSERT(Y->rows==output_height*output_width && CV_MAT_TYPE(Y->type)==CV_32F);
       CvMat srchdr = cvMat(input_height,input_width,CV_32F,I->data.ptr);
@@ -1892,7 +1910,7 @@ static void icvCNNFullConnectBackward( CvCNNLayer* _layer,
 
   int i;
   CvMat* weights = layer->weights;
-  CvMat sub_weights, Xtemplate, exp2ssumWXrow;
+  CvMat sub_weights, Xtemplate, WXrow;
   int batch_size = X->cols;
   CvMat * dE_dY_T = cvCreateMat(n_outputs, batch_size, CV_32F);
 
@@ -1905,9 +1923,9 @@ static void icvCNNFullConnectBackward( CvCNNLayer* _layer,
 
   // compute (tanh'(WX))*dE_dY
   if (layer->activation_type==CV_CNN_NONE){
-  }else if (layer->activation_type==CV_CNN_HYPERBOLIC){ cvTanhDer(layer->exp2ssumWX,dE_dY_afder);
-  }else if (layer->activation_type==CV_CNN_LOGISTIC){   cvSigmoidDer(layer->exp2ssumWX,dE_dY_afder);
-  }else if (layer->activation_type==CV_CNN_RELU){       cvReLUDer(layer->exp2ssumWX,dE_dY_afder);
+  }else if (layer->activation_type==CV_CNN_HYPERBOLIC){ cvTanhDer(layer->WX,dE_dY_afder);
+  }else if (layer->activation_type==CV_CNN_LOGISTIC){   cvSigmoidDer(layer->WX,dE_dY_afder);
+  }else if (layer->activation_type==CV_CNN_RELU){       cvReLUDer(layer->WX,dE_dY_afder);
   }else{assert(false);}
   cvTranspose(dE_dY,dE_dY_T);
   cvMul(dE_dY_afder,dE_dY_T,dE_dY_afder);
@@ -1942,7 +1960,7 @@ static void icvCNNFullConnectBackward( CvCNNLayer* _layer,
   }
   
   cvReleaseMat(&dE_dY_T);
-  if (layer->exp2ssumWX){ cvReleaseMat(&layer->exp2ssumWX);layer->exp2ssumWX=0; }
+  if (layer->WX){ cvReleaseMat(&layer->WX);layer->WX=0; }
   }__END__;
 
   cvReleaseMat( &dE_dY_afder );
@@ -2227,6 +2245,17 @@ void cvSigmoidDer(CvMat * src, CvMat * dst) {
   cvReleaseMat(&tmp);
 }
 
+void cvSoftmax(CvMat * src, CvMat * dst){
+  cvExp(src,dst);
+  CvMat * sum = cvCreateMat(1,src->cols/*batch_size*/,CV_32F);
+  CvMat * sum_repeat = cvCreateMat(src->rows,src->cols/*batch_size*/,CV_32F);
+  cvReduce(dst,sum,-1,CV_REDUCE_SUM);
+  cvRepeat(sum,sum_repeat);
+  cvDiv(dst,sum_repeat,dst);
+  cvReleaseMat(&sum);
+  cvReleaseMat(&sum_repeat);
+}
+
 void cvReLUDer(CvMat * src, CvMat * dst) {
   CV_FUNCNAME("cvReLUDer");
   int ii,elemsize=src->rows*src->cols;
@@ -2292,7 +2321,7 @@ static void icvCNNSubSamplingRelease( CvCNNLayer** p_layer )
       CV_ERROR( CV_StsBadArg, "Invalid layer" );
 
   if (layer->mask      ){cvReleaseMat( &layer->mask       ); layer->mask      =0;}
-  if (layer->exp2ssumWX){cvReleaseMat( &layer->exp2ssumWX ); layer->exp2ssumWX=0;}
+  if (layer->WX){cvReleaseMat( &layer->WX ); layer->WX=0;}
   if (layer->weights   ){cvReleaseMat( &layer->weights    ); layer->weights   =0;}
   cvFree( p_layer );
 
@@ -2317,7 +2346,7 @@ static void icvCNNFullConnectRelease( CvCNNLayer** p_layer )
   if ( !ICV_IS_CNN_FULLCONNECT_LAYER(layer) )
       CV_ERROR( CV_StsBadArg, "Invalid layer" );
 
-  cvReleaseMat( &layer->exp2ssumWX );
+  cvReleaseMat( &layer->WX );
   cvReleaseMat( &layer->weights );
   cvFree( p_layer );
 
@@ -2427,13 +2456,13 @@ static CvCNNLayer* icvReadCNNLayer( CvFileStorage* fs, CvFileNode* node )
     }
     CV_CALL(layer = cvCreateCNNSubSamplingLayer( "", 0,
       n_input_planes, input_height, input_width, sub_samp_scale,
-      1.f, 1.f, init_learn_rate, learn_type, weights ));
+      init_learn_rate, learn_type, weights ));
   } else if ( layer_type == ICV_CNN_FULLCONNECT_LAYER ){
     if ( input_height != 1  || input_width != 1 || output_height != 1 || output_width != 1 ) { 
       CV_ERROR( CV_StsBadArg, "" ); 
     }
-    CV_CALL(layer = cvCreateCNNFullConnectLayer( "", 0, n_input_planes, n_output_planes,
-      1.f, 1.f, init_learn_rate, learn_type, CV_CNN_HYPERBOLIC, weights ));
+    CV_CALL(layer = cvCreateCNNFullConnectLayer( "", 0, 0, n_input_planes, n_output_planes,
+      init_learn_rate, learn_type, CV_CNN_HYPERBOLIC, weights ));
   } else {
     CV_ERROR( CV_StsBadArg, "Invalid <layer_type>" );
   }
@@ -2476,13 +2505,9 @@ static void icvWriteCNNLayer( CvFileStorage* fs, CvCNNLayer* layer )
   }else if ( ICV_IS_CNN_SUBSAMPLING_LAYER( layer ) ){
     CvCNNSubSamplingLayer* l = (CvCNNSubSamplingLayer*)layer;
     CV_CALL(cvWriteInt( fs, "layer_type", ICV_CNN_SUBSAMPLING_LAYER ));
-    CV_CALL(cvWriteReal( fs, "a", l->a ));
-    CV_CALL(cvWriteReal( fs, "s", l->s ));
   }else if ( ICV_IS_CNN_FULLCONNECT_LAYER( layer ) ){
     CvCNNFullConnectLayer* l = (CvCNNFullConnectLayer*)layer;
     CV_CALL(cvWriteInt( fs, "layer_type", ICV_CNN_FULLCONNECT_LAYER ));
-    CV_CALL(cvWriteReal( fs, "a", l->a ));
-    CV_CALL(cvWriteReal( fs, "s", l->s ));
   }else {
     CV_ERROR( CV_StsBadArg, "Invalid layer" );
   }

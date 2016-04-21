@@ -70,8 +70,8 @@ void CvNetwork::loadModel(string inFile)
           time_index, this_layer->init_learn_rate, this_layer->decay_type );
       }else if (ICV_IS_CNN_FULLCONNECT_LAYER(predefined_layer)){
         CvCNNFullConnectLayer * this_layer = (CvCNNFullConnectLayer*)predefined_layer;
-        layer = cvCreateCNNFullConnectLayer( this_layer->name, this_layer->visualize,
-          this_layer->n_input_planes, this_layer->n_output_planes, 1, 1,
+        layer = cvCreateCNNFullConnectLayer( this_layer->name, this_layer->visualize, 
+          this_layer->input_layer, this_layer->n_input_planes, this_layer->n_output_planes, 
           this_layer->init_learn_rate, this_layer->decay_type, this_layer->activation_type, NULL );
       }else if (ICV_IS_CNN_CONVOLUTION_LAYER(predefined_layer)){
         CvCNNConvolutionLayer * this_layer = (CvCNNConvolutionLayer*)predefined_layer;
@@ -83,7 +83,7 @@ void CvNetwork::loadModel(string inFile)
         CvCNNSubSamplingLayer * this_layer = (CvCNNSubSamplingLayer*)predefined_layer;
         layer = cvCreateCNNSubSamplingLayer( this_layer->name, this_layer->visualize,
           this_layer->n_input_planes, this_layer->input_height, this_layer->input_width,
-          this_layer->sub_samp_scale, 1, 1, this_layer->init_learn_rate, this_layer->decay_type, 0 );
+          this_layer->sub_samp_scale, this_layer->init_learn_rate, this_layer->decay_type, 0 );
       }else{
         assert(false);
       }
@@ -102,16 +102,21 @@ void CvNetwork::loadModel(string inFile)
     }else if (!strcmp(type,"SubSampling")){ // max pooling layer
       int ksize = cvReadIntByName(fs,node,"ksize");
       layer = cvCreateCNNSubSamplingLayer( name, visualize,
-        n_input_planes, input_height, input_width, ksize,1,1,
+        n_input_planes, input_height, input_width, ksize,
         lr_init, decay_type, NULL);
       n_input_planes = n_output_planes;
       input_height = input_height/ksize;
       input_width = input_width/ksize;
     }else if (!strcmp(type,"FullConnect")){ // full connection layer
+      CvCNNLayer * input_layer = 0;
+      const char * input_layer_name = cvReadStringByName(fs,node,"input_layer","");
+      if (strlen(input_layer_name)>0){
+        input_layer = m_cnn->network->get_layer(m_cnn->network,input_layer_name);
+      }
       n_input_planes = n_input_planes*input_height*input_width;
       n_output_planes = cvReadIntByName(fs,node,"n_output_planes");
-      layer = cvCreateCNNFullConnectLayer( name, visualize,
-        n_input_planes, n_output_planes, 1, 1, 
+      layer = cvCreateCNNFullConnectLayer( name, visualize, input_layer, 
+        n_input_planes, n_output_planes, 
         lr_init, decay_type, activation_type, NULL );
       n_input_planes = n_output_planes; input_height = 1; input_width = 1;
     }else if (!strcmp(type,"ImgCropping")){ // image cropping layer

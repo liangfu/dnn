@@ -181,8 +181,8 @@
 	<type>FullConnect</type>
 	<name>fc4</name>
 	<input_layer>rnn1</input_layer> <!-- get `seq_length` from input layer -->
-	<n_output_planes>10</n_output_planes>
-	<activation_type>tanh</activation_type>
+	<n_output_planes>60</n_output_planes>
+	<activation_type>none</activation_type> <!-- use softmax instead -->
 </layer-61>
 </layers>
 </opencv_storage>

@@ -240,20 +240,14 @@ typedef struct CvCNNConvolutionLayer
     CV_CNN_LAYER_FIELDS();
     // Kernel size (height and width) for convolution.
     int K;
-    // amplitude of sigmoid activation function
-    float a;//for simard method
-    // scale parameter of sigmoid activation function
-    float s;//for simard method
-    // exp2ssumWX = exp(2<s>*(bias+w*(x1+...+x4))), where x1,...x4 are some elements of X
-    // - is the vector used in computing of the activation function in backward
-    CvMat* exp2ssumWX;//for simard method
+    CvMat * WX;//for simard method
     // (x1+x2+x3+x4), where x1,...x4 are some elements of X
     // - is the vector used in computing of the activation function in backward
-    CvMat* sumX;//for simard method
+    CvMat * sumX;//for simard method
     // connections matrix, (i,j)-th element is 1 iff there is a connection between
     // i-th plane of the current layer and j-th plane of the previous layer;
     // (i,j)-th element is equal to 0 otherwise
-    CvMat *connect_mask;
+    CvMat * connect_mask;
     // value of the learning rate for updating weights at the first iteration
 }CvCNNConvolutionLayer;
 
@@ -263,13 +257,7 @@ typedef struct CvCNNSubSamplingLayer
     // ratio between the heights (or widths - ratios are supposed to be equal)
     // of the input and output planes
     int sub_samp_scale;
-    // amplitude of sigmoid activation function
-    float a;
-    // scale parameter of sigmoid activation function
-    float s;
-    // exp2ssumWX = exp(2<s>*(bias+w*(x1+...+x4))), where x1,...x4 are some elements of X
-    // - is the vector used in computing of the activation function in backward
-    CvMat * exp2ssumWX;
+    CvMat * WX;
     // (x1+x2+x3+x4), where x1,...x4 are some elements of X
     // - is the vector used in computing of the activation function in backward
     CvMat * sumX;
@@ -281,15 +269,10 @@ typedef struct CvCNNSubSamplingLayer
 typedef struct CvCNNFullConnectLayer
 {
     CV_CNN_LAYER_FIELDS();
-    // amplitude of sigmoid activation function
-    float a;
-    // scale parameter of sigmoid activation function
-    float s;
-    // exp2ssumWX = exp(2*<s>*(W*X)) - is the vector used in computing of the 
+    CvCNNLayer * input_layer;
+    // WX = (W*X) - is the vector used in computing of the 
     // activation function and it's derivative by the formulae
-    // activ.func. = <a>(exp(2<s>WX)-1)/(exp(2<s>WX)+1) == <a> - 2<a>/(<exp2ssumWX> + 1)
-    // (activ.func.)' = 4<a><s>exp(2<s>WX)/(exp(2<s>WX)+1)^2
-    CvMat* exp2ssumWX;
+    CvMat * WX;
     // activation function type,
     // either CV_CNN_LOGISTIC,CV_CNN_HYPERBOLIC,CV_CNN_RELU or CV_CNN_NONE
     int activation_type;
@@ -422,11 +405,11 @@ CVAPI(CvCNNLayer*) cvCreateCNNConvolutionLayer( const char * name, const int vis
 
 CVAPI(CvCNNLayer*) cvCreateCNNSubSamplingLayer( const char * name, const int visualize,
     int n_input_planes, int input_height, int input_width,
-    int sub_samp_scale, float a, float s, 
+    int sub_samp_scale, 
     float init_learn_rate, int learn_rate_decrease_type, CvMat* weights );
 
 CVAPI(CvCNNLayer*) cvCreateCNNFullConnectLayer( const char * name, const int visualize,
-    int n_inputs, int n_outputs, float a, float s, 
+    const CvCNNLayer * input_layer, int n_inputs, int n_outputs, 
     float init_learn_rate, int learn_rate_decrease_type, int activation_type, CvMat* weights );
 
 CVAPI(CvCNNLayer*) cvCreateCNNImgCroppingLayer( const char * name, const int visualize, 
