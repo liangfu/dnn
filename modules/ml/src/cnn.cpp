@@ -1508,7 +1508,7 @@ static void icvCNNFullConnectForward( CvCNNLayer* _layer, const CvMat* _X, CvMat
       X = cvCreateMat(n_inputs,batch_size,CV_32F);
       CV_ASSERT(n_inputs*batch_size==Xsrc->rows*Xsrc->cols);
       CvMat X_submat; CV_ASSERT(false); // TODO: FIX THE FOLLOWING LINE
-      cvGetSubRect(_X,&X_submat,cvRect(0,n_inputs*rnn_layer->time_index,batch_size,n_inputs));
+      cvGetSubRect(Xsrc_transpose,&X_submat,cvRect(0,n_inputs*rnn_layer->time_index,batch_size,n_inputs));
       cvCopy(&X_submat,X);
       seq_length=1;
     }
