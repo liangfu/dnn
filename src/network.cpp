@@ -54,7 +54,7 @@ void CvNetwork::loadModel(string inFile)
     // parse layer-specific parameters
     if (strlen(predefined)>0){
       CvCNNLayer * predefined_layer = m_cnn->network->get_layer(m_cnn->network,predefined);
-      if (ICV_IS_CNN_RECURRENT_LAYER(predefined_layer)){
+      if (ICV_IS_CNN_RECURRENTNN_LAYER(predefined_layer)){
         int time_index = cvReadIntByName(fs,node,"time_index",0);
         CvCNNRecurrentLayer * recurrent_layer = (CvCNNRecurrentLayer*)predefined_layer;
         layer = cvCreateCNNRecurrentLayer( predefined_layer->name, predefined_layer, 
@@ -108,7 +108,7 @@ void CvNetwork::loadModel(string inFile)
       input_height = input_height/ksize;
       input_width = input_width/ksize;
     }else if (!strcmp(type,"FullConnect")){ // full connection layer
-      CvCNNLayer * input_layer = 0;
+      CvCNNLayer * input_layer = 0; 
       const char * input_layer_name = cvReadStringByName(fs,node,"input_layer","");
       if (strlen(input_layer_name)>0){
         input_layer = m_cnn->network->get_layer(m_cnn->network,input_layer_name);
@@ -154,6 +154,19 @@ void CvNetwork::loadModel(string inFile)
       layer = cvCreateCNNInputDataLayer( name, 
         n_input_planes, input_height, input_width, seq_length,
         lr_init, decay_type );
+    }else if (!strcmp(type,"MultiTarget")){ // merge multiple data source  layer
+      int n_input_layers = cvReadIntByName(fs,node,"n_input_layers",1);
+      const char * input_layer_names = cvReadStringByName(fs,node,"input_layers","");
+      CvCNNLayer ** input_layers = new CvCNNLayer*[n_input_layers];
+      char * input_layer_name = strtok((char*)input_layer_names," ,");
+      input_layers[0] = m_cnn->network->get_layer(m_cnn->network, input_layer_name);
+      for (int ii=1; ii<n_input_layers; ii++){
+        input_layer_name = strtok(0," ,");
+        input_layers[ii] = m_cnn->network->get_layer(m_cnn->network, input_layer_name);
+      }
+      layer = cvCreateCNNMultiTargetLayer( name, 
+        n_input_layers, input_layers, n_output_planes, lr_init, decay_type );
+      if (input_layers){delete [] input_layers; input_layers = 0;}
     }else{
       fprintf(stderr,"ERROR: unknown layer type %s\n",type);
     }
@@ -195,7 +208,7 @@ void CvNetwork::saveWeights(string outFile)
   
   layer=(CvCNNLayer*)m_cnn->network->first_layer;
   for (int ii=0;ii<n_layers;ii++,layer=layer->next_layer){
-    if (ICV_IS_CNN_RECURRENT_LAYER(layer)){
+    if (ICV_IS_CNN_RECURRENTNN_LAYER(layer)){
       CvCNNRecurrentLayer * rnnlayer = (CvCNNRecurrentLayer*)layer;
       char xhstr[1024],hhstr[1024],hystr[1024];
       sprintf(xhstr,"%s_step%d_Wxh",rnnlayer->name,rnnlayer->time_index);
@@ -224,7 +237,7 @@ void CvNetwork::train(CvMat *trainingData, CvMat *responseMat)
 
   CvCNNLayer * last_layer = cvGetCNNLastLayer(m_cnn->network);
   int n_outputs = last_layer->n_output_planes;
-  if (ICV_IS_CNN_RECURRENT_LAYER(last_layer)){
+  if (ICV_IS_CNN_RECURRENTNN_LAYER(last_layer)){
     n_outputs *= ((CvCNNRecurrentLayer*)last_layer)->seq_length;
   }
 

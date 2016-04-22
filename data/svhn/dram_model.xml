@@ -180,9 +180,53 @@
 <layer-61> <!-- CLASSIFICATION NETWORK -->
 	<type>FullConnect</type>
 	<name>fc4</name>
-	<input_layer>rnn1</input_layer> <!-- get `seq_length` from input layer -->
-	<n_output_planes>60</n_output_planes>
-	<activation_type>none</activation_type> <!-- use softmax instead -->
+	<input_layer>rnn1</input_layer>
+	<n_output_planes>10</n_output_planes>
+	<activation_type>softmax</activation_type>
 </layer-61>
+<layer-62>
+	<type>FullConnect</type>
+	<name>fc5</name>
+	<input_layer>rnn1</input_layer>
+	<n_output_planes>10</n_output_planes>
+	<activation_type>softmax</activation_type>
+</layer-62>
+<layer-63>
+	<type>FullConnect</type>
+	<name>fc6</name>
+	<input_layer>rnn1</input_layer>
+	<n_output_planes>10</n_output_planes>
+	<activation_type>softmax</activation_type>
+</layer-63>
+<layer-64>
+	<type>FullConnect</type>
+	<name>fc7</name>
+	<input_layer>rnn1</input_layer>
+	<n_output_planes>10</n_output_planes>
+	<activation_type>softmax</activation_type>
+</layer-64>
+<layer-65>
+	<type>FullConnect</type>
+	<name>fc8</name>
+	<input_layer>rnn1</input_layer>
+	<n_output_planes>10</n_output_planes>
+	<activation_type>softmax</activation_type>
+</layer-65>
+<layer-66>
+	<type>FullConnect</type>
+	<name>fc9</name>
+	<input_layer>rnn1</input_layer>
+	<n_output_planes>10</n_output_planes>
+	<activation_type>softmax</activation_type>
+</layer-66>
+
+<layer-67>
+	<type>MultiTarget</type>
+	<name>multi1</name>
+	<n_input_layers>6</n_input_layers>
+	<input_layers>fc4,fc5,fc6,fc7,fc8,fc9</input_layers>
+	<n_output_planes>60</n_output_planes>
+</layer-67>
+
 </layers>
 </opencv_storage>

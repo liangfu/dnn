@@ -125,12 +125,14 @@ typedef struct CvCNNetwork CvCNNetwork;
 #define CV_CNN_GRAD_ESTIM_BY_WORST_IMG  1
 
 #define ICV_CNN_LAYER                0x55550000
-#define ICV_CNN_CONVOLUTION_LAYER    0x00001111
-#define ICV_CNN_SUBSAMPLING_LAYER    0x00002222
-#define ICV_CNN_FULLCONNECT_LAYER    0x00003333
-#define ICV_CNN_IMGCROPPING_LAYER    0x00004444
-#define ICV_CNN_RECURRENT_LAYER      0x00005555
-#define ICV_CNN_INPUTDATA_LAYER      0x00006666
+#define ICV_CNN_INPUTDATA_LAYER      0x00001111
+#define ICV_CNN_CONVOLUTION_LAYER    0x00002222
+#define ICV_CNN_SUBSAMPLING_LAYER    0x00003333
+#define ICV_CNN_FULLCONNECT_LAYER    0x00004444
+#define ICV_CNN_IMGCROPPING_LAYER    0x00005555
+#define ICV_CNN_RECURRENTNN_LAYER    0x00006666
+#define ICV_CNN_MULTITARGET_LAYER    0x00007777
+#define ICV_CNN_LSTM_LAYER           0x00008888
 
 #define CV_IS_CNN(cnn)                                                     \
 	( (cnn)!=NULL )
@@ -155,9 +157,13 @@ typedef struct CvCNNetwork CvCNNetwork;
     ( (ICV_IS_CNN_LAYER( layer )) && (((CvCNNLayer*) (layer))->flags       \
         & ~CV_MAGIC_MASK) == ICV_CNN_IMGCROPPING_LAYER )
 
-#define ICV_IS_CNN_RECURRENT_LAYER( layer )                                \
+#define ICV_IS_CNN_RECURRENTNN_LAYER( layer )                              \
     ( (ICV_IS_CNN_LAYER( layer )) && (((CvCNNLayer*) (layer))->flags       \
-        & ~CV_MAGIC_MASK) == ICV_CNN_RECURRENT_LAYER )
+        & ~CV_MAGIC_MASK) == ICV_CNN_RECURRENTNN_LAYER )
+
+#define ICV_IS_CNN_MULTITARGET_LAYER( layer )                              \
+    ( (ICV_IS_CNN_LAYER( layer )) && (((CvCNNLayer*) (layer))->flags       \
+        & ~CV_MAGIC_MASK) == ICV_CNN_MULTITARGET_LAYER )
 
 #define ICV_IS_CNN_INPUTDATA_LAYER( layer )                                \
     ( (ICV_IS_CNN_LAYER( layer )) && (((CvCNNLayer*) (layer))->flags       \
@@ -183,7 +189,7 @@ typedef void (CV_CDECL *CvCNNetworkRelease)(CvCNNetwork** network);
     /* Indicator of the layer's type */ \
     int flags;                          \
     /* Name of the layer, which should be unique within the network*/ \
-    char name[1024];                                                  \
+    char name[20];                                                    \
                                         \
     /* Number of input images */        \
     int n_input_planes;                 \
@@ -342,6 +348,13 @@ typedef struct CvCNNInputDataLayer
   CvMat * response;
 }CvCNNInputDataLayer;
 
+typedef struct CvCNNMultiTargetLayer
+{
+  CV_CNN_LAYER_FIELDS();
+  CvCNNLayer ** input_layers;
+  int n_input_layers;
+}CvCNNMultiTargetLayer;
+
 typedef struct CvCNNetwork
 {
   int n_layers;
@@ -424,7 +437,11 @@ CVAPI(CvCNNLayer*) cvCreateCNNRecurrentLayer( const char * name,
     CvMat * Wxh, CvMat * Whh, CvMat * Why );
 
 CVAPI(CvCNNLayer*) cvCreateCNNInputDataLayer( const char * name, 
-    int n_input_planes, int input_height, int input_width, int seq_length,
+    int n_inputs, int input_height, int input_width, int seq_length,
+    float init_learn_rate, int update_rule);
+
+CVAPI(CvCNNLayer*) cvCreateCNNMultiTargetLayer( const char * name, 
+    int n_input_layers, CvCNNLayer ** input_layers, int outputs,
     float init_learn_rate, int update_rule);
 
 CVAPI(CvCNNetwork*) cvCreateCNNetwork( CvCNNLayer* first_layer );
