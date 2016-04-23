@@ -702,7 +702,8 @@ static void icvCNNetworkAddLayer( CvCNNetwork* network, CvCNNLayer* layer )
   prev_layer = cvGetCNNLastLayer(network);
 
   if ( ICV_IS_CNN_FULLCONNECT_LAYER(layer) ){
-    if ( layer->n_input_planes != prev_layer->output_width*prev_layer->output_height*
+    if ( ((CvCNNFullConnectLayer*)layer)->input_layer==0 && 
+         layer->n_input_planes != prev_layer->output_width*prev_layer->output_height*
          prev_layer->n_output_planes ) {
       CV_ERROR( CV_StsBadArg, "Unmatched size of the new layer" );
     }
@@ -1506,10 +1507,10 @@ static void icvCNNFullConnectForward( CvCNNLayer* _layer, const CvMat* _X, CvMat
       CV_ASSERT(n_outputs*seq_length==layer->n_output_planes);
     }else{
       X = cvCreateMat(n_inputs,batch_size,CV_32F);
-      CV_ASSERT(n_inputs*batch_size==Xsrc->rows*Xsrc->cols);
-      CvMat X_submat; CV_ASSERT(false); // TODO: FIX THE FOLLOWING LINE
-      cvGetSubRect(Xsrc_transpose,&X_submat,cvRect(0,n_inputs*rnn_layer->time_index,batch_size,n_inputs));
-      cvCopy(&X_submat,X);
+      CV_ASSERT(n_inputs*seq_length*batch_size==Xsrc->rows*Xsrc->cols);
+      CvMat X_submat; 
+      cvGetRow(Xsrc_transpose,&X_submat,rnn_layer->time_index);
+      cvTranspose(&X_submat,X);
       seq_length=1;
     }
   }else if (ICV_IS_CNN_RECURRENTNN_LAYER(layer->prev_layer) && n_inputs*seq_length!=X->rows){

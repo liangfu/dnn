@@ -118,6 +118,7 @@ void CvNetwork::loadModel(string inFile)
       const char * input_layer_name = cvReadStringByName(fs,node,"input_layer","");
       if (strlen(input_layer_name)>0){
         input_layer = m_cnn->network->get_layer(m_cnn->network,input_layer_name);
+        n_input_planes = input_layer->n_output_planes;
       }
       n_input_planes = n_input_planes*input_height*input_width;
       n_output_planes = cvReadIntByName(fs,node,"n_output_planes");
@@ -167,6 +168,7 @@ void CvNetwork::loadModel(string inFile)
       if (!(n_input_layers>=1 && n_input_layers<=100)){
         LOGE("Invalid number of input layers [%d] while defining MultiTarget layer.",
              n_input_layers);exit(-1);}
+      n_output_planes = cvReadIntByName(fs,node,"n_output_planes",1);
       CvCNNLayer ** input_layers = new CvCNNLayer*[n_input_layers];
       char * input_layer_name = strtok((char*)input_layer_names," ,");
       input_layers[0] = m_cnn->network->get_layer(m_cnn->network, input_layer_name);
