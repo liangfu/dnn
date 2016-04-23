@@ -1273,8 +1273,8 @@ CvCNNLayer * cvCreateCNNMultiTargetLayer( const char * name,
     CV_ERROR( CV_StsBadArg, "Incorrect parameters" );
   }
 
-  fprintf(stderr,"MultiTargetLayer(%s): inputs (%d), outputs (%d), input_layers (%d)\n", name,
-          n_inputs,n_outputs,n_input_layers);
+  fprintf(stderr,"MultiTargetLayer(%s): input_layers (%d), outputs (%d)\n", name,
+          n_input_layers,n_outputs);
   
   CV_CALL(layer = (CvCNNMultiTargetLayer*)icvCreateCNNLayer( ICV_CNN_MULTITARGET_LAYER, name, 
       sizeof(CvCNNMultiTargetLayer), n_inputs, input_height, input_width, 

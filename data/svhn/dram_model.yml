@@ -79,11 +79,11 @@ layers:
 
   # CLASSIFICATION NETWORK
   - {type: FullConnect, name: fc4, visualize: 0, input_layer: rnn1, time_index: 0, n_output_planes: 10, activation_type: softmax}
-  - {type: FullConnect, name: fc4, visualize: 0, input_layer: rnn1, time_index: 1, n_output_planes: 10, activation_type: softmax}
-  - {type: FullConnect, name: fc4, visualize: 0, input_layer: rnn1, time_index: 2, n_output_planes: 10, activation_type: softmax}
-  - {type: FullConnect, name: fc4, visualize: 0, input_layer: rnn1, time_index: 3, n_output_planes: 10, activation_type: softmax}
-  - {type: FullConnect, name: fc4, visualize: 0, input_layer: rnn1, time_index: 4, n_output_planes: 10, activation_type: softmax}
-  - {type: FullConnect, name: fc4, visualize: 0, input_layer: rnn1, time_index: 5, n_output_planes: 10, activation_type: softmax}
+  - {type: FullConnect, name: fc5, visualize: 0, input_layer: rnn1, time_index: 1, n_output_planes: 10, activation_type: softmax}
+  - {type: FullConnect, name: fc6, visualize: 0, input_layer: rnn1, time_index: 2, n_output_planes: 10, activation_type: softmax}
+  - {type: FullConnect, name: fc7, visualize: 0, input_layer: rnn1, time_index: 3, n_output_planes: 10, activation_type: softmax}
+  - {type: FullConnect, name: fc8, visualize: 0, input_layer: rnn1, time_index: 4, n_output_planes: 10, activation_type: softmax}
+  - {type: FullConnect, name: fc9, visualize: 0, input_layer: rnn1, time_index: 5, n_output_planes: 10, activation_type: softmax}
 
   # MERGE CLASSIFICATION RESULTS
   - {type: MultiTarget, name: multi1, n_input_layers: 6, input_layers: "fc4,fc5,fc6,fc7,fc8,fc9", n_output_planes: 60}
