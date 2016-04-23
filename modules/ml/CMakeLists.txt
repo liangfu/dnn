@@ -2,7 +2,8 @@ cmake_minimum_required(VERSION 2.8.2)
 
 project(ml)
 
-INCLUDE_DIRECTORIES(./include ../cxcore/include ../cvutil/include ../cv/include ../highgui/include)
+INCLUDE_DIRECTORIES(./include ../cxcore/include 
+  ../cvutil/include ../cv/include ../highgui/include ../ts/include)
 
 add_library(ml SHARED
 	src/em.cpp
@@ -24,15 +25,15 @@ add_library(ml SHARED
 	src/tree.cpp
 	)
 
-# add_executable(test_ml
-# 	test/test_mltests.cpp
-# 	test/test_emknearestkmeans.cpp
-# 	test/test_mltests2.cpp
-# 	test/test_gbttest.cpp
-# 	test/test_save_load.cpp
-# 	test/test_main.cpp
-# 	)
-# target_link_libraries(test_ml cxcore ts ml)
+add_executable(test_ml
+	test/test_mltests.cpp
+	test/test_emknearestkmeans.cpp
+	test/test_mltests2.cpp
+	test/test_gbttest.cpp
+	test/test_save_load.cpp
+	test/test_main.cpp
+	)
+target_link_libraries(test_ml cxcore ts ml)
 
 #---------------------------------------------------------------------
 # Find OpenMP

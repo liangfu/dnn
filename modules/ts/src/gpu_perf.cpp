@@ -259,7 +259,7 @@ namespace perf
         for (int i = 0; i < cv::gpu::getCudaEnabledDeviceCount(); i++)
             cv::gpu::printCudaDeviceInfo(i);
     }
-
+#if 0
     struct KeypointIdxCompare
     {
         std::vector<cv::KeyPoint>* keypoints;
@@ -312,4 +312,5 @@ namespace perf
         if (_descriptors.needed())
             new_descriptors.copyTo(_descriptors);
     }
+#endif // remove feature2d
 }

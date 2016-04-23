@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 2.8.2)
 
 project(ts)
 
-INCLUDE_DIRECTORIES(./include ../cxcore/include)
+INCLUDE_DIRECTORIES(./include ../cxcore/include ../cv/include ../highgui/include)
 
 add_library(ts SHARED
 	src/ts_gtest.cpp
@@ -14,7 +14,7 @@ add_library(ts SHARED
 	src/gpu_perf.cpp
 	)
 
-target_link_libraries(ts cxcore highgui)
+target_link_libraries(ts cxcore cv highgui)
 
 #---------------------------------------------------------------------
 # Find OpenMP

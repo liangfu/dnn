@@ -45,7 +45,7 @@
 
 #include "opencv2/core/core.hpp"
 #include "opencv2/imgproc/imgproc.hpp"
-#include "opencv2/features2d/features2d.hpp"
+// #include "opencv2/features2d/features2d.hpp"
 #include "ts_gtest.h"
 
 #ifdef HAVE_TBB
@@ -212,8 +212,8 @@ class CV_EXPORTS Regression
 {
 public:
     static Regression& add(TestBase* test, const std::string& name, cv::InputArray array, double eps = DBL_EPSILON, ERROR_TYPE err = ERROR_ABSOLUTE);
-    static Regression& addKeypoints(TestBase* test, const std::string& name, const std::vector<cv::KeyPoint>& array, double eps = DBL_EPSILON, ERROR_TYPE err = ERROR_ABSOLUTE);
-    static Regression& addMatches(TestBase* test, const std::string& name, const std::vector<cv::DMatch>& array, double eps = DBL_EPSILON, ERROR_TYPE err = ERROR_ABSOLUTE);
+    // static Regression& addKeypoints(TestBase* test, const std::string& name, const std::vector<cv::KeyPoint>& array, double eps = DBL_EPSILON, ERROR_TYPE err = ERROR_ABSOLUTE);
+    // static Regression& addMatches(TestBase* test, const std::string& name, const std::vector<cv::DMatch>& array, double eps = DBL_EPSILON, ERROR_TYPE err = ERROR_ABSOLUTE);
     static void Init(const std::string& testSuitName, const std::string& ext = ".xml");
 
     Regression& operator() (const std::string& name, cv::InputArray array, double eps = DBL_EPSILON, ERROR_TYPE err = ERROR_ABSOLUTE);
@@ -249,8 +249,8 @@ private:
 };
 
 #define SANITY_CHECK(array, ...) ::perf::Regression::add(this, #array, array , ## __VA_ARGS__)
-#define SANITY_CHECK_KEYPOINTS(array, ...) ::perf::Regression::addKeypoints(this, #array, array , ## __VA_ARGS__)
-#define SANITY_CHECK_MATCHES(array, ...) ::perf::Regression::addMatches(this, #array, array , ## __VA_ARGS__)
+// #define SANITY_CHECK_KEYPOINTS(array, ...) ::perf::Regression::addKeypoints(this, #array, array , ## __VA_ARGS__)
+// #define SANITY_CHECK_MATCHES(array, ...) ::perf::Regression::addMatches(this, #array, array , ## __VA_ARGS__)
 #define SANITY_CHECK_NOTHING() this->setVerified()
 
 class CV_EXPORTS GpuPerf
@@ -594,25 +594,25 @@ struct CV_EXPORTS RectLess_
 
 typedef RectLess_<int> RectLess;
 
-struct CV_EXPORTS KeypointGreater
-{
-    bool operator()(const cv::KeyPoint& kp1, const cv::KeyPoint& kp2) const
-    {
-        if(kp1.response > kp2.response) return true;
-        if(kp1.response < kp2.response) return false;
-        if(kp1.size > kp2.size) return true;
-        if(kp1.size < kp2.size) return false;
-        if(kp1.octave > kp2.octave) return true;
-        if(kp1.octave < kp2.octave) return false;
-        if(kp1.pt.y < kp2.pt.y) return false;
-        if(kp1.pt.y > kp2.pt.y) return true;
-        return kp1.pt.x < kp2.pt.x;
-    }
-};
+// struct CV_EXPORTS KeypointGreater
+// {
+//     bool operator()(const cv::KeyPoint& kp1, const cv::KeyPoint& kp2) const
+//     {
+//         if(kp1.response > kp2.response) return true;
+//         if(kp1.response < kp2.response) return false;
+//         if(kp1.size > kp2.size) return true;
+//         if(kp1.size < kp2.size) return false;
+//         if(kp1.octave > kp2.octave) return true;
+//         if(kp1.octave < kp2.octave) return false;
+//         if(kp1.pt.y < kp2.pt.y) return false;
+//         if(kp1.pt.y > kp2.pt.y) return true;
+//         return kp1.pt.x < kp2.pt.x;
+//     }
+// };
 
 } //namespace comparators
 
-void CV_EXPORTS sort(std::vector<cv::KeyPoint>& pts, cv::InputOutputArray descriptors);
+// void CV_EXPORTS sort(std::vector<cv::KeyPoint>& pts, cv::InputOutputArray descriptors);
 } //namespace perf
 
 #endif //__OPENCV_TS_PERF_HPP__

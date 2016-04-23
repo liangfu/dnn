@@ -14,7 +14,7 @@ MESSAGE( STATUS "FFMPEG_INCLUDE_DIR: " ${FFMPEG_INCLUDE_DIR} )
 MESSAGE( STATUS "FFMPEG_LIBRARIES: " ${FFMPEG_LIBRARIES} )
 MESSAGE( STATUS "GTK2_INCLUDE_DIRS: " ${GTK2_INCLUDE_DIRS} )
 
-INCLUDE_DIRECTORIES(./include ../cxcore/include ../cv/include 
+INCLUDE_DIRECTORIES(./include ../cxcore/include ../cv/include ../ts/include
 	${FFMPEG_INCLUDE_DIR} ${GTK2_INCLUDE_DIRS}) # ${GSTREAMER_INCLUDE_DIRS} 
 
 add_library(highgui SHARED
@@ -61,20 +61,20 @@ add_library(highgui SHARED
 	# src/window_w32.cpp
 	)
 
-# add_executable(test_highgui
-# 	test/test_fourcc.cpp
-# 	test/test_framecount.cpp
-# 	test/test_ffmpeg.cpp
-# 	test/test_gui.cpp
-# 	test/test_positioning.cpp
-# 	test/test_drawing.cpp
-# 	test/test_video_io.cpp
-# 	test/test_basic_props.cpp
-# 	test/test_grfmt.cpp
-# 	test/test_video_pos.cpp
-# 	test/test_main.cpp
-# 	)
-# target_link_libraries(test_highgui cxcore ts cv highgui)
+add_executable(test_highgui
+	test/test_fourcc.cpp
+	test/test_framecount.cpp
+	test/test_ffmpeg.cpp
+	test/test_gui.cpp
+	test/test_positioning.cpp
+	test/test_drawing.cpp
+	test/test_video_io.cpp
+	test/test_basic_props.cpp
+	test/test_grfmt.cpp
+	test/test_video_pos.cpp
+	test/test_main.cpp
+	)
+target_link_libraries(test_highgui cxcore ts cv highgui)
 
 #---------------------------------------------------------------------
 # Find OpenMP

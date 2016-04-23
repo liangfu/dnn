@@ -104,7 +104,7 @@ namespace perf
 
     CV_EXPORTS void printCudaInfo();
 
-    CV_EXPORTS void sortKeyPoints(std::vector<cv::KeyPoint>& keypoints, cv::InputOutputArray _descriptors = cv::noArray());
+    // CV_EXPORTS void sortKeyPoints(std::vector<cv::KeyPoint>& keypoints, cv::InputOutputArray _descriptors = cv::noArray());
 }
 
 #endif // __OPENCV_GPU_PERF_UTILITY_HPP__

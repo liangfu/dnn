@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 2.8.2)
 
 project(cxcore)
 
-INCLUDE_DIRECTORIES(./include ../znzlib ../zlib/include)
+INCLUDE_DIRECTORIES(./include ../znzlib ../zlib/include ../ts/include ../cv/include ../highgui/include)
 
 add_library(cxcore SHARED
 	src/algorithm.cpp
@@ -35,6 +35,20 @@ add_library(cxcore SHARED
 	src/system.cpp
 	src/tables.cpp
 	)
+
+add_executable(test_cxcore
+	test/test_arithm.cpp
+	test/test_ds.cpp
+	test/test_dxt.cpp
+	test/test_io.cpp
+	test/test_main.cpp
+	test/test_mat.cpp
+	test/test_math.cpp
+	test/test_operations.cpp
+	test/test_precomp.cpp
+	test/test_rand.cpp
+	)
+target_link_libraries(test_cxcore cxcore ts)
 
 #---------------------------------------------------------------------
 # Find OpenMP

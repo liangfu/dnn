@@ -404,7 +404,7 @@ namespace cvtest
 
         waitKey();
     }
-
+#if 0
     namespace
     {
         bool keyPointsEquals(const cv::KeyPoint& p1, const cv::KeyPoint& p2)
@@ -507,7 +507,7 @@ namespace cvtest
 
         return validCount;
     }
-
+#endif
     void printCudaInfo()
     {
         perf::printCudaInfo();

@@ -113,39 +113,39 @@ Regression& Regression::add(TestBase* test, const std::string& name, cv::InputAr
     if(test) test->setVerified();
     return instance()(name, array, eps, err);
 }
-
-Regression& Regression::addKeypoints(TestBase* test, const std::string& name, const std::vector<cv::KeyPoint>& array, double eps, ERROR_TYPE err)
-{
-    int len = (int)array.size();
-    cv::Mat pt      (len, 1, CV_32FC2, len ? (void*)&array[0].pt : 0,       sizeof(cv::KeyPoint));
-    cv::Mat size    (len, 1, CV_32FC1, len ? (void*)&array[0].size : 0,     sizeof(cv::KeyPoint));
-    cv::Mat angle   (len, 1, CV_32FC1, len ? (void*)&array[0].angle : 0,    sizeof(cv::KeyPoint));
-    cv::Mat response(len, 1, CV_32FC1, len ? (void*)&array[0].response : 0, sizeof(cv::KeyPoint));
-    cv::Mat octave  (len, 1, CV_32SC1, len ? (void*)&array[0].octave : 0,   sizeof(cv::KeyPoint));
-    cv::Mat class_id(len, 1, CV_32SC1, len ? (void*)&array[0].class_id : 0, sizeof(cv::KeyPoint));
-
-    return Regression::add(test, name + "-pt",       pt,       eps, ERROR_ABSOLUTE)
-                                (name + "-size",     size,     eps, ERROR_ABSOLUTE)
-                                (name + "-angle",    angle,    eps, ERROR_ABSOLUTE)
-                                (name + "-response", response, eps, err)
-                                (name + "-octave",   octave,   eps, ERROR_ABSOLUTE)
-                                (name + "-class_id", class_id, eps, ERROR_ABSOLUTE);
-}
-
-Regression& Regression::addMatches(TestBase* test, const std::string& name, const std::vector<cv::DMatch>& array, double eps, ERROR_TYPE err)
-{
-    int len = (int)array.size();
-    cv::Mat queryIdx(len, 1, CV_32SC1, len ? (void*)&array[0].queryIdx : 0, sizeof(cv::DMatch));
-    cv::Mat trainIdx(len, 1, CV_32SC1, len ? (void*)&array[0].trainIdx : 0, sizeof(cv::DMatch));
-    cv::Mat imgIdx  (len, 1, CV_32SC1, len ? (void*)&array[0].imgIdx : 0,   sizeof(cv::DMatch));
-    cv::Mat distance(len, 1, CV_32FC1, len ? (void*)&array[0].distance : 0, sizeof(cv::DMatch));
-
-    return Regression::add(test, name + "-queryIdx", queryIdx, DBL_EPSILON, ERROR_ABSOLUTE)
-                                (name + "-trainIdx", trainIdx, DBL_EPSILON, ERROR_ABSOLUTE)
-                                (name + "-imgIdx",   imgIdx,   DBL_EPSILON, ERROR_ABSOLUTE)
-                                (name + "-distance", distance, eps, err);
-}
-
+// 
+// Regression& Regression::addKeypoints(TestBase* test, const std::string& name, const std::vector<cv::KeyPoint>& array, double eps, ERROR_TYPE err)
+// {
+//     int len = (int)array.size();
+//     cv::Mat pt      (len, 1, CV_32FC2, len ? (void*)&array[0].pt : 0,       sizeof(cv::KeyPoint));
+//     cv::Mat size    (len, 1, CV_32FC1, len ? (void*)&array[0].size : 0,     sizeof(cv::KeyPoint));
+//     cv::Mat angle   (len, 1, CV_32FC1, len ? (void*)&array[0].angle : 0,    sizeof(cv::KeyPoint));
+//     cv::Mat response(len, 1, CV_32FC1, len ? (void*)&array[0].response : 0, sizeof(cv::KeyPoint));
+//     cv::Mat octave  (len, 1, CV_32SC1, len ? (void*)&array[0].octave : 0,   sizeof(cv::KeyPoint));
+//     cv::Mat class_id(len, 1, CV_32SC1, len ? (void*)&array[0].class_id : 0, sizeof(cv::KeyPoint));
+// 
+//     return Regression::add(test, name + "-pt",       pt,       eps, ERROR_ABSOLUTE)
+//                                 (name + "-size",     size,     eps, ERROR_ABSOLUTE)
+//                                 (name + "-angle",    angle,    eps, ERROR_ABSOLUTE)
+//                                 (name + "-response", response, eps, err)
+//                                 (name + "-octave",   octave,   eps, ERROR_ABSOLUTE)
+//                                 (name + "-class_id", class_id, eps, ERROR_ABSOLUTE);
+// }
+// 
+// Regression& Regression::addMatches(TestBase* test, const std::string& name, const std::vector<cv::DMatch>& array, double eps, ERROR_TYPE err)
+// {
+//     int len = (int)array.size();
+//     cv::Mat queryIdx(len, 1, CV_32SC1, len ? (void*)&array[0].queryIdx : 0, sizeof(cv::DMatch));
+//     cv::Mat trainIdx(len, 1, CV_32SC1, len ? (void*)&array[0].trainIdx : 0, sizeof(cv::DMatch));
+//     cv::Mat imgIdx  (len, 1, CV_32SC1, len ? (void*)&array[0].imgIdx : 0,   sizeof(cv::DMatch));
+//     cv::Mat distance(len, 1, CV_32FC1, len ? (void*)&array[0].distance : 0, sizeof(cv::DMatch));
+// 
+//     return Regression::add(test, name + "-queryIdx", queryIdx, DBL_EPSILON, ERROR_ABSOLUTE)
+//                                 (name + "-trainIdx", trainIdx, DBL_EPSILON, ERROR_ABSOLUTE)
+//                                 (name + "-imgIdx",   imgIdx,   DBL_EPSILON, ERROR_ABSOLUTE)
+//                                 (name + "-distance", distance, eps, err);
+// }
+// 
 void Regression::Init(const std::string& testSuitName, const std::string& ext)
 {
     instance().init(testSuitName, ext);
@@ -1488,48 +1488,48 @@ TestBase::_declareHelper::_declareHelper(TestBase* t) : test(t)
 *                                  miscellaneous
 \*****************************************************************************************/
 
-namespace {
-struct KeypointComparator
-{
-    std::vector<cv::KeyPoint>& pts_;
-    comparators::KeypointGreater cmp;
-
-    KeypointComparator(std::vector<cv::KeyPoint>& pts) : pts_(pts), cmp() {}
-
-    bool operator()(int idx1, int idx2) const
-    {
-        return cmp(pts_[idx1], pts_[idx2]);
-    }
-private:
-    const KeypointComparator& operator=(const KeypointComparator&); // quiet MSVC
-};
-}//namespace
-
-void perf::sort(std::vector<cv::KeyPoint>& pts, cv::InputOutputArray descriptors)
-{
-    cv::Mat desc = descriptors.getMat();
-
-    CV_Assert(pts.size() == (size_t)desc.rows);
-    cv::AutoBuffer<int> idxs(desc.rows);
-
-    for (int i = 0; i < desc.rows; ++i)
-        idxs[i] = i;
-
-    std::sort((int*)idxs, (int*)idxs + desc.rows, KeypointComparator(pts));
-
-    std::vector<cv::KeyPoint> spts(pts.size());
-    cv::Mat sdesc(desc.size(), desc.type());
-
-    for(int j = 0; j < desc.rows; ++j)
-    {
-        spts[j] = pts[idxs[j]];
-        cv::Mat row = sdesc.row(j);
-        desc.row(idxs[j]).copyTo(row);
-    }
-
-    spts.swap(pts);
-    sdesc.copyTo(desc);
-}
+// namespace {
+// struct KeypointComparator
+// {
+//     std::vector<cv::KeyPoint>& pts_;
+//     comparators::KeypointGreater cmp;
+// 
+//     KeypointComparator(std::vector<cv::KeyPoint>& pts) : pts_(pts), cmp() {}
+// 
+//     bool operator()(int idx1, int idx2) const
+//     {
+//         return cmp(pts_[idx1], pts_[idx2]);
+//     }
+// private:
+//     const KeypointComparator& operator=(const KeypointComparator&); // quiet MSVC
+// };
+// }//namespace
+// 
+// void perf::sort(std::vector<cv::KeyPoint>& pts, cv::InputOutputArray descriptors)
+// {
+//     cv::Mat desc = descriptors.getMat();
+// 
+//     CV_Assert(pts.size() == (size_t)desc.rows);
+//     cv::AutoBuffer<int> idxs(desc.rows);
+// 
+//     for (int i = 0; i < desc.rows; ++i)
+//         idxs[i] = i;
+// 
+//     std::sort((int*)idxs, (int*)idxs + desc.rows, KeypointComparator(pts));
+// 
+//     std::vector<cv::KeyPoint> spts(pts.size());
+//     cv::Mat sdesc(desc.size(), desc.type());
+// 
+//     for(int j = 0; j < desc.rows; ++j)
+//     {
+//         spts[j] = pts[idxs[j]];
+//         cv::Mat row = sdesc.row(j);
+//         desc.row(idxs[j]).copyTo(row);
+//     }
+// 
+//     spts.swap(pts);
+//     sdesc.copyTo(desc);
+// }
 
 /*****************************************************************************************\
 *                                  ::perf::GpuPerf
