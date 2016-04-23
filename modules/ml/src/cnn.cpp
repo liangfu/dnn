@@ -1513,6 +1513,7 @@ static void icvCNNFullConnectForward( CvCNNLayer* _layer, const CvMat* _X, CvMat
       cvTranspose(&X_submat,X);
       seq_length=1;
     }
+    cvReleaseMat(&Xsrc_transpose);
   }else if (ICV_IS_CNN_RECURRENTNN_LAYER(layer->prev_layer) && n_inputs*seq_length!=X->rows){
     CvCNNRecurrentLayer * rnn_layer = ((CvCNNRecurrentLayer*)layer->prev_layer);
     CV_ASSERT(X->rows==rnn_layer->seq_length*n_inputs);
@@ -1569,6 +1570,11 @@ static void icvCNNFullConnectForward( CvCNNLayer* _layer, const CvMat* _X, CvMat
   if (layer->visualize==1){icvVisualizeCNNLayer((CvCNNLayer*)layer,Y);}
   else if (layer->visualize==2){fprintf(stderr,"\n");cvPrintf(stderr,"%f ",Y);}
 
+  if ( (input_layer && ICV_IS_CNN_RECURRENTNN_LAYER(input_layer)) ||
+       (ICV_IS_CNN_RECURRENTNN_LAYER(layer->prev_layer) && n_inputs*seq_length!=X->rows) ){
+    CV_ASSERT(X!=_X);
+    if (X) { cvReleaseMat(&X); X = 0; }
+  }
   __END__;
 }
 
@@ -1965,7 +1971,7 @@ static void icvCNNSubSamplingBackward(
    of the current layer. */
 static 
 void icvCNNFullConnectBackward(CvCNNLayer * _layer, int t,
-                               const CvMat * X, const CvMat * dE_dY, CvMat * dE_dX )
+                               const CvMat * _X, const CvMat * dE_dY, CvMat * _dE_dX )
 {
   CvMat* dE_dY_afder = 0;
   CvMat* dE_dW = 0;
@@ -1985,12 +1991,29 @@ void icvCNNFullConnectBackward(CvCNNLayer * _layer, int t,
   int n_inputs  = layer->n_input_planes;
   CvMat* weights = layer->weights;
   CvMat sub_weights, Xtemplate, WXrow;
-  int batch_size = X->cols;
-  int seq_length = 1;
+  int batch_size = dE_dY->rows; CV_ASSERT(dE_dY->rows==_X->cols);
+  int seq_length = 1, time_index = 0;
+  CvMat * X = (CvMat*)_X;
+  CvMat * dE_dX = (CvMat*)_dE_dX;
 
   if (input_layer && ICV_IS_CNN_RECURRENTNN_LAYER(input_layer)){
-    seq_length = ((CvCNNRecurrentLayer*)input_layer)->seq_length;
-    n_inputs = layer->n_input_planes*seq_length;
+    CvCNNRecurrentLayer * rnn_layer = (CvCNNRecurrentLayer*)input_layer;
+    n_inputs = rnn_layer->n_input_planes;
+    seq_length = rnn_layer->seq_length;
+    time_index = rnn_layer->time_index;
+    CvMat X_submat; CvMat * Xsrc = rnn_layer->Y;
+    CvMat * Xsrc_transpose = cvCreateMat(Xsrc->cols,Xsrc->rows,CV_32F);
+    cvTranspose(Xsrc,Xsrc_transpose);
+    X = cvCreateMat(n_inputs,batch_size,CV_32F);
+    CV_ASSERT(n_inputs*seq_length*batch_size==Xsrc->rows*Xsrc->cols);
+    cvGetRow(Xsrc_transpose,&X_submat,rnn_layer->time_index);
+    cvTranspose(&X_submat,X); 
+    cvReleaseMat(&Xsrc_transpose);
+    // initialize dE_dX in layer member variable
+    CV_ASSERT(layer->dE_dX==0);
+    layer->dE_dX = cvCreateMat(batch_size, n_inputs, CV_32F);
+    // following variables are modified if input layer is given
+    seq_length=1; dE_dX = layer->dE_dX;
   }
 
   CvMat * dE_dY_T = cvCreateMat(n_outputs, batch_size, CV_32F);

@@ -274,14 +274,17 @@ typedef struct CvCNNSubSamplingLayer
 // Structure of the last layer.
 typedef struct CvCNNFullConnectLayer
 {
-    CV_CNN_LAYER_FIELDS();
-    CvCNNLayer * input_layer;
-    // WX = (W*X) - is the vector used in computing of the 
-    // activation function and it's derivative by the formulae
-    CvMat * WX;
-    // activation function type,
-    // either CV_CNN_LOGISTIC,CV_CNN_HYPERBOLIC,CV_CNN_RELU or CV_CNN_NONE
-    int activation_type;
+  CV_CNN_LAYER_FIELDS();
+  // assign input layer, instead of using prev_layer
+  CvCNNLayer * input_layer;
+  // used in backward pass, in case input_layer is given
+  CvMat * dE_dX; 
+  // WX = (W*X) - is the vector used in computing of the 
+  // activation function and it's derivative by the formulae
+  CvMat * WX;
+  // activation function type,
+  // either CV_CNN_LOGISTIC,CV_CNN_HYPERBOLIC,CV_CNN_RELU or CV_CNN_NONE
+  int activation_type;
 }CvCNNFullConnectLayer;
 
 typedef struct CvCNNImgCroppingLayer
