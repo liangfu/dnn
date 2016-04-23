@@ -35,10 +35,16 @@ void CvNetwork::loadModel(string inFile)
   m_cnn = (CvCNNStatModel*)cvCreateCNNStatModel(
     CV_STAT_MODEL_MAGIC_VAL|CV_CNN_MAGIC_VAL, sizeof(CvCNNStatModel));
 
-  root = cvGetFileNodeByName(fs,root,"layers");
-  for (int ii=0;;ii++){
-    sprintf(nodename,"layer-%d",ii);
-    node = cvGetFileNodeByName(fs,root,nodename);
+  CvFileNode * layers = cvGetFileNodeByName(fs,0,"layers");
+  assert(CV_NODE_IS_SEQ(layers->tag));
+  CvSeq * seq = layers->data.seq;
+  int ii, total = seq->total;
+  CvSeqReader reader;
+  cvStartReadSeq( seq, &reader, 0 );
+  
+  CvStringHashNode * layer_key = cvGetHashedKey( fs, "name", -1, 1 );
+  for (ii=0;ii<total;ii++){
+    node = (CvFileNode*)reader.ptr;
     if (!node){break;}
     const char * predefined = cvReadStringByName(fs,node,"predefined","");
     const char * type = cvReadStringByName(fs,node,"type","");
@@ -122,9 +128,10 @@ void CvNetwork::loadModel(string inFile)
     }else if (!strcmp(type,"ImgCropping")){ // image cropping layer
       const char * input_layer_name = cvReadStringByName(fs,node,"input_layer","");
       if (strlen(input_layer_name)<1){
-        LOGE("input layer name is required while defining ImgCropping layer."); exit(-1);
-      }
+        LOGE("input layer name is required while defining ImgCropping layer."); exit(-1);}
       CvCNNLayer * input_layer = m_cnn->network->get_layer(m_cnn->network,input_layer_name);
+      if (!input_layer){
+        LOGE("input layer is not found while defining ImgCropping layer."); exit(-1);}
       n_output_planes = cvReadIntByName(fs,node,"n_output_planes",1);
       output_height = cvReadIntByName(fs,node,"output_height",output_height);
       output_width = cvReadIntByName(fs,node,"output_width",output_width);
@@ -134,7 +141,7 @@ void CvNetwork::loadModel(string inFile)
         lr_init, decay_type );
       n_input_planes = n_output_planes; // input_height = 1; input_width = 1;
       input_height = output_height; input_width = output_width;
-    }else if (!strcmp(type,"Recurrent")){ // recurrent layer
+    }else if (!strcmp(type,"RecurrentNN")){ // recurrent layer
       const int n_input_planes_default = n_input_planes * input_height * input_width;
       n_input_planes = cvReadIntByName(fs,node,"n_input_planes",n_input_planes_default);
       n_output_planes = cvReadIntByName(fs,node,"n_output_planes",1);
@@ -174,6 +181,8 @@ void CvNetwork::loadModel(string inFile)
     // add layer to network
     if (!m_cnn->network){m_cnn->network = cvCreateCNNetwork(layer); 
     }else{m_cnn->network->add_layer( m_cnn->network, layer );}
+
+    CV_NEXT_SEQ_ELEM( seq->elem_size, reader );
   }
 
   if (fs){cvReleaseFileStorage(&fs);fs=0;}

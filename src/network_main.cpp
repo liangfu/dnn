@@ -16,8 +16,6 @@ int main(int argc, char * argv[])
   char keys[1<<12];
   sprintf(keys,
           "{  1 |         | train | choose `train` or `test`     }"
-          "{  w | weights |       | location of weights file     }"
-          "{  m | model   |       | location of model file       }"
           "{  s | solver  |       | location of solver file      }"
           "{  o | omp     | %d    | number of threads to be used }"
           "{  h | help    | false | display this help message    }", 
@@ -38,21 +36,14 @@ int main(int argc, char * argv[])
   
   fprintf(stderr, "MAX_THREADS=%d\n",max_threads);
 
-  char   model_filename[1<<10]={0,}; //= parser.get<string>("model").c_str();
-  char  solver_filename[1<<10]={0,}; //= parser.get<string>("solver").c_str();
-  char weights_filename[1<<10]={0,}; //= parser.get<string>("weights").c_str();
-  if (parser.get<string>("model").length()>0){
-    strcpy(model_filename,parser.get<string>("model").c_str());
-  }
+  char  solver_filename[1<<10]={0,};
   if (parser.get<string>("solver").length()>0){
     strcpy(solver_filename,parser.get<string>("solver").c_str());
-  }
-  if (parser.get<string>("weights").length()>0){
-    strcpy(weights_filename,parser.get<string>("weights").c_str());
   }
 
   CvNetwork * cnn = new CvNetwork();
   cnn->loadSolver(solver_filename);
+  cnn->loadModel(cnn->solver()->model_filename());
 
   const char * training_filename = cnn->solver()->training_filename();
   const char * response_filename = cnn->solver()->response_filename();
@@ -80,12 +71,10 @@ int main(int argc, char * argv[])
   CV_TIMER_START();
 
   if (!strcmp(task,"train")){
-    cnn->loadModel(cnn->solver()->model_filename());
     cnn->train(training,response);
     cnn->saveWeights(cnn->solver()->weights_filename());
   }else{
-    cnn->loadModel(model_filename);
-    cnn->loadWeights(weights_filename);
+    cnn->loadWeights(cnn->solver()->weights_filename());
     int nsamples = MIN(5000,testing->rows);
     float top1 = cnn->evaluate(testing,expected,nsamples);
     fprintf(stderr,"top-1: %.1f%%\n",float(top1*100.f)/float(nsamples));
