@@ -7,7 +7,7 @@
 	<expected_filename>data/svhn/svhn-expected.xml.gz</expected_filename>
 </data>
 <network>
-	<model_filename>data/svhn/dram_model.xml</model_filename>
+	<model_filename>data/svhn/dram_model.yml</model_filename>
 	<weights_filename>data/svhn/dram_weights.xml</weights_filename>
 	<lr_init>0.05</lr_init>
 	<decay_type>invsqrt</decay_type>
