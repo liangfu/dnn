@@ -2010,10 +2010,25 @@ void icvCNNFullConnectBackward(CvCNNLayer * _layer, int t,
     cvTranspose(&X_submat,X); 
     cvReleaseMat(&Xsrc_transpose);
     // initialize dE_dX in layer member variable
-    CV_ASSERT(layer->dE_dX==0);
-    layer->dE_dX = cvCreateMat(batch_size, n_inputs, CV_32F);
+    if (!layer->dE_dX){
+      layer->dE_dX = cvCreateMat(batch_size, n_inputs, CV_32F);
+    }else{CV_ASSERT(layer->dE_dX->rows==batch_size && layer->dE_dX->cols==n_inputs);}
     // following variables are modified if input layer is given
     seq_length=1; dE_dX = layer->dE_dX;
+  }else if (ICV_IS_CNN_RECURRENTNN_LAYER(layer->prev_layer)){
+    CvCNNRecurrentLayer * rnn_layer = (CvCNNRecurrentLayer*)layer->prev_layer;
+    if (X->rows!=n_inputs){
+      CV_ASSERT(X->rows==rnn_layer->seq_length*n_inputs);
+      X = cvCreateMat(n_inputs,batch_size,CV_32F);
+      CvMat X_submat;
+      cvGetSubRect(_X,&X_submat,cvRect(0,n_inputs*rnn_layer->time_index,batch_size,n_inputs));
+      cvCopy(&X_submat,X);
+      // initialize dE_dX in layer member variable
+      CV_ASSERT(layer->dE_dX==0);
+      layer->dE_dX = cvCreateMat(batch_size, n_inputs, CV_32F);
+      // following variables are modified if input layer is given
+      dE_dX = layer->dE_dX;
+    }
   }
 
   CvMat * dE_dY_T = cvCreateMat(n_outputs, batch_size, CV_32F);
