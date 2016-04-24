@@ -7,7 +7,7 @@
 	<expected_filename>data/addition/addition-expected.xml.gz</expected_filename>
 </data>
 <network>
-	<model_filename>data/addition/rnn_model.xml</model_filename>
+	<model_filename>data/addition/rnn_model.yml</model_filename>
 	<weights_filename>data/addition/rnn_weights.xml</weights_filename>
 	<lr_init>0.05</lr_init>
 	<decay_type>invsqrt</decay_type>

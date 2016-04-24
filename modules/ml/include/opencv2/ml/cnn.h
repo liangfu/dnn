@@ -110,9 +110,10 @@ typedef struct CvCNNetwork CvCNNetwork;
 
 #define CV_CNN_NONE          0
 
-#define CV_CNN_LOGISTIC      1
-#define CV_CNN_HYPERBOLIC    2
-#define CV_CNN_RELU          3
+// #define CV_CNN_LOGISTIC      1
+// #define CV_CNN_HYPERBOLIC    2
+// #define CV_CNN_RELU          3
+// #define CV_CNN_SOFTMAX       4
 
 #define CV_CNN_LEARN_RATE_DECREASE_HYPERBOLICALLY  1
 #define CV_CNN_LEARN_RATE_DECREASE_SQRT_INV        2
@@ -284,7 +285,7 @@ typedef struct CvCNNFullConnectLayer
   CvMat * WX;
   // activation function type,
   // either CV_CNN_LOGISTIC,CV_CNN_HYPERBOLIC,CV_CNN_RELU or CV_CNN_NONE
-  int activation_type;
+  char activation_type[20];
 }CvCNNFullConnectLayer;
 
 typedef struct CvCNNImgCroppingLayer
@@ -315,7 +316,7 @@ typedef struct CvCNNRecurrentLayer
   CvMat * Why;
   // activation function type for hidden layer activation, 
   // either CV_CNN_LOGISTIC, CV_CNN_HYPERBOLIC, CV_CNN_RELU or CV_CNN_NONE
-  int activation_type;
+  char activation_type[20];
   // -------------------------------------------------------
   // VARIABLES REQUIRED FOR COMPUTING FORWARD & BACKWARD PASS
   // -------------------------------------------------------
@@ -413,6 +414,16 @@ typedef struct CvCNNStatModel
     CvMat* cls_labels;
 }CvCNNStatModel;
 
+/*------------------------ activation functions -----------------------*/
+CVAPI(void) cvTanh(CvMat * src, CvMat * dst);
+CVAPI(void) cvTanhDer(CvMat * src, CvMat * dst);
+CVAPI(void) cvSigmoid(CvMat * src, CvMat * dst);
+CVAPI(void) cvSigmoidDer(CvMat * src, CvMat * dst);
+CVAPI(void) cvReLU(CvMat * src, CvMat * dst);
+CVAPI(void) cvReLUDer(CvMat * src, CvMat * dst);
+CVAPI(void) cvSoftmax(CvMat * src, CvMat * dst);
+CVAPI(void) cvSoftmaxDer(CvMat * src, CvMat * dst);
+
 CVAPI(CvCNNLayer*) cvCreateCNNConvolutionLayer( const char * name, const int visualize,
     int n_input_planes, int input_height, int input_width,
     int n_output_planes, int K,
@@ -426,7 +437,8 @@ CVAPI(CvCNNLayer*) cvCreateCNNSubSamplingLayer( const char * name, const int vis
 
 CVAPI(CvCNNLayer*) cvCreateCNNFullConnectLayer( const char * name, const int visualize,
     const CvCNNLayer * input_layer, int n_inputs, int n_outputs, 
-    float init_learn_rate, int learn_rate_decrease_type, int activation_type, CvMat* weights );
+    float init_learn_rate, int learn_rate_decrease_type, const char * activation_type,
+    CvMat * weights );
 
 CVAPI(CvCNNLayer*) cvCreateCNNImgCroppingLayer( const char * name, const int visualize, 
     const CvCNNLayer * input_layer,
@@ -436,7 +448,7 @@ CVAPI(CvCNNLayer*) cvCreateCNNImgCroppingLayer( const char * name, const int vis
 CVAPI(CvCNNLayer*) cvCreateCNNRecurrentLayer( const char * name, 
     const CvCNNLayer * hidden_layer, 
     int n_inputs, int n_outputs, int n_hiddens, int seq_length, int time_index, 
-    float init_learn_rate, int update_rule, int activation_type, 
+    float init_learn_rate, int update_rule, const char * activation_type, 
     CvMat * Wxh, CvMat * Whh, CvMat * Why );
 
 CVAPI(CvCNNLayer*) cvCreateCNNInputDataLayer( const char * name, 

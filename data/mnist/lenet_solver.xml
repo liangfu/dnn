@@ -7,7 +7,7 @@
 	<expected_filename>data/mnist/t10k-labels-idx1-ubyte.xml.gz</expected_filename>
 </data>
 <network>
-	<model_filename>data/mnist/lenet_model.xml</model_filename>
+	<model_filename>data/mnist/lenet_model.yml</model_filename>
 	<weights_filename>data/mnist/lenet_weights.xml</weights_filename>
 	<lr_init>0.05</lr_init>
 	<decay_type>invsqrt</decay_type>

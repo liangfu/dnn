@@ -50,12 +50,7 @@ void CvNetwork::loadModel(string inFile)
     const char * type = cvReadStringByName(fs,node,"type","");
     const char * name = cvReadStringByName(fs,node,"name","");
     const int visualize = cvReadIntByName(fs,node,"visualize",0);
-    const char * activation_desc = cvReadStringByName(fs,node,"activation_type","none");
-    int activation_type = CV_CNN_HYPERBOLIC;
-    if (!strcmp(activation_desc,"relu")){activation_type = CV_CNN_RELU;}
-    else if (!strcmp(activation_desc,"tanh")){activation_type = CV_CNN_HYPERBOLIC;}
-    else if (!strcmp(activation_desc,"logit")){activation_type = CV_CNN_LOGISTIC;}
-    else if (!strcmp(activation_desc,"none")){activation_type = CV_CNN_NONE;}
+    const char * activation_type = cvReadStringByName(fs,node,"activation_type","none");
 
     // parse layer-specific parameters
     if (strlen(predefined)>0){

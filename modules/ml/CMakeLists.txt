@@ -26,6 +26,7 @@ add_library(ml SHARED
 	)
 
 add_executable(test_ml
+	test/test_cnn.cpp
 	test/test_mltests.cpp
 	test/test_emknearestkmeans.cpp
 	test/test_mltests2.cpp

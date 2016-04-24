@@ -128,15 +128,6 @@ static void icvCNNMultiTargetBackward( CvCNNLayer* layer, int t, const CvMat*, c
 /*--------------------------- utility functions -----------------------*/
 static float icvEvalAccuracy(CvCNNLayer * last_layer, CvMat * result, CvMat * expected);
 
-/*------------------------ activation functions -----------------------*/
-static void cvTanh(CvMat * src, CvMat * dst);
-static void cvTanhDer(CvMat * src, CvMat * dst);
-static void cvSigmoid(CvMat * src, CvMat * dst);
-static void cvSigmoidDer(CvMat * src, CvMat * dst);
-static void cvReLU(CvMat * src, CvMat * dst){cvMaxS( src, 0, dst );}
-static void cvReLUDer(CvMat * src, CvMat * dst);
-static void cvSoftmax(CvMat * src, CvMat * dst);
-
 /**************************************************************************\
  *                 Functions implementations                              *
 \**************************************************************************/
@@ -1056,9 +1047,11 @@ ML_IMPL CvCNNLayer* cvCreateCNNSubSamplingLayer( const char * name, const int vi
 }
 
 /*************************************************************************/
-ML_IMPL CvCNNLayer* cvCreateCNNFullConnectLayer( const char * name, const int visualize,
+ML_IMPL
+CvCNNLayer * cvCreateCNNFullConnectLayer( const char * name, const int visualize,
     const CvCNNLayer * input_layer, int n_inputs, int n_outputs, 
-    float init_learn_rate, int learn_rate_decrease_type, int activation_type, CvMat* weights )
+    float init_learn_rate, int learn_rate_decrease_type, const char * activation_type,
+    CvMat * weights )
 {
   CvCNNFullConnectLayer* layer = 0;
 
@@ -1078,7 +1071,7 @@ ML_IMPL CvCNNLayer* cvCreateCNNFullConnectLayer( const char * name, const int vi
       icvCNNFullConnectRelease, icvCNNFullConnectForward, icvCNNFullConnectBackward ));
 
   layer->WX = 0;
-  layer->activation_type = activation_type;//CV_CNN_HYPERBOLIC;
+  strcpy(layer->activation_type,activation_type);//CV_CNN_HYPERBOLIC;
   layer->visualize = visualize;
   layer->input_layer = (CvCNNLayer*)input_layer;
 
@@ -1114,7 +1107,7 @@ ML_IMPL CvCNNLayer* cvCreateCNNFullConnectLayer( const char * name, const int vi
 ML_IMPL CvCNNLayer* cvCreateCNNRecurrentLayer( const char * name, 
     const CvCNNLayer * hidden_layer, 
     int n_inputs, int n_outputs, int n_hiddens, int seq_length, int time_index, 
-    float init_learn_rate, int update_rule, int activation_type, 
+    float init_learn_rate, int update_rule, const char * activation_type, 
     CvMat * Wxh, CvMat * Whh, CvMat * Why )
 {
   CvCNNRecurrentLayer* layer = 0;
@@ -1141,7 +1134,7 @@ ML_IMPL CvCNNLayer* cvCreateCNNRecurrentLayer( const char * name,
   layer->Wxh = 0;
   layer->Whh = 0;
   layer->Why = 0;
-  layer->activation_type = activation_type;
+  strcpy(layer->activation_type,activation_type);
   layer->H = 0;
   layer->Y = 0;
   layer->loss = 0;
@@ -1526,46 +1519,20 @@ static void icvCNNFullConnectForward( CvCNNLayer* _layer, const CvMat* _X, CvMat
   CV_ASSERT(X->cols == batch_size && X->rows == layer->n_input_planes*seq_length);
   CV_ASSERT(Y->cols == batch_size && Y->rows == layer->n_output_planes);
 
-  if (seq_length==1){
-    CvRect roi = cvRect(0, 0, weights->cols-1, weights->rows );
-    CV_CALL(cvGetSubRect( weights, &sub_weights, roi));
-    CV_CALL(cvGetCol( weights, &biascol, weights->cols-1));
-    CV_ASSERT(CV_MAT_TYPE(biascol.type)==CV_32F);
-    CvMat * bias = cvCreateMat(biascol.rows,batch_size,CV_32F);
-    cvRepeat(&biascol,bias);
-    CV_CALL(layer->WX = cvCreateMat( n_outputs, batch_size, CV_32FC1 ));
-    cvZero( layer->WX );
-    CV_CALL(cvGEMM( &sub_weights, X, 1, bias, 1, layer->WX ));
-    if (bias){cvReleaseMat(&bias);bias=0;}
-  }else{
-    layer->WX = cvCreateMat( n_outputs*seq_length, batch_size, CV_32F ); cvZero( layer->WX );
-    CV_ASSERT(layer->activation_type==CV_CNN_NONE);
-    for (int seqidx=0; seqidx<seq_length; seqidx++){
-      CvRect wroi = cvRect(0, n_outputs*seqidx, weights->cols-1, n_outputs );
-      CvRect broi = cvRect(weights->cols-1, n_outputs*seqidx, 1, n_outputs );
-      CvRect xroi = cvRect(0, n_inputs*seqidx, batch_size, n_inputs);
-      CvRect yroi = cvRect(0, n_outputs*seqidx, batch_size, n_outputs);
-      CvMat X_submat,WX_submat,Y_submat;
-      cvGetSubRect( weights, &sub_weights, wroi);
-      cvGetSubRect( weights, &biascol, broi);
-      cvGetSubRect( X, &X_submat, xroi );
-      cvGetSubRect( layer->WX, &WX_submat, yroi );
-      cvGetSubRect( Y, &Y_submat, yroi );
-      CvMat * bias = cvCreateMat(biascol.rows,batch_size,CV_32F); cvRepeat(&biascol,bias);
-      CV_CALL(cvGEMM( &sub_weights, &X_submat, 1, bias, 1, &WX_submat ));
-      cvSoftmax(&WX_submat,&Y_submat); // WARNING: explicitly applying softmax
-      if (bias){cvReleaseMat(&bias);bias=0;}
-    } // CV_SHOW(Y);
-  }
+  CvRect roi = cvRect(0, 0, weights->cols-1, weights->rows );
+  CV_CALL(cvGetSubRect( weights, &sub_weights, roi));
+  CV_CALL(cvGetCol( weights, &biascol, weights->cols-1));
+  CvMat * bias = cvCreateMat(biascol.rows,batch_size,CV_32F); cvRepeat(&biascol,bias);
+  layer->WX = cvCreateMat( n_outputs, batch_size, CV_32F ); cvZero( layer->WX );
+  CV_CALL(cvGEMM( &sub_weights, X, 1, bias, 1, layer->WX ));
+  if (bias){cvReleaseMat(&bias);bias=0;}
 
-  if (layer->activation_type==CV_CNN_NONE){ // do nothing
-  }else if (layer->activation_type==CV_CNN_HYPERBOLIC){
-    CV_CALL(cvTanh( layer->WX, Y ));
-  }else if (layer->activation_type==CV_CNN_LOGISTIC){
-    CV_CALL(cvSigmoid( layer->WX, Y ));
-  }else if (layer->activation_type==CV_CNN_RELU){
-    CV_CALL(cvReLU( layer->WX, Y ));
-  }else{assert(false);}
+  if (!strcmp(layer->activation_type,"none")){ // do nothing
+  }else if (!strcmp(layer->activation_type,"tanh")){ CV_CALL(cvTanh( layer->WX, Y ));
+  }else if (!strcmp(layer->activation_type,"sigmoid")){ CV_CALL(cvSigmoid( layer->WX, Y ));
+  }else if (!strcmp(layer->activation_type,"relu")){ CV_CALL(cvReLU( layer->WX, Y ));
+  }else if (!strcmp(layer->activation_type,"softmax")){ CV_CALL(cvSoftmax( layer->WX, Y ));
+  }else{CV_ERROR(CV_StsBadArg,"Unknown activation type");}
 
   if (layer->visualize==1){icvVisualizeCNNLayer((CvCNNLayer*)layer,Y);}
   else if (layer->visualize==2){fprintf(stderr,"\n");cvPrintf(stderr,"%f ",Y);}
@@ -2011,8 +1978,9 @@ void icvCNNFullConnectBackward(CvCNNLayer * _layer, int t,
     cvReleaseMat(&Xsrc_transpose);
     // initialize dE_dX in layer member variable
     if (!layer->dE_dX){
-      layer->dE_dX = cvCreateMat(batch_size, n_inputs, CV_32F);
+      layer->dE_dX = cvCreateMat(batch_size, n_inputs, CV_32F); 
     }else{CV_ASSERT(layer->dE_dX->rows==batch_size && layer->dE_dX->cols==n_inputs);}
+    cvZero(layer->dE_dX);
     // following variables are modified if input layer is given
     seq_length=1; dE_dX = layer->dE_dX;
   }else if (ICV_IS_CNN_RECURRENTNN_LAYER(layer->prev_layer)){
@@ -2024,8 +1992,10 @@ void icvCNNFullConnectBackward(CvCNNLayer * _layer, int t,
       cvGetSubRect(_X,&X_submat,cvRect(0,n_inputs*rnn_layer->time_index,batch_size,n_inputs));
       cvCopy(&X_submat,X);
       // initialize dE_dX in layer member variable
-      CV_ASSERT(layer->dE_dX==0);
-      layer->dE_dX = cvCreateMat(batch_size, n_inputs, CV_32F);
+      if (!layer->dE_dX) { 
+        layer->dE_dX = cvCreateMat(batch_size, n_inputs, CV_32F); 
+      }else{CV_ASSERT(layer->dE_dX->rows==batch_size && layer->dE_dX->cols==n_inputs);}
+      cvZero(layer->dE_dX);
       // following variables are modified if input layer is given
       dE_dX = layer->dE_dX;
     }
@@ -2041,11 +2011,12 @@ void icvCNNFullConnectBackward(CvCNNLayer * _layer, int t,
   CV_CALL(dE_dW = cvCreateMat( 1, weights->rows*weights->cols, CV_32FC1 ));
 
   // compute (tanh'(WX))*dE_dY
-  if (layer->activation_type==CV_CNN_NONE){
-  }else if (layer->activation_type==CV_CNN_HYPERBOLIC){ cvTanhDer(layer->WX,dE_dY_afder);
-  }else if (layer->activation_type==CV_CNN_LOGISTIC){   cvSigmoidDer(layer->WX,dE_dY_afder);
-  }else if (layer->activation_type==CV_CNN_RELU){       cvReLUDer(layer->WX,dE_dY_afder);
-  }else{assert(false);}
+  if (!strcmp(layer->activation_type,"none")){
+  }else if (!strcmp(layer->activation_type,"tanh")){ cvTanhDer(layer->WX,dE_dY_afder);
+  }else if (!strcmp(layer->activation_type,"sigmoid")){ cvSigmoidDer(layer->WX,dE_dY_afder);
+  }else if (!strcmp(layer->activation_type,"softmax")){ cvSoftmaxDer(layer->WX,dE_dY_afder);
+  }else if (!strcmp(layer->activation_type,"relu")){ cvReLUDer(layer->WX,dE_dY_afder);
+  }else{CV_ASSERT(false);}
   cvTranspose(dE_dY,dE_dY_T);
   cvMul(dE_dY_afder,dE_dY_T,dE_dY_afder);
 
@@ -2379,6 +2350,15 @@ void cvSoftmax(CvMat * src, CvMat * dst){
   cvReleaseMat(&sum_repeat);
 }
 
+void cvSoftmaxDer(CvMat * src, CvMat * dst) {
+  CV_FUNCNAME("cvSoftmaxDer");
+  __BEGIN__;
+  CV_ERROR(CV_StsBadArg, "not implemented.");
+  __END__;
+}
+
+void cvReLU(CvMat * src, CvMat * dst) {cvMaxS( src, 0, dst );}
+
 void cvReLUDer(CvMat * src, CvMat * dst) {
   CV_FUNCNAME("cvReLUDer");
   int ii,elemsize=src->rows*src->cols;
@@ -2587,7 +2567,7 @@ static CvCNNLayer* icvReadCNNLayer( CvFileStorage* fs, CvFileNode* node )
       CV_ERROR( CV_StsBadArg, "" ); 
     }
     CV_CALL(layer = cvCreateCNNFullConnectLayer( "", 0, 0, n_input_planes, n_output_planes,
-      init_learn_rate, learn_type, CV_CNN_HYPERBOLIC, weights ));
+      init_learn_rate, learn_type, "tanh", weights ));
   } else {
     CV_ERROR( CV_StsBadArg, "Invalid <layer_type>" );
   }
