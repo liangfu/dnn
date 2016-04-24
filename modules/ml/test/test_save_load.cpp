@@ -144,18 +144,15 @@ int CV_SLMLTest::validate_test_results( int testCaseIdx )
     return code;
 }
 
-TEST(ML_NaiveBayes, save_load) { CV_SLMLTest test( CV_NBAYES ); test.safe_run(); }
-//CV_SLMLTest lsmlknearest( CV_KNEAREST, "slknearest" ); // does not support save!
-TEST(ML_SVM, save_load) { CV_SLMLTest test( CV_SVM ); test.safe_run(); }
-//CV_SLMLTest lsmlem( CV_EM, "slem" ); // does not support save!
-TEST(ML_ANN, save_load) { CV_SLMLTest test( CV_ANN ); test.safe_run(); }
-TEST(ML_DTree, save_load) { CV_SLMLTest test( CV_DTREE ); test.safe_run(); }
-TEST(ML_Boost, save_load) { CV_SLMLTest test( CV_BOOST ); test.safe_run(); }
-TEST(ML_RTrees, save_load) { CV_SLMLTest test( CV_RTREES ); test.safe_run(); }
-TEST(ML_ERTrees, save_load) { CV_SLMLTest test( CV_ERTREES ); test.safe_run(); }
+TEST(DISABLED_ML_NaiveBayes, save_load) { CV_SLMLTest test( CV_NBAYES ); test.safe_run(); }
+TEST(DISABLED_ML_SVM, save_load) { CV_SLMLTest test( CV_SVM ); test.safe_run(); }
+TEST(DISABLED_ML_ANN, save_load) { CV_SLMLTest test( CV_ANN ); test.safe_run(); }
+TEST(DISABLED_ML_DTree, save_load) { CV_SLMLTest test( CV_DTREE ); test.safe_run(); }
+TEST(DISABLED_ML_Boost, save_load) { CV_SLMLTest test( CV_BOOST ); test.safe_run(); }
+TEST(DISABLED_ML_RTrees, save_load) { CV_SLMLTest test( CV_RTREES ); test.safe_run(); }
+TEST(DISABLED_ML_ERTrees, save_load) { CV_SLMLTest test( CV_ERTREES ); test.safe_run(); }
 
-
-TEST(ML_SVM, throw_exception_when_save_untrained_model)
+TEST(DISABLED_ML_SVM, throw_exception_when_save_untrained_model)
 {
     SVM svm;
     string filename = tempfile("svm.xml");

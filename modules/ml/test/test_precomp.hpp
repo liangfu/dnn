@@ -11,6 +11,7 @@
 
 #include "opencv2/ts/ts.hpp"
 #include "opencv2/ml/ml.hpp"
+#include "opencv2/ml/cnn.h"
 #include "opencv2/core/core_c.h"
 #include <iostream>
 #include <map>
@@ -24,6 +25,7 @@
 #define CV_BOOST    "boost"
 #define CV_RTREES   "rtrees"
 #define CV_ERTREES  "ertrees"
+#define CV_CNN      "cnn"
 
 class CV_MLBaseTest : public cvtest::BaseTest
 {

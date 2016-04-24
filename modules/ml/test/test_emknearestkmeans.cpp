@@ -593,7 +593,8 @@ protected:
 
         if(data.read_csv(dataFilename.c_str()) != 0)
         {
-            ts->printf(cvtest::TS::LOG, "File with spambase dataset cann't be read.\n");
+            ts->printf(cvtest::TS::LOG, "File with spambase dataset cann't be read. "
+                       "Please download from `http://archive.ics.uci.edu/ml/machine-learning-databases/spambase/spambase.data` first\n");
             ts->set_failed_test_info(cvtest::TS::FAIL_INVALID_TEST_DATA);
         }
 
@@ -673,8 +674,8 @@ protected:
     }
 };
 
-TEST(ML_KMeans, accuracy) { CV_KMeansTest test; test.safe_run(); }
-TEST(ML_KNearest, accuracy) { CV_KNearestTest test; test.safe_run(); }
-TEST(ML_EM, accuracy) { CV_EMTest test; test.safe_run(); }
-TEST(ML_EM, save_load) { CV_EMTest_SaveLoad test; test.safe_run(); }
-TEST(ML_EM, classification) { CV_EMTest_Classification test; test.safe_run(); }
+TEST(DISABLED_ML_KMeans, accuracy) { CV_KMeansTest test; test.safe_run(); }
+TEST(DISABLED_ML_KNearest, accuracy) { CV_KNearestTest test; test.safe_run(); }
+TEST(DISABLED_ML_EM, accuracy) { CV_EMTest test; test.safe_run(); }
+TEST(DISABLED_ML_EM, save_load) { CV_EMTest_SaveLoad test; test.safe_run(); }
+TEST(DISABLED_ML_EM, classification) { CV_EMTest_Classification test; test.safe_run(); }

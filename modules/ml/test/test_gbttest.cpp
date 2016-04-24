@@ -283,4 +283,4 @@ void CV_GBTreesTest::run(int)
 //////////////////// test registration  /////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////
 
-TEST(ML_GBTrees, regression) { CV_GBTreesTest test; test.safe_run(); }
+TEST(DISABLED_ML_GBTrees, regression) { CV_GBTreesTest test; test.safe_run(); }

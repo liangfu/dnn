@@ -122,9 +122,9 @@ int CV_AMLTest::validate_test_results( int testCaseIdx )
     return cvtest::TS::OK;
 }
 
-TEST(ML_DTree, regression) { CV_AMLTest test( CV_DTREE ); test.safe_run(); }
-TEST(ML_Boost, regression) { CV_AMLTest test( CV_BOOST ); test.safe_run(); }
-TEST(ML_RTrees, regression) { CV_AMLTest test( CV_RTREES ); test.safe_run(); }
-TEST(ML_ERTrees, regression) { CV_AMLTest test( CV_ERTREES ); test.safe_run(); }
+// TEST(ML_DTree, regression) { CV_AMLTest test( CV_DTREE ); test.safe_run(); }
+// TEST(ML_Boost, regression) { CV_AMLTest test( CV_BOOST ); test.safe_run(); }
+// TEST(ML_RTrees, regression) { CV_AMLTest test( CV_RTREES ); test.safe_run(); }
+// TEST(ML_ERTrees, regression) { CV_AMLTest test( CV_ERTREES ); test.safe_run(); }
 
 /* End of file. */
