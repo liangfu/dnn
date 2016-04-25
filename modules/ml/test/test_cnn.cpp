@@ -131,9 +131,10 @@ void CV_NetworkTest::run(int)
 
 // TEST(ML_Network, accuracy) { CV_NetworkTest test; test.safe_run(); }
 
-TEST(ML_Tanh, accuracy)
+typedef void (*CvActivationFunc)(CvMat *, CvMat *);
+void cvActivationGradCheck(CvActivationFunc actfunc, CvActivationFunc actfunc_der)
 {
-  int nr=5, nc=5;
+  int nr=100, nc=100;
   const float eps = 1e-4f;
   CvMat * src = cvCreateMat(nr,nc,CV_32F);
   CvMat * src_more = cvCreateMat(nr,nc,CV_32F);
@@ -150,15 +151,20 @@ TEST(ML_Tanh, accuracy)
   cvAddS(src,cvScalar(eps),src_more);
   cvAddS(src,cvScalar(-eps),src_less);
   cvZero(dst); cvZero(dst_more); cvZero(dst_less);
-  cvTanh(src,dst);
-  cvTanh(src_more,dst_more);
-  cvTanh(src_less,dst_less);
+  actfunc(src,dst);
+  actfunc(src_more,dst_more);
+  actfunc(src_less,dst_less);
   cvSub(dst_more,dst_less,diff);
   cvScale(diff,grad,1./(2.f*eps));
-  cvTanhDer(src,src_der);
+  actfunc_der(src,src_der);
   cvSub(grad,src_der,error);
-  EXPECT_LT(cvAvg(error).val[0], eps);
+  EXPECT_LT(cvAvg(error).val[0], 1e-5);
 }
+
+TEST(ML_Tanh, gradcheck){cvActivationGradCheck(cvTanh, cvTanhDer);}
+TEST(ML_Sigmoid, gradcheck){cvActivationGradCheck(cvSigmoid, cvSigmoidDer);}
+TEST(ML_ReLU, gradcheck){cvActivationGradCheck(cvReLU, cvReLUDer);}
+TEST(ML_Softmax, gradcheck){cvActivationGradCheck(cvSoftmax, cvSoftmaxDer);}
 
 
 
