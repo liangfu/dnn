@@ -133,8 +133,8 @@ void CV_NetworkTest::run(int)
 
 TEST(ML_Tanh, accuracy)
 {
-  int nr=5,nc=5;
-  const float delta = 1e-5f;
+  int nr=5, nc=5;
+  const float eps = 1e-4f;
   CvMat * src = cvCreateMat(nr,nc,CV_32F);
   CvMat * src_more = cvCreateMat(nr,nc,CV_32F);
   CvMat * src_less = cvCreateMat(nr,nc,CV_32F);
@@ -142,20 +142,22 @@ TEST(ML_Tanh, accuracy)
   CvMat * dst_more = cvCreateMat(nr,nc,CV_32F); 
   CvMat * dst_less = cvCreateMat(nr,nc,CV_32F); 
   CvMat * diff = cvCreateMat(nr,nc,CV_32F); 
-  CvMat * grad = cvCreateMat(nr,nc,CV_32F); 
+  CvMat * grad = cvCreateMat(nr,nc,CV_32F);
+  CvMat * src_der = cvCreateMat(nr,nc,CV_32F);
+  CvMat * error = cvCreateMat(nr,nc,CV_32F);
   CvRNG rng = cvRNG(-1);
   cvRandArr(&rng,src,CV_RAND_UNI,cvScalar(-5),cvScalar(5));
-  cvAddS(src,cvScalar(delta),src_more);
-  cvAddS(src,cvScalar(-delta),src_less);
+  cvAddS(src,cvScalar(eps),src_more);
+  cvAddS(src,cvScalar(-eps),src_less);
   cvZero(dst); cvZero(dst_more); cvZero(dst_less);
   cvTanh(src,dst);
   cvTanh(src_more,dst_more);
   cvTanh(src_less,dst_less);
   cvSub(dst_more,dst_less,diff);
-  cvScale(diff,grad,1./(2.f*delta));
-  cvPrintf(stderr,"%.2f ",diff); fprintf(stderr,"--\n");
-  cvPrintf(stderr,"%.2f ",grad);
-  EXPECT_LT(cvAvg(grad).val[0], delta);
+  cvScale(diff,grad,1./(2.f*eps));
+  cvTanhDer(src,src_der);
+  cvSub(grad,src_der,error);
+  EXPECT_LT(cvAvg(error).val[0], eps);
 }
 
 
