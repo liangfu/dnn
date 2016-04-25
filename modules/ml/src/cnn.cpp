@@ -2353,7 +2353,17 @@ void cvSoftmax(CvMat * src, CvMat * dst){
 void cvSoftmaxDer(CvMat * src, CvMat * dst) {
   CV_FUNCNAME("cvSoftmaxDer");
   __BEGIN__;
-  CV_ERROR(CV_StsBadArg, "not implemented.");
+  int nr = src->rows, nc = src->cols;
+  CvMat * res = cvCreateMat(nr, nc, CV_32F);
+  cvSoftmax(src, res);
+  if (nr==nc){ // h*(1-h)
+    CvMat * subrs = cvCreateMat(nr,nc,CV_32F);
+    cvSubRS(res,cvScalar(1),subrs);cvMul(res,subrs,dst);
+    cvReleaseMat(&subrs);
+  }else{ // -h*h
+    cvMul(res,res,dst);
+  }
+  cvReleaseMat(&res);
   __END__;
 }
 
