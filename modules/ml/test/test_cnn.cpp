@@ -7,131 +7,12 @@
 
 #include "cvext_c.h"
 
-// using namespace std;
-
-class CV_NetworkTest : public cvtest::BaseTest
-{
-public:
-  CV_NetworkTest();
-  ~CV_NetworkTest();
-
-protected:
-  void run(int);
-
-  int TestTrainPredict(int test_num);
-  int TestSaveLoad();
-
-  int checkPredictError(int test_num);
-  int checkLoadSave();
-
-  // CvNetwork * network;
-};
-
-CV_NetworkTest::CV_NetworkTest()
-{
-}
-
-CV_NetworkTest::~CV_NetworkTest()
-{
-}
-
-int CV_NetworkTest::TestTrainPredict(int test_num)
-{
-  int code = cvtest::TS::OK;
-  // if (!tmp_code){
-  //   ts->printf( cvtest::TS::LOG, "Model training was failed.");
-  //   return cvtest::TS::FAIL_INVALID_OUTPUT;
-  // }
-  code = checkPredictError(test_num);
-  return code;
-}
-
-int CV_NetworkTest::checkPredictError(int test_num)
-{
-  // if (!gtb){
-  //   return cvtest::TS::FAIL_GENERIC;
-  // }
-  // if ( abs( current_error - mean[test_num]) > 6*sigma[test_num] ){
-  //   ts->printf( cvtest::TS::LOG, "Test error is out of range:\n"
-  //               "abs(%f/*curEr*/ - %f/*mean*/ > %f/*6*sigma*/",
-  //               current_error, mean[test_num], 6*sigma[test_num] );
-  //   return cvtest::TS::FAIL_BAD_ACCURACY;
-  // }
-  return cvtest::TS::OK;
-}
-
-
-int CV_NetworkTest::TestSaveLoad()
-{
-  int code = cvtest::TS::OK;
-  // if (!gtb){
-  //   return cvtest::TS::FAIL_GENERIC;
-  // }
-  // model_file_name1 = cv::tempfile();
-  // model_file_name2 = cv::tempfile();
-  // gtb->save(model_file_name1.c_str());
-  // gtb->calc_error(data, CV_TEST_ERROR, &test_resps1);
-  // gtb->load(model_file_name1.c_str());
-  // gtb->calc_error(data, CV_TEST_ERROR, &test_resps2);
-  // gtb->save(model_file_name2.c_str());
-
-  return checkLoadSave();
-}
-
-int CV_NetworkTest::checkLoadSave()
-{
-  int code = cvtest::TS::OK;
-
-  // 1. compare files
-  // delete temporary files
-  // remove( model_file_name1.c_str() );
-  // remove( model_file_name2.c_str() );
-
-  // 2. compare responses
-  // CV_Assert( test_resps1.size() == test_resps2.size() );
-  // vector<float>::const_iterator it1 = test_resps1.begin(), it2 = test_resps2.begin();
-  // for( ; it1 != test_resps1.end(); ++it1, ++it2 ){
-  //   if( fabs(*it1 - *it2) > FLT_EPSILON ){
-  //     ts->printf( cvtest::TS::LOG,
-  //                 "Responses predicted before saving and after loading are different" );
-  //     code = cvtest::TS::FAIL_INVALID_OUTPUT;
-  //   }
-  // }
-  return code;
-}
-
-
-
-void CV_NetworkTest::run(int)
-{
-  std::string dataPath = std::string(ts->get_data_path());
-  int code = cvtest::TS::OK;
-
-  // for (int i = 0; i < 4; i++){
-  //   int temp_code = TestTrainPredict(i);
-  //   if (temp_code != cvtest::TS::OK){
-  //     code = temp_code;break;
-  //   }else if (i==0){
-  //     temp_code = TestSaveLoad();
-  //     if (temp_code != cvtest::TS::OK){code = temp_code;}
-  //     delete data;
-  //     data = 0;
-  //   }
-  //   delete gtb;gtb = 0;
-  // }
-  // delete data;
-  // data = 0;
-
-  ts->set_failed_test_info( code );
-}
-
-/////////////////////////////////////////////////////////////////////////////
-//////////////////// test registration  /////////////////////////////////////
-/////////////////////////////////////////////////////////////////////////////
-
-// TEST(ML_Network, accuracy) { CV_NetworkTest test; test.safe_run(); }
-
 typedef void (*CvActivationFunc)(CvMat *, CvMat *);
+// typedef void (CV_CDECL *CvCNNLayerForward)
+//     ( CvCNNLayer* layer, const CvMat* X, CvMat* Y );
+// typedef void (CV_CDECL *CvCNNLayerBackward)
+//     ( CvCNNLayer* layer, int t, const CvMat* X, const CvMat* dE_dY, CvMat* dE_dX);
+
 void cvActivationGradCheck(CvActivationFunc actfunc, CvActivationFunc actfunc_der)
 {
   int nr=100, nc=100;
@@ -158,15 +39,59 @@ void cvActivationGradCheck(CvActivationFunc actfunc, CvActivationFunc actfunc_de
   cvScale(diff,grad,1./(2.f*eps));
   actfunc_der(src,src_der);
   cvSub(grad,src_der,error);
-  EXPECT_LT(cvAvg(error).val[0], 1e-5);
+  EXPECT_LT(cvNorm(error,0,CV_C), 0.001);
+  EXPECT_LT(cvNorm(error,0,CV_L1)/(nr*nc), 0.001);
 }
+
+void cvCNNLayerGradCheck(CvCNNLayerForward forward, CvCNNLayerBackward backward)
+{
+}
+
+/////////////////////////////////////////////////////////////////////////////
+//////////////////// test registration  /////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////
 
 TEST(ML_Tanh, gradcheck){cvActivationGradCheck(cvTanh, cvTanhDer);}
 TEST(ML_Sigmoid, gradcheck){cvActivationGradCheck(cvSigmoid, cvSigmoidDer);}
 TEST(ML_ReLU, gradcheck){cvActivationGradCheck(cvReLU, cvReLUDer);}
 TEST(ML_Softmax, gradcheck){cvActivationGradCheck(cvSoftmax, cvSoftmaxDer);}
 
-
+// CVAPI(CvCNNLayer*) cvCreateCNNConvolutionLayer( const char * name, const int visualize,
+//     int n_input_planes, int input_height, int input_width,
+//     int n_output_planes, int K,
+//     float init_learn_rate, int learn_rate_decrease_type,
+//     CvMat* connect_mask, CvMat* weights );
+TEST(ML_ConvolutionLayer, gradcheck){
+  const float eps = 1e-4;
+  const int n_inputs = 6;
+  const int n_outputs = 16;
+  const int imsize = 28;
+  const int ksize = 5;
+  const int batch_size = 2;
+  const int imsize_out = imsize-ksize+1;
+  CvCNNLayer * layer = cvCreateCNNConvolutionLayer("conv1",0,6,imsize,imsize,16,ksize,.01,1,0,0);
+  CvMat * X = cvCreateMat(imsize*imsize*n_inputs,batch_size,CV_32F);
+  CvMat * Y = cvCreateMat(imsize_out*imsize_out*n_outputs,batch_size,CV_32F);
+  CvMat * X_less = cvCloneMat(X), * X_more = cvCloneMat(X);
+  CvMat * Y_less = cvCloneMat(Y), * Y_more = cvCloneMat(Y);
+  CvMat * grad0 = cvCloneMat(Y), * grad1 = cvCloneMat(Y), * error = cvCloneMat(Y);
+  CvMat * dE_dY = cvCreateMat(Y->cols,Y->rows,CV_32F);
+  CvMat * dE_dX = cvCreateMat(X->cols,X->rows,CV_32F);
+  CvRNG rng = cvRNG(-1);
+  cvRandArr(&rng,X,CV_RAND_UNI,cvScalar(-5),cvScalar(5));
+  cvAddS(X,cvScalar(eps),X_more);
+  cvAddS(X,cvScalar(-eps),X_less);
+  cvZero(Y); cvZero(Y_more); cvZero(Y_less);
+  layer->forward(layer,X,Y); cvTranspose(Y,dE_dY);
+  layer->forward(layer,X_more,Y_more);
+  layer->forward(layer,X_less,Y_less);
+  cvSub(Y_more,Y_less,grad0);
+  cvScale(grad0,grad0,1./(2.f*eps));
+  layer->backward(layer,1,X,dE_dY,dE_dX); cvTranspose(dE_dX,grad1);
+  cvSub(grad0,grad1,error);
+  EXPECT_LT(cvNorm(error,0,CV_C), 0.001);
+  EXPECT_LT(cvNorm(error,0,CV_L1)/(error->rows*error->cols), 0.001);
+}
 
 
 
