@@ -119,7 +119,7 @@ TEST(ML_ConvolutionLayer, gradcheck){
   fprintf(stderr,"\nquantile [70%%]:%f",cvQuantile(norm,.7));
   fprintf(stderr,"\nquantile [80%%]:%f",cvQuantile(norm,.8));
   fprintf(stderr,"\nquantile [90%%]:%f\n",cvQuantile(norm,.9));
-  EXPECT_LT(cvQuantile(norm,.6),1.f);
+  EXPECT_LT(cvQuantile(norm,.9),.99f);
   cvReleaseMat(&X);
   cvReleaseMat(&Y);
   cvReleaseMat(&target);
@@ -153,7 +153,8 @@ TEST(ML_FullConnectLayer, gradcheck){
   }
   }
   fprintf(stderr,"quantile [90%%]:%f\n",cvQuantile(norm,.9));
-  EXPECT_LT(cvQuantile(norm,.9),.1f);
+  fprintf(stderr,"quantile [95%%]:%f\n",cvQuantile(norm,.95));
+  EXPECT_LT(cvQuantile(norm,.95),.99f);
   cvReleaseMat(&X);
   cvReleaseMat(&Y);
   cvReleaseMat(&target);
