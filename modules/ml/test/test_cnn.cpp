@@ -46,8 +46,33 @@ void cvActivationGradCheck(CvActivationFunc actfunc, CvActivationFunc actfunc_de
   EXPECT_LT(cvNorm(rel_error,0,CV_L1)/(nr*nc), 0.001);
 }
 
-void cvCNNLayerGradCheck(CvCNNLayerForward forward, CvCNNLayerBackward backward)
+void cvCNNLayerGradCheck(CvCNNLayer * layer, CvMat * X, CvMat * Y, CvMat * target, 
+                         CvMat * grad0, CvMat * grad1, int norm_type)
 {
+  const float eps = 1e-4;
+  CvMat * weights = cvCloneMat(layer->weights);
+  CvMat * Y_less = cvCloneMat(Y), * Y_more = cvCloneMat(Y);
+  CvMat * dE_dY = cvCreateMat(Y->cols,Y->rows,CV_32F);
+  CvMat * dE_dX = cvCreateMat(X->cols,X->rows,CV_32F);
+  cvCopy(weights,layer->weights); 
+  layer->forward(layer,X,Y); cvTranspose(target,dE_dY); cvAdd(Y,target,target); cvScale(dE_dY,dE_dY,-1.f); 
+  layer->backward(layer,1,X,dE_dY,dE_dX); cvCopy(layer->dE_dW,grad1);
+  for (int ridx=0;ridx<layer->weights->rows;ridx++){
+  for (int cidx=0;cidx<layer->weights->cols;cidx++){
+    // weights(ridx,cidx) + eps
+    cvCopy(weights,layer->weights); CV_MAT_ELEM(*layer->weights,float,ridx,cidx)+=eps;
+    layer->forward(layer,X,Y_more); cvSub(Y_more,target,Y_more); float Y_more_loss=cvNorm(Y_more,0,norm_type);
+    // weights(ridx,cidx) - eps
+    cvCopy(weights,layer->weights); CV_MAT_ELEM(*layer->weights,float,ridx,cidx)-=eps;
+    layer->forward(layer,X,Y_less); cvSub(Y_less,target,Y_less); float Y_less_loss=cvNorm(Y_less,0,norm_type);
+    CV_MAT_ELEM(*grad0,float,ridx,cidx) = (Y_more_loss-Y_less_loss)/(2.f*eps);
+  }
+  }
+  cvReleaseMat(&weights);
+  cvReleaseMat(&Y_more);
+  cvReleaseMat(&Y_less);
+  cvReleaseMat(&dE_dY);
+  cvReleaseMat(&dE_dX);
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -63,48 +88,44 @@ TEST(ML_ConvolutionLayer, gradcheck){
   const float eps = 1e-4;
   const int n_inputs = 2;
   const int n_outputs = 6;
-  const int imsize = 18;
+  const int imsize = 20;
   const int ksize = 3;
   const int batch_size = 2;
   const int imsize_out = imsize-ksize+1;
   CvCNNLayer * layer = cvCreateCNNConvolutionLayer("conv1",0,n_inputs,imsize,imsize,n_outputs,ksize,.01,1,0,0);
   CvMat * X = cvCreateMat(imsize*imsize*n_inputs,batch_size,CV_32F);
   CvMat * Y = cvCreateMat(imsize_out*imsize_out*n_outputs,batch_size,CV_32F);
-  CvMat * weights = cvCloneMat(layer->weights);
   CvMat * target = cvCreateMat(imsize_out*imsize_out*n_outputs,batch_size,CV_32F);
-  CvMat * W_less = cvCloneMat(layer->weights), * W_more = cvCloneMat(layer->weights);
-  CvMat * Y_less = cvCloneMat(Y), * Y_more = cvCloneMat(Y);
   CvMat * grad0 = cvCreateMat(layer->weights->rows,layer->weights->cols,CV_32F);
   CvMat * grad1 = cvCreateMat(layer->weights->rows,layer->weights->cols,CV_32F);
-  CvMat * dE_dY = cvCreateMat(Y->cols,Y->rows,CV_32F);
-  CvMat * dE_dX = cvCreateMat(X->cols,X->rows,CV_32F);
+  CvMat * norm = cvCreateMat(layer->weights->rows,layer->weights->cols,CV_32F);
   CvRNG rng = cvRNG(-1);
-  cvRandArr(&rng,X,CV_RAND_UNI,cvScalar(-2),cvScalar(2));
-  cvRandArr(&rng,target,CV_RAND_NORMAL,cvScalar(0),cvScalar(.02));
-  cvCopy(weights,layer->weights); 
-  layer->forward(layer,X,Y); cvTranspose(target,dE_dY); cvAdd(Y,target,target); cvScale(dE_dY,dE_dY,-1.f); 
-  layer->backward(layer,1,X,dE_dY,dE_dX); cvCopy(layer->dE_dW,grad1);
-  for (int ridx=0;ridx<layer->weights->rows;ridx++){
-  for (int cidx=0;cidx<layer->weights->cols;cidx++){
-    // weights(ridx,cidx) + eps
-    cvCopy(weights,layer->weights); CV_MAT_ELEM(*layer->weights,float,ridx,cidx)+=eps;
-    layer->forward(layer,X,Y_more); cvSub(Y_more,target,Y_more); float Y_more_loss=cvNorm(Y_more,0,CV_L1);
-    // weights(ridx,cidx) - eps
-    cvCopy(weights,layer->weights); CV_MAT_ELEM(*layer->weights,float,ridx,cidx)-=eps;
-    layer->forward(layer,X,Y_less); cvSub(Y_less,target,Y_less); float Y_less_loss=cvNorm(Y_less,0,CV_L1);
-    CV_MAT_ELEM(*grad0,float,ridx,cidx) = (Y_more_loss-Y_less_loss)/(2.f*eps);
-  }
-  }
+  cvRandArr(&rng,X,CV_RAND_UNI,cvScalar(-3),cvScalar(3));
+  cvRandArr(&rng,target,CV_RAND_NORMAL,cvScalar(0),cvScalar(.1));
+  cvCNNLayerGradCheck(layer, X, Y, target, grad0, grad1, CV_L1);
   fprintf(stderr,"\ngrad0:\n");cvPrintf(stderr,"%.2f ",grad0);
   fprintf(stderr,"\ngrad1:\n");cvPrintf(stderr,"%.2f ",grad1);
-  cvSub(grad0,grad1,grad0);cvAdd(grad0,grad1,grad1);
-  cvAbs(grad0,grad0);cvAbs(grad1,grad1);cvAddS(grad1,cvScalar(1e-8),grad1);
-  cvDiv(grad0,grad1,grad0);
-  fprintf(stderr,"\nrel_error:\n");cvPrintf(stderr,"%.2f ",grad0);
-  fprintf(stderr,"\nquantile .1:%f",cvQuantile(grad0,.1));
-  fprintf(stderr,"\nquantile .5:%f",cvQuantile(grad0,.5));
-  fprintf(stderr,"\nquantile .9:%f\n",cvQuantile(grad0,.9));
-  EXPECT_LT(cvQuantile(grad0,.9),1.f);
+  for (int ridx=0;ridx<grad0->rows;ridx++){
+  for (int cidx=0;cidx<grad0->cols;cidx++){
+    float gval0 = CV_MAT_ELEM(*grad0,float,ridx,cidx);
+    float gval1 = CV_MAT_ELEM(*grad1,float,ridx,cidx);
+    CV_MAT_ELEM(*norm,float,ridx,cidx)=fabs(gval0-gval1)/(fabs(gval0)+fabs(gval1)+1e-5f);
+  }
+  }
+  fprintf(stderr,"\nrel_error:\n");cvPrintf(stderr,"%.2f ",norm);
+  fprintf(stderr,"\nquantile [10%%]:%f",cvQuantile(norm,.1));
+  fprintf(stderr,"\nquantile [50%%]:%f",cvQuantile(norm,.5));
+  fprintf(stderr,"\nquantile [60%%]:%f",cvQuantile(norm,.6));
+  fprintf(stderr,"\nquantile [70%%]:%f",cvQuantile(norm,.7));
+  fprintf(stderr,"\nquantile [80%%]:%f",cvQuantile(norm,.8));
+  fprintf(stderr,"\nquantile [90%%]:%f\n",cvQuantile(norm,.9));
+  EXPECT_LT(cvQuantile(norm,.6),1.f);
+  cvReleaseMat(&X);
+  cvReleaseMat(&Y);
+  cvReleaseMat(&target);
+  cvReleaseMat(&grad0);
+  cvReleaseMat(&grad1);
+  cvReleaseMat(&norm);
 }
 
 TEST(ML_FullConnectLayer, gradcheck){
@@ -116,39 +137,29 @@ TEST(ML_FullConnectLayer, gradcheck){
   ASSERT_TRUE(ICV_IS_CNN_FULLCONNECT_LAYER(layer));
   CvMat * X = cvCreateMat(n_inputs,batch_size,CV_32F);
   CvMat * Y = cvCreateMat(n_outputs,batch_size,CV_32F);
-  CvMat * weights = cvCloneMat(layer->weights);
-  CvMat * target = cvCreateMat(n_outputs,batch_size,CV_32F);
-  CvMat * W_less = cvCloneMat(layer->weights), * W_more = cvCloneMat(layer->weights);
-  CvMat * Y_less = cvCloneMat(Y), * Y_more = cvCloneMat(Y);
+  CvMat * target = cvCreateMat(Y->rows,Y->cols,CV_32F);
   CvMat * grad0 = cvCreateMat(layer->weights->rows,layer->weights->cols,CV_32F);
   CvMat * grad1 = cvCreateMat(layer->weights->rows,layer->weights->cols,CV_32F);
-  CvMat * dE_dY = cvCreateMat(Y->cols,Y->rows,CV_32F);
-  CvMat * dE_dX = cvCreateMat(X->cols,X->rows,CV_32F);
+  CvMat * norm = cvCreateMat(layer->weights->rows,layer->weights->cols,CV_32F);
   CvRNG rng = cvRNG(-1);
   cvRandArr(&rng,X,CV_RAND_UNI,cvScalar(-2),cvScalar(2));
   cvRandArr(&rng,target,CV_RAND_UNI,cvScalar(-.2),cvScalar(.2));
-  cvCopy(weights,layer->weights); 
-  layer->forward(layer,X,Y); cvTranspose(target,dE_dY); cvAdd(Y,target,target); cvScale(dE_dY,dE_dY,-1.f); 
-  layer->backward(layer,1,X,dE_dY,dE_dX); cvCopy(layer->dE_dW,grad1);
-  for (int ridx=0;ridx<layer->weights->rows;ridx++){
-  for (int cidx=0;cidx<layer->weights->cols;cidx++){
-    // weights(ridx,cidx) + eps
-    cvCopy(weights,layer->weights); CV_MAT_ELEM(*layer->weights,float,ridx,cidx)+=eps;
-    layer->forward(layer,X,Y_more); cvSub(Y_more,target,Y_more); float Y_more_loss=cvNorm(Y_more,0,CV_L2);
-    // weights(ridx,cidx) - eps
-    cvCopy(weights,layer->weights); CV_MAT_ELEM(*layer->weights,float,ridx,cidx)-=eps;
-    layer->forward(layer,X,Y_less); cvSub(Y_less,target,Y_less); float Y_less_loss=cvNorm(Y_less,0,CV_L2);
-    CV_MAT_ELEM(*grad0,float,ridx,cidx) = (Y_more_loss-Y_less_loss)/(2.f*eps);
+  cvCNNLayerGradCheck(layer, X, Y, target, grad0, grad1, CV_L2);
+  for (int ridx=0;ridx<grad0->rows;ridx++){
+  for (int cidx=0;cidx<grad0->cols;cidx++){
+    float gval0 = CV_MAT_ELEM(*grad0,float,ridx,cidx);
+    float gval1 = CV_MAT_ELEM(*grad1,float,ridx,cidx);
+    CV_MAT_ELEM(*norm,float,ridx,cidx)=fabs(gval0-gval1)/(fabs(gval0)+fabs(gval1)+1e-5f);
   }
   }
-  // fprintf(stderr,"\ngrad0:\n");cvPrintf(stderr,"%.2f ",grad0);
-  // fprintf(stderr,"\ngrad1:\n");cvPrintf(stderr,"%.2f ",grad1);
-  cvSub(grad0,grad1,grad0);cvAdd(grad0,grad1,grad1);
-  cvAbs(grad0,grad0);cvAbs(grad1,grad1);cvAddS(grad1,cvScalar(1e-8),grad1);
-  cvDiv(grad0,grad1,grad0);
-  // fprintf(stderr,"\nrel_error:\n");cvPrintf(stderr,"%.2f ",grad0);
-  fprintf(stderr,"\nquantile .9:%f\n",cvQuantile(grad0,.9));
-  EXPECT_LT(cvQuantile(grad0,.9),1.f);
+  fprintf(stderr,"quantile [90%%]:%f\n",cvQuantile(norm,.9));
+  EXPECT_LT(cvQuantile(norm,.9),.1f);
+  cvReleaseMat(&X);
+  cvReleaseMat(&Y);
+  cvReleaseMat(&target);
+  cvReleaseMat(&grad0);
+  cvReleaseMat(&grad1);
+  cvReleaseMat(&norm);
 }
 
 
