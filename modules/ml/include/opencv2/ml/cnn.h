@@ -219,6 +219,8 @@ typedef void (CV_CDECL *CvCNNetworkRelease)(CvCNNetwork** network);
     /* Trainable weights of the layer (including bias) */           \
     /* i-th row is a set of weights of the i-th output plane */     \
     CvMat* weights;                                                 \
+    /* Weights matrix from backward pass, for gradient checking */  \
+    CvMat * dE_dW;                                                  \
                                                                     \
     CvCNNLayerForward  forward;                                     \
     CvCNNLayerBackward backward;                                    \

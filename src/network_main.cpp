@@ -20,7 +20,7 @@ int main(int argc, char * argv[])
           "{  o | omp     | %d    | number of threads to be used }"
           "{  h | help    | false | display this help message    }", 
 #ifdef _OPENMP
-          size_t(MAX(1.,std::ceil(float(omp_get_max_threads())*.5)))
+          int(size_t(MAX(1.,std::ceil(float(omp_get_max_threads())*.5))))
 #else
           1
 #endif

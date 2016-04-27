@@ -25,6 +25,23 @@ int cvCountNAN(CvMat * src)
   return sum;
 }
 
+float cvQuantile(CvMat * src, float p)
+{
+  p=MIN(1,MAX(0,p)); // eliminate overflow
+  int nr = src->rows, nc = src->cols;
+  CvMat * converted = cvCreateMat(nr,nc,CV_32F);
+  CvMat * reshaped = cvCreateMat(1,nr*nc,CV_32F);
+  CvMat * sorted = cvCreateMat(1,nr*nc,CV_32F);
+  cvConvert(src,converted);
+  memcpy(reshaped->data.ptr,converted->data.ptr,sizeof(float)*nr*nc);
+  cvSort(reshaped,sorted,0,CV_SORT_ASCENDING); // ,0,0,CV_SORT_DESCENDING|CV_SORT_EVERY_COLUMN
+  float retval = sorted->data.fl[cvRound(p*(nr*nc-1))];
+  cvReleaseMat(&converted);
+  cvReleaseMat(&reshaped);
+  cvReleaseMat(&sorted);
+  return retval;
+}
+
 /** 
  * Calculate gradient of source image.
  * In case of destinate image is CV_8UC1, the result would be

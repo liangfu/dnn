@@ -1071,6 +1071,8 @@ CvCNNLayer * cvCreateCNNFullConnectLayer( const char * name, const int visualize
       icvCNNFullConnectRelease, icvCNNFullConnectForward, icvCNNFullConnectBackward ));
 
   layer->WX = 0;
+  layer->dE_dW = 0;
+
   strcpy(layer->activation_type,activation_type);//CV_CNN_HYPERBOLIC;
   layer->visualize = visualize;
   layer->input_layer = (CvCNNLayer*)input_layer;
@@ -1751,7 +1753,7 @@ static void icvCNNMultiTargetForward( CvCNNLayer * _layer, const CvMat * X, CvMa
    loss function with respect to the planes components
    of the current layer. */
 static void icvCNNConvolutionBackward(
-    CvCNNLayer* _layer, int t, const CvMat* X, const CvMat* dE_dY, CvMat* dE_dX )
+    CvCNNLayer * _layer, int t, const CvMat* X, const CvMat* dE_dY, CvMat* dE_dX )
 {
   CvMat* dY_dX = 0;
   CvMat* dY_dW = 0;
@@ -1849,6 +1851,11 @@ static void icvCNNConvolutionBackward(
       eta = -layer->init_learn_rate/(float)t;
     }
     cvReshape( dE_dW, &dE_dW_mat, 0, layer->weights->rows );
+    if (!layer->dE_dW){
+      ((CvCNNLayer*)layer)->dE_dW = cvCloneMat(&dE_dW_mat);
+    }else{
+      cvCopy(dE_dW,((CvCNNLayer*)layer)->dE_dW);
+    }
     cvScaleAdd( &dE_dW_mat, cvRealScalar(eta), layer->weights, layer->weights );
   }
 
@@ -2008,7 +2015,6 @@ void icvCNNFullConnectBackward(CvCNNLayer * _layer, int t,
   CV_ASSERT(dE_dX->rows == batch_size && dE_dX->cols == n_inputs );
 
   CV_CALL(dE_dY_afder = cvCreateMat( n_outputs, batch_size, CV_32FC1 ));
-  CV_CALL(dE_dW = cvCreateMat( 1, weights->rows*weights->cols, CV_32FC1 ));
 
   // compute (tanh'(WX))*dE_dY
   if (!strcmp(layer->activation_type,"none")){
@@ -2025,16 +2031,18 @@ void icvCNNFullConnectBackward(CvCNNLayer * _layer, int t,
   CV_CALL(cvGEMM( dE_dY_afder, &sub_weights, 1, 0, 1, dE_dX, CV_GEMM_A_T));
   
   // compute dE_dW=dE_dY*X
-  cvZero(dE_dW);
   CV_ASSERT( dE_dY->rows == batch_size && dE_dY->cols == n_outputs );
-  CvMat dE_dW_hdr = cvMat(n_outputs,n_inputs+1,CV_32F,dE_dW->data.fl);
+  dE_dW = cvCreateMat(n_outputs,n_inputs+1,CV_32F); cvZero(dE_dW);
   CvMat * Xcol = cvCreateMat(X->rows+1,X->cols,CV_32F); 
   CvMat Xcol_submat;
   cvSet(Xcol,cvScalar(1)); // all ones on last row
   cvGetRows(Xcol,&Xcol_submat,0,X->rows);
   cvCopy(X,&Xcol_submat);
-  cvGEMM(dE_dY,Xcol,1,0,1,&dE_dW_hdr,CV_GEMM_A_T|CV_GEMM_B_T);
+  cvGEMM(dE_dY,Xcol,1,0,1,dE_dW,CV_GEMM_A_T|CV_GEMM_B_T);
   cvReleaseMat(&Xcol);
+
+  // copy `dE_dW` into layer variable for gradient checking
+  if (!layer->dE_dW){layer->dE_dW = cvCloneMat(dE_dW);}else{cvCopy(dE_dW,layer->dE_dW);}
 
   // 2) update weights
   {
@@ -2046,7 +2054,7 @@ void icvCNNFullConnectBackward(CvCNNLayer * _layer, int t,
     }else{
       eta = -layer->init_learn_rate/(float)t;
     }
-    cvScaleAdd( &dE_dW_hdr, cvRealScalar(eta), weights, weights );
+    cvScaleAdd( dE_dW, cvRealScalar(eta), weights, weights );
   }
   
   cvReleaseMat(&dE_dY_T);

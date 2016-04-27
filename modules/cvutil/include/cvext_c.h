@@ -434,6 +434,11 @@ void icvTranspose(CvMat * src, CvMat * dst)
 
 CVAPI(int) cvCountNAN(CvMat * src);
 
+/**
+ * compute quantile of input matrix for given value range from 0.0 to 1.0
+ */
+CVAPI(float) cvQuantile(CvMat * src, float p);
+
 /** 
  * convert between diagonal matrix and its vector form
  */
