@@ -8,10 +8,6 @@
 #include "cvext_c.h"
 
 typedef void (*CvActivationFunc)(CvMat *, CvMat *);
-// typedef void (CV_CDECL *CvCNNLayerForward)
-//     ( CvCNNLayer* layer, const CvMat* X, CvMat* Y );
-// typedef void (CV_CDECL *CvCNNLayerBackward)
-//     ( CvCNNLayer* layer, int t, const CvMat* X, const CvMat* dE_dY, CvMat* dE_dX);
 
 void cvActivationGradCheck(CvActivationFunc actfunc, CvActivationFunc actfunc_der)
 {
@@ -51,20 +47,24 @@ void cvCNNLayerGradCheck(CvCNNLayer * layer, CvMat * X, CvMat * Y, CvMat * targe
 {
   const float eps = 1e-4;
   CvMat * weights = cvCloneMat(layer->weights);
-  CvMat * Y_less = cvCloneMat(Y), * Y_more = cvCloneMat(Y);
+  CvMat * Y_less = cvCreateMat(Y->rows,Y->cols,CV_32F);
+  CvMat * Y_more = cvCreateMat(Y->rows,Y->cols,CV_32F);
   CvMat * dE_dY = cvCreateMat(Y->cols,Y->rows,CV_32F);
   CvMat * dE_dX = cvCreateMat(X->cols,X->rows,CV_32F);
   cvCopy(weights,layer->weights); 
-  layer->forward(layer,X,Y); cvTranspose(target,dE_dY); cvAdd(Y,target,target); cvScale(dE_dY,dE_dY,-1.f); 
+  layer->forward(layer,X,Y); cvTranspose(target,dE_dY); cvAdd(Y,target,target);
+  cvScale(dE_dY,dE_dY,-1.f); 
   layer->backward(layer,1,X,dE_dY,dE_dX); cvCopy(layer->dE_dW,grad1);
   for (int ridx=0;ridx<layer->weights->rows;ridx++){
   for (int cidx=0;cidx<layer->weights->cols;cidx++){
     // weights(ridx,cidx) + eps
     cvCopy(weights,layer->weights); CV_MAT_ELEM(*layer->weights,float,ridx,cidx)+=eps;
-    layer->forward(layer,X,Y_more); cvSub(Y_more,target,Y_more); float Y_more_loss=cvNorm(Y_more,0,norm_type);
+    layer->forward(layer,X,Y_more); cvSub(Y_more,target,Y_more); 
     // weights(ridx,cidx) - eps
     cvCopy(weights,layer->weights); CV_MAT_ELEM(*layer->weights,float,ridx,cidx)-=eps;
-    layer->forward(layer,X,Y_less); cvSub(Y_less,target,Y_less); float Y_less_loss=cvNorm(Y_less,0,norm_type);
+    layer->forward(layer,X,Y_less); cvSub(Y_less,target,Y_less);
+    float Y_more_loss=cvNorm(Y_more,0,norm_type);
+    float Y_less_loss=cvNorm(Y_less,0,norm_type);
     CV_MAT_ELEM(*grad0,float,ridx,cidx) = (Y_more_loss-Y_less_loss)/(2.f*eps);
   }
   }
