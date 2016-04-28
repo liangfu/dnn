@@ -9,21 +9,24 @@
 
 typedef void (*CvActivationFunc)(CvMat *, CvMat *);
 
-void cvActivationGradCheck(CvActivationFunc actfunc, CvActivationFunc actfunc_der)
+#define CV_FOREACH_ELEM(mat,ridx,cidx)                                  \
+  for(int (ridx)=0;(ridx)<(mat)->rows;(ridx)++)for(int (cidx)=0;(cidx)<(mat)->cols;(cidx)++)
+
+void cvActivationGradCheck(CvActivationFunc actfunc, CvActivationFunc actfunc_der, const int dtype)
 {
-  int nr=100, nc=100;
+  const int nr=100, nc=100;
   const float eps = 1e-4f;
-  CvMat * src = cvCreateMat(nr,nc,CV_32F);
-  CvMat * src_more = cvCreateMat(nr,nc,CV_32F);
-  CvMat * src_less = cvCreateMat(nr,nc,CV_32F);
-  CvMat * dst = cvCreateMat(nr,nc,CV_32F); 
-  CvMat * dst_more = cvCreateMat(nr,nc,CV_32F); 
-  CvMat * dst_less = cvCreateMat(nr,nc,CV_32F); 
-  CvMat * diff = cvCreateMat(nr,nc,CV_32F); 
-  CvMat * grad = cvCreateMat(nr,nc,CV_32F);
-  CvMat * src_der = cvCreateMat(nr,nc,CV_32F);
-  CvMat * rel_error = cvCreateMat(nr,nc,CV_32F);
-  CvMat * sum_error = cvCreateMat(nr,nc,CV_32F);
+  CvMat * src = cvCreateMat(nr,nc,dtype);
+  CvMat * src_more = cvCreateMat(nr,nc,dtype);
+  CvMat * src_less = cvCreateMat(nr,nc,dtype);
+  CvMat * dst = cvCreateMat(nr,nc,dtype); 
+  CvMat * dst_more = cvCreateMat(nr,nc,dtype); 
+  CvMat * dst_less = cvCreateMat(nr,nc,dtype); 
+  CvMat * diff = cvCreateMat(nr,nc,dtype); 
+  CvMat * grad = cvCreateMat(nr,nc,dtype);
+  CvMat * src_der = cvCreateMat(nr,nc,dtype);
+  CvMat * rel_error = cvCreateMat(nr,nc,dtype);
+  CvMat * sum_error = cvCreateMat(nr,nc,dtype);
   CvRNG rng = cvRNG(-1);
   cvRandArr(&rng,src,CV_RAND_UNI,cvScalar(-5),cvScalar(5));
   cvAddS(src,cvScalar(eps),src_more);
@@ -36,8 +39,7 @@ void cvActivationGradCheck(CvActivationFunc actfunc, CvActivationFunc actfunc_de
   cvScale(diff,grad,1./(2.f*eps));
   actfunc_der(src,src_der);
   cvSub(grad,src_der,rel_error); cvAbs(rel_error,rel_error);
-  // cvAdd(grad,src_der,sum_error); cvAbs(sum_error,sum_error); cvAddS(sum_error,cvScalar(1e-5),sum_error);
-  // cvDiv(rel_error,sum_error,rel_error);
+  EXPECT_LT(cvAvg(rel_error).val[0], 1e-5);
   EXPECT_LT(cvNorm(rel_error,0,CV_C), 0.001);
   EXPECT_LT(cvNorm(rel_error,0,CV_L1)/(nr*nc), 0.001);
 }
@@ -46,11 +48,12 @@ void cvCNNLayerGradCheck(CvCNNLayer * layer, CvMat * X, CvMat * Y, CvMat * targe
                          CvMat * grad0, CvMat * grad1, int norm_type)
 {
   const float eps = 1e-4;
+  const int dtype = layer->dtype;
   CvMat * weights = cvCloneMat(layer->weights);
-  CvMat * Y_less = cvCreateMat(Y->rows,Y->cols,CV_32F);
-  CvMat * Y_more = cvCreateMat(Y->rows,Y->cols,CV_32F);
-  CvMat * dE_dY = cvCreateMat(Y->cols,Y->rows,CV_32F);
-  CvMat * dE_dX = cvCreateMat(X->cols,X->rows,CV_32F);
+  CvMat * Y_less = cvCreateMat(Y->rows,Y->cols,dtype);
+  CvMat * Y_more = cvCreateMat(Y->rows,Y->cols,dtype);
+  CvMat * dE_dY = cvCreateMat(Y->cols,Y->rows,dtype);
+  CvMat * dE_dX = cvCreateMat(X->cols,X->rows,dtype);
   cvCopy(weights,layer->weights); 
   layer->forward(layer,X,Y); cvTranspose(target,dE_dY); cvAdd(Y,target,target);
   cvScale(dE_dY,dE_dY,-1.f); 
@@ -58,14 +61,24 @@ void cvCNNLayerGradCheck(CvCNNLayer * layer, CvMat * X, CvMat * Y, CvMat * targe
   for (int ridx=0;ridx<layer->weights->rows;ridx++){
   for (int cidx=0;cidx<layer->weights->cols;cidx++){
     // weights(ridx,cidx) + eps
-    cvCopy(weights,layer->weights); CV_MAT_ELEM(*layer->weights,float,ridx,cidx)+=eps;
+    cvCopy(weights,layer->weights); 
+    cvmSet(layer->weights,ridx,cidx,cvmGet(layer->weights,ridx,cidx)+eps);
     layer->forward(layer,X,Y_more); cvSub(Y_more,target,Y_more); 
     // weights(ridx,cidx) - eps
-    cvCopy(weights,layer->weights); CV_MAT_ELEM(*layer->weights,float,ridx,cidx)-=eps;
+    cvCopy(weights,layer->weights); 
+    cvmSet(layer->weights,ridx,cidx,cvmGet(layer->weights,ridx,cidx)-eps);
     layer->forward(layer,X,Y_less); cvSub(Y_less,target,Y_less);
-    float Y_more_loss=cvNorm(Y_more,0,norm_type);
-    float Y_less_loss=cvNorm(Y_less,0,norm_type);
-    CV_MAT_ELEM(*grad0,float,ridx,cidx) = (Y_more_loss-Y_less_loss)/(2.f*eps);
+    double Y_more_loss=0;
+    double Y_less_loss=0;
+    if (norm_type==CV_L2){
+      CV_FOREACH_ELEM(Y_more,ri,ci){double val=cvmGet(Y_more,ri,ci);Y_more_loss+=val*val;}
+      CV_FOREACH_ELEM(Y_less,ri,ci){double val=cvmGet(Y_less,ri,ci);Y_less_loss+=val*val;}
+      Y_more_loss*=.5;Y_less_loss*=.5;
+    }else{
+      Y_more_loss=cvNorm(Y_more,0,norm_type);
+      Y_less_loss=cvNorm(Y_less,0,norm_type);
+    }
+    cvmSet(grad0,ridx,cidx,(Y_more_loss-Y_less_loss)/(2.f*eps));
   }
   }
   cvReleaseMat(&weights);
@@ -79,20 +92,32 @@ void cvCNNLayerGradCheck(CvCNNLayer * layer, CvMat * X, CvMat * Y, CvMat * targe
 //////////////////// test registration  /////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////
 
-TEST(ML_Tanh, gradcheck){cvActivationGradCheck(cvTanh, cvTanhDer);}
-TEST(ML_Sigmoid, gradcheck){cvActivationGradCheck(cvSigmoid, cvSigmoidDer);}
-TEST(ML_ReLU, gradcheck){cvActivationGradCheck(cvReLU, cvReLUDer);}
-TEST(ML_Softmax, gradcheck){cvActivationGradCheck(cvSoftmax, cvSoftmaxDer);}
+TEST(ML_Tanh, gradcheck){
+  cvActivationGradCheck(cvTanh, cvTanhDer, CV_32F);
+  cvActivationGradCheck(cvTanh, cvTanhDer, CV_64F);
+}
+TEST(ML_Sigmoid, gradcheck){
+  cvActivationGradCheck(cvSigmoid, cvSigmoidDer, CV_32F);
+  cvActivationGradCheck(cvSigmoid, cvSigmoidDer, CV_64F);
+}
+TEST(ML_ReLU, gradcheck){
+  cvActivationGradCheck(cvReLU, cvReLUDer, CV_32F);
+  cvActivationGradCheck(cvReLU, cvReLUDer, CV_64F);
+}
+TEST(ML_Softmax, gradcheck){
+  cvActivationGradCheck(cvSoftmax, cvSoftmaxDer, CV_32F);
+  cvActivationGradCheck(cvSoftmax, cvSoftmaxDer, CV_64F);
+}
 
 TEST(ML_ConvolutionLayer, gradcheck){
-  const float eps = 1e-4;
   const int n_inputs = 2;
   const int n_outputs = 6;
   const int imsize = 20;
   const int ksize = 3;
   const int batch_size = 2;
   const int imsize_out = imsize-ksize+1;
-  CvCNNLayer * layer = cvCreateCNNConvolutionLayer("conv1",0,n_inputs,imsize,imsize,n_outputs,ksize,.01,1,0,0);
+  CvCNNLayer * layer = 
+    cvCreateCNNConvolutionLayer(CV_32F,"conv1",0,n_inputs,imsize,imsize,n_outputs,ksize,.01,1,0,0);
   CvMat * X = cvCreateMat(imsize*imsize*n_inputs,batch_size,CV_32F);
   CvMat * Y = cvCreateMat(imsize_out*imsize_out*n_outputs,batch_size,CV_32F);
   CvMat * target = cvCreateMat(imsize_out*imsize_out*n_outputs,batch_size,CV_32F);
@@ -129,31 +154,44 @@ TEST(ML_ConvolutionLayer, gradcheck){
 }
 
 TEST(ML_FullConnectLayer, gradcheck){
-  const float eps = 1e-4;
-  const int n_inputs = 20;
-  const int n_outputs = 10;
-  const int batch_size = 2;
-  CvCNNLayer * layer = cvCreateCNNFullConnectLayer("fc1",0,0,n_inputs,n_outputs,.01,1,"tanh",0);
+  const int n_inputs = 16;
+  const int n_outputs = 6;
+  const int batch_size = 1;
+  const int dtype = CV_64F;
+  const char * actype = "tanh";
+  CvCNNLayer * layer = 
+    cvCreateCNNFullConnectLayer(dtype,"fc1",0,0,n_inputs,n_outputs,.01,1,actype,0);
   ASSERT_TRUE(ICV_IS_CNN_FULLCONNECT_LAYER(layer));
-  CvMat * X = cvCreateMat(n_inputs,batch_size,CV_32F);
-  CvMat * Y = cvCreateMat(n_outputs,batch_size,CV_32F);
-  CvMat * target = cvCreateMat(Y->rows,Y->cols,CV_32F);
-  CvMat * grad0 = cvCreateMat(layer->weights->rows,layer->weights->cols,CV_32F);
-  CvMat * grad1 = cvCreateMat(layer->weights->rows,layer->weights->cols,CV_32F);
-  CvMat * norm = cvCreateMat(layer->weights->rows,layer->weights->cols,CV_32F);
+  CvMat * X = cvCreateMat(n_inputs,batch_size,dtype);
+  CvMat * Y = cvCreateMat(n_outputs,batch_size,dtype);
+  CvMat * target = cvCreateMat(Y->rows,Y->cols,dtype);
+  CvMat * grad0 = cvCreateMat(layer->weights->rows,layer->weights->cols,dtype);
+  CvMat * grad1 = cvCreateMat(layer->weights->rows,layer->weights->cols,dtype);
+  CvMat * norm = cvCreateMat(layer->weights->rows,layer->weights->cols,dtype);
   CvRNG rng = cvRNG(-1);
-  cvRandArr(&rng,X,CV_RAND_UNI,cvScalar(-2),cvScalar(2));
-  cvRandArr(&rng,target,CV_RAND_UNI,cvScalar(-.2),cvScalar(.2));
+  cvRandArr(&rng,X,CV_RAND_NORMAL,cvScalar(0),cvScalar(1));
+  if (!strcmp(actype,"tanh")){
+    cvRandArr(&rng,target,CV_RAND_NORMAL,cvScalar(0),cvScalar(.1));
+  }else if (!strcmp(actype,"sigmoid")){
+    cvRandArr(&rng,target,CV_RAND_NORMAL,cvScalar(0),cvScalar(.05));
+  }else{
+    cvRandArr(&rng,target,CV_RAND_NORMAL,cvScalar(0),cvScalar(.05));
+  }
   cvCNNLayerGradCheck(layer, X, Y, target, grad0, grad1, CV_L2);
   for (int ridx=0;ridx<grad0->rows;ridx++){
   for (int cidx=0;cidx<grad0->cols;cidx++){
-    float gval0 = CV_MAT_ELEM(*grad0,float,ridx,cidx);
-    float gval1 = CV_MAT_ELEM(*grad1,float,ridx,cidx);
-    CV_MAT_ELEM(*norm,float,ridx,cidx)=fabs(gval0-gval1)/(fabs(gval0)+fabs(gval1)+1e-5f);
+    double gval0 = cvmGet(grad0,ridx,cidx);
+    double gval1 = cvmGet(grad1,ridx,cidx);
+    cvmSet(norm,ridx,cidx,fabs(gval0-gval1));
   }
   }
+  fprintf(stderr,"\ngrad0:\n");cvPrintf(stderr,"%.2f ",grad0);
+  fprintf(stderr,"\ngrad1:\n");cvPrintf(stderr,"%.2f ",grad1);
+  fprintf(stderr,"\nrel_error:\n");cvPrintf(stderr,"%.2f ",norm);
+  fprintf(stderr,"quantile [50%%]:%f\n",cvQuantile(norm,.5));
   fprintf(stderr,"quantile [90%%]:%f\n",cvQuantile(norm,.9));
   fprintf(stderr,"quantile [95%%]:%f\n",cvQuantile(norm,.95));
+  fprintf(stderr,"quantile [99%%]:%f\n",cvQuantile(norm,.99));
   EXPECT_LT(cvQuantile(norm,.95),.99f);
   cvReleaseMat(&X);
   cvReleaseMat(&Y);

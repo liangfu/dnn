@@ -189,6 +189,8 @@ typedef void (CV_CDECL *CvCNNetworkRelease)(CvCNNetwork** network);
 #define CV_CNN_LAYER_FIELDS()           \
     /* Indicator of the layer's type */ \
     int flags;                          \
+    /* the layer's data type, either CV_32F or CV_64F */              \
+    int dtype;                                                        \
     /* Name of the layer, which should be unique within the network*/ \
     char name[20];                                                    \
                                         \
@@ -426,38 +428,44 @@ CVAPI(void) cvReLUDer(CvMat * src, CvMat * dst);
 CVAPI(void) cvSoftmax(CvMat * src, CvMat * dst);
 CVAPI(void) cvSoftmaxDer(CvMat * src, CvMat * dst);
 
-CVAPI(CvCNNLayer*) cvCreateCNNConvolutionLayer( const char * name, const int visualize,
+CVAPI(CvCNNLayer*) cvCreateCNNConvolutionLayer( 
+    const int dtype, const char * name, const int visualize,
     int n_input_planes, int input_height, int input_width,
     int n_output_planes, int K,
     float init_learn_rate, int learn_rate_decrease_type,
     CvMat* connect_mask, CvMat* weights );
 
-CVAPI(CvCNNLayer*) cvCreateCNNSubSamplingLayer( const char * name, const int visualize,
+CVAPI(CvCNNLayer*) cvCreateCNNSubSamplingLayer( 
+    const int dtype, const char * name, const int visualize,
     int n_input_planes, int input_height, int input_width,
     int sub_samp_scale, 
     float init_learn_rate, int learn_rate_decrease_type, CvMat* weights );
 
-CVAPI(CvCNNLayer*) cvCreateCNNFullConnectLayer( const char * name, const int visualize,
+CVAPI(CvCNNLayer*) cvCreateCNNFullConnectLayer( 
+    const int dtype, const char * name, const int visualize,
     const CvCNNLayer * input_layer, int n_inputs, int n_outputs, 
     float init_learn_rate, int learn_rate_decrease_type, const char * activation_type,
     CvMat * weights );
 
-CVAPI(CvCNNLayer*) cvCreateCNNImgCroppingLayer( const char * name, const int visualize, 
+CVAPI(CvCNNLayer*) cvCreateCNNImgCroppingLayer( 
+    const int dtype, const char * name, const int visualize, 
     const CvCNNLayer * input_layer,
     int n_output_planes, int output_height, int output_width, int time_index,
     float init_learn_rate, int update_rule);
 
-CVAPI(CvCNNLayer*) cvCreateCNNRecurrentLayer( const char * name, 
-    const CvCNNLayer * hidden_layer, 
+CVAPI(CvCNNLayer*) cvCreateCNNRecurrentLayer( 
+    const int dtype, const char * name, const CvCNNLayer * hidden_layer, 
     int n_inputs, int n_outputs, int n_hiddens, int seq_length, int time_index, 
     float init_learn_rate, int update_rule, const char * activation_type, 
     CvMat * Wxh, CvMat * Whh, CvMat * Why );
 
-CVAPI(CvCNNLayer*) cvCreateCNNInputDataLayer( const char * name, 
+CVAPI(CvCNNLayer*) cvCreateCNNInputDataLayer( 
+    const int dtype, const char * name, 
     int n_inputs, int input_height, int input_width, int seq_length,
     float init_learn_rate, int update_rule);
 
-CVAPI(CvCNNLayer*) cvCreateCNNMultiTargetLayer( const char * name, 
+CVAPI(CvCNNLayer*) cvCreateCNNMultiTargetLayer( 
+    const int dtype, const char * name, 
     int n_input_layers, CvCNNLayer ** input_layers, int outputs,
     float init_learn_rate, int update_rule);
 
