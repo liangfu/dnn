@@ -4,7 +4,7 @@ project(ts)
 
 INCLUDE_DIRECTORIES(./include ../cxcore/include ../cv/include ../highgui/include)
 
-add_library(ts SHARED
+add_library(ts 
 	src/ts_gtest.cpp
 	src/ts_perf.cpp
 	src/ts_func.cpp
