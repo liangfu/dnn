@@ -426,7 +426,7 @@ CVAPI(void) cvSigmoidDer(CvMat * src, CvMat * dst);
 CVAPI(void) cvReLU(CvMat * src, CvMat * dst);
 CVAPI(void) cvReLUDer(CvMat * src, CvMat * dst);
 CVAPI(void) cvSoftmax(CvMat * src, CvMat * dst);
-CVAPI(void) cvSoftmaxDer(CvMat * src, CvMat * dst);
+CVAPI(void) cvSoftmaxDer(CvMat * X, CvMat * dE_dY, CvMat * dE_dY_afder);
 
 CVAPI(CvCNNLayer*) cvCreateCNNConvolutionLayer( 
     const int dtype, const char * name, const int visualize,

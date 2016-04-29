@@ -8,9 +8,13 @@
 #include "cvext_c.h"
 
 typedef void (*CvActivationFunc)(CvMat *, CvMat *);
+typedef void (*CvActivationDerFunc)(CvMat *, CvMat *, CvMat *);
 
 #define CV_FOREACH_ELEM(mat,ridx,cidx)                                  \
   for(int (ridx)=0;(ridx)<(mat)->rows;(ridx)++)for(int (cidx)=0;(cidx)<(mat)->cols;(cidx)++)
+
+#define CV_NORM_TYPE1 111
+#define CV_NORM_TYPE2 222
 
 void cvActivationGradCheck(CvActivationFunc actfunc, CvActivationFunc actfunc_der, const int dtype)
 {
@@ -70,13 +74,17 @@ void cvCNNLayerGradCheck(CvCNNLayer * layer, CvMat * X, CvMat * Y, CvMat * targe
     layer->forward(layer,X,Y_less); cvSub(Y_less,target,Y_less);
     double Y_more_loss=0;
     double Y_less_loss=0;
-    if (norm_type==CV_L2){
+    if (norm_type==CV_NORM_TYPE1){
       CV_FOREACH_ELEM(Y_more,ri,ci){double val=cvmGet(Y_more,ri,ci);Y_more_loss+=val*val;}
       CV_FOREACH_ELEM(Y_less,ri,ci){double val=cvmGet(Y_less,ri,ci);Y_less_loss+=val*val;}
       Y_more_loss*=.5;Y_less_loss*=.5;
+    }else if (norm_type==CV_NORM_TYPE2){
+      CV_FOREACH_ELEM(Y_more,ri,ci){double val=cvmGet(Y_more,ri,ci);Y_more_loss+=val*val;}
+      CV_FOREACH_ELEM(Y_less,ri,ci){double val=cvmGet(Y_less,ri,ci);Y_less_loss+=val*val;}
+      Y_more_loss*=2.;Y_less_loss*=2.;
     }else{
-      Y_more_loss=cvNorm(Y_more,0,norm_type);
-      Y_less_loss=cvNorm(Y_less,0,norm_type);
+      Y_more_loss=cvNorm(Y_more,0,CV_L2);
+      Y_less_loss=cvNorm(Y_less,0,CV_L2);
     }
     cvmSet(grad0,ridx,cidx,(Y_more_loss-Y_less_loss)/(2.f*eps));
   }
@@ -105,8 +113,8 @@ TEST(ML_ReLU, gradcheck){
   cvActivationGradCheck(cvReLU, cvReLUDer, CV_64F);
 }
 TEST(ML_Softmax, gradcheck){
-  cvActivationGradCheck(cvSoftmax, cvSoftmaxDer, CV_32F);
-  cvActivationGradCheck(cvSoftmax, cvSoftmaxDer, CV_64F);
+  // cvActivationGradCheck(cvSoftmax, cvSoftmaxDer, CV_32F);
+  // cvActivationGradCheck(cvSoftmax, cvSoftmaxDer, CV_64F);
 }
 
 TEST(ML_ConvolutionLayer, gradcheck){
@@ -153,12 +161,22 @@ TEST(ML_ConvolutionLayer, gradcheck){
   cvReleaseMat(&norm);
 }
 
+void FullConnectLayerTest(int n_inputs, int n_outputs, int batch_size, 
+                          int dtype, int norm_type, const char * actype);
 TEST(ML_FullConnectLayer, gradcheck){
-  const int n_inputs = 16;
-  const int n_outputs = 6;
-  const int batch_size = 1;
-  const int dtype = CV_64F;
-  const char * actype = "tanh";
+  int n_inputs = 16;
+  int n_outputs = 6;
+  int batch_size = 1;
+  int dtype = CV_64F;
+  FullConnectLayerTest(n_inputs, n_outputs, batch_size, dtype, CV_NORM_TYPE1, "tanh");
+  FullConnectLayerTest(n_inputs, n_outputs, batch_size, dtype, CV_NORM_TYPE2, "sigmoid");
+  FullConnectLayerTest(n_inputs, n_outputs, batch_size, dtype, CV_NORM_TYPE2, "softmax");
+  FullConnectLayerTest(n_inputs, n_outputs, batch_size, dtype, CV_NORM_TYPE1, "relu");
+}
+
+void FullConnectLayerTest(int n_inputs, int n_outputs, int batch_size, 
+                          int dtype, int norm_type, const char * actype)
+{
   CvCNNLayer * layer = 
     cvCreateCNNFullConnectLayer(dtype,"fc1",0,0,n_inputs,n_outputs,.01,1,actype,0);
   ASSERT_TRUE(ICV_IS_CNN_FULLCONNECT_LAYER(layer));
@@ -177,7 +195,7 @@ TEST(ML_FullConnectLayer, gradcheck){
   }else{
     cvRandArr(&rng,target,CV_RAND_NORMAL,cvScalar(0),cvScalar(.05));
   }
-  cvCNNLayerGradCheck(layer, X, Y, target, grad0, grad1, CV_L2);
+  cvCNNLayerGradCheck(layer, X, Y, target, grad0, grad1, norm_type);
   for (int ridx=0;ridx<grad0->rows;ridx++){
   for (int cidx=0;cidx<grad0->cols;cidx++){
     double gval0 = cvmGet(grad0,ridx,cidx);
@@ -185,14 +203,15 @@ TEST(ML_FullConnectLayer, gradcheck){
     cvmSet(norm,ridx,cidx,fabs(gval0-gval1));
   }
   }
-  fprintf(stderr,"\ngrad0:\n");cvPrintf(stderr,"%.2f ",grad0);
-  fprintf(stderr,"\ngrad1:\n");cvPrintf(stderr,"%.2f ",grad1);
-  fprintf(stderr,"\nrel_error:\n");cvPrintf(stderr,"%.2f ",norm);
+  fprintf(stderr,"%s: %f\n",actype, cvAvg(norm).val[0]);
+  // fprintf(stderr,"\ngrad0:\n");cvPrintf(stderr,"%.2f ",grad0);
+  // fprintf(stderr,"\ngrad1:\n");cvPrintf(stderr,"%.2f ",grad1);
+  // fprintf(stderr,"\nrel_error:\n");cvPrintf(stderr,"%.2f ",norm);
   fprintf(stderr,"quantile [50%%]:%f\n",cvQuantile(norm,.5));
   fprintf(stderr,"quantile [90%%]:%f\n",cvQuantile(norm,.9));
   fprintf(stderr,"quantile [95%%]:%f\n",cvQuantile(norm,.95));
   fprintf(stderr,"quantile [99%%]:%f\n",cvQuantile(norm,.99));
-  EXPECT_LT(cvQuantile(norm,.95),.99f);
+  EXPECT_LT(cvQuantile(norm,.99),.2f);
   cvReleaseMat(&X);
   cvReleaseMat(&Y);
   cvReleaseMat(&target);

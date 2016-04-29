@@ -2036,13 +2036,21 @@ void icvCNNFullConnectBackward(CvCNNLayer * _layer, int t,
 
   // compute (tanh'(WX))*dE_dY
   if (!strcmp(layer->activation_type,"none")){
-  }else if (!strcmp(layer->activation_type,"tanh")){ cvTanhDer(layer->WX,dE_dY_afder);
-  }else if (!strcmp(layer->activation_type,"sigmoid")){ cvSigmoidDer(layer->WX,dE_dY_afder);
-  }else if (!strcmp(layer->activation_type,"softmax")){ cvSoftmaxDer(layer->WX,dE_dY_afder);
-  }else if (!strcmp(layer->activation_type,"relu")){ cvReLUDer(layer->WX,dE_dY_afder);
+  }else if (!strcmp(layer->activation_type,"tanh")){ 
+    cvTanhDer(layer->WX,dE_dY_afder);
+    cvTranspose(dE_dY,dE_dY_T);
+    cvMul(dE_dY_afder,dE_dY_T,dE_dY_afder);
+  }else if (!strcmp(layer->activation_type,"sigmoid")){ 
+    cvSigmoidDer(layer->WX,dE_dY_afder);
+    cvTranspose(dE_dY,dE_dY_T);
+    cvMul(dE_dY_afder,dE_dY_T,dE_dY_afder);
+  }else if (!strcmp(layer->activation_type,"softmax")){ 
+    cvSoftmaxDer(layer->WX,(CvMat*)dE_dY,dE_dY_afder);
+  }else if (!strcmp(layer->activation_type,"relu")){ 
+    cvReLUDer(layer->WX,dE_dY_afder);
+    cvTranspose(dE_dY,dE_dY_T);
+    cvMul(dE_dY_afder,dE_dY_T,dE_dY_afder);
   }else{CV_ASSERT(false);}
-  cvTranspose(dE_dY,dE_dY_T);
-  cvMul(dE_dY_afder,dE_dY_T,dE_dY_afder);
 
   // compute dE_dX=dE_dY_afder*W
   CV_CALL(cvGetCols( weights, &sub_weights, 0, weights->cols-1 ));
@@ -2380,6 +2388,7 @@ void cvSigmoidDer(CvMat * src, CvMat * dst) {
   cvReleaseMat(&tmp);
 }
 
+//! assuming column vectors (a column is a sample)
 void cvSoftmax(CvMat * src, CvMat * dst){
   cvExp(src,dst);
   const int dtype = CV_MAT_TYPE(src->type);
@@ -2392,20 +2401,24 @@ void cvSoftmax(CvMat * src, CvMat * dst){
   cvReleaseMat(&sum_repeat);
 }
 
-void cvSoftmaxDer(CvMat * src, CvMat * dst) {
+void cvSoftmaxDer(CvMat * X, CvMat * dE_dY, CvMat * dE_dY_afder) {
   CV_FUNCNAME("cvSoftmaxDer");
   __BEGIN__;
-  const int nr = src->rows, nc = src->cols, dtype = CV_MAT_TYPE(src->type);
-  CvMat * res = cvCreateMat(nr, nc, dtype);
-  cvSoftmax(src, res);
-  if (nr==nc){ // h*(1-h)
-    CvMat * subrs = cvCreateMat(nr,nc,dtype);
-    cvSubRS(res,cvScalar(1),subrs);cvMul(res,subrs,dst);
-    cvReleaseMat(&subrs);
-  }else{ // -h*h
-    cvMul(res,res,dst);
-  }
-  cvReleaseMat(&res);
+  const int nr = X->rows, nc = X->cols, dtype = CV_MAT_TYPE(X->type);
+  CvMat * Y = cvCreateMat(nr, nc, dtype);
+  CvMat * dE_dY_transpose = cvCreateMat(nr, nc, dtype);
+  CvMat * sum = cvCreateMat(1, nc, dtype);
+  CvMat * sum_repeat = cvCreateMat(nr, nc, dtype);
+  cvSoftmax(X, Y); cvTranspose(dE_dY,dE_dY_transpose);
+  cvMul(Y,dE_dY_transpose,dE_dY_afder);
+  cvReduce(dE_dY_afder,sum,-1,CV_REDUCE_SUM);
+  cvRepeat(sum,sum_repeat);
+  cvMul(Y,sum_repeat,sum_repeat);
+  cvSub(dE_dY_afder,sum_repeat,dE_dY_afder);
+  cvReleaseMat(&dE_dY_transpose);
+  cvReleaseMat(&sum);
+  cvReleaseMat(&sum_repeat);
+  cvReleaseMat(&Y);
   __END__;
 }
 
