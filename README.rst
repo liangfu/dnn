@@ -1,35 +1,38 @@
-===================
-The CompVis Library
-===================
+================
+Deep Neural Nets
+================
 
-.. image:: https://travis-ci.org/liangfu/compvis.svg  
- :target: https://travis-ci.org/liangfu/compvis
+.. image:: https://travis-ci.org/liangfu/dnn.svg  
+ :target: https://travis-ci.org/liangfu/dnn
 
 Introduction
 ============
 
-The CompVis library is built to demostrate its efficient and 
-accurate implementation on a few Computer Vision tasks, including face
-detection, face recognition, generic object tracking etc.
+The design principle of the Deep Neural Nets (DNN) library is to make it 
+small in size, efficient computation and portable to multiple operating systems.
+We started the project as a fork of the popular `OpenCV <http://opencv.org/>`_ library,
+while removing some components that is not tightly related to the deep learning framework, 
+e.g. motion history imaging, camera calibration, kalman filter, haar feature based object detection etc.
 
 Available Modules
 =================
+
+The following features have been implemented:
+
+ - mini-batch based learning
+ - YAML based network definition
+ - gradient checking for all implemented layers
 
 The following modules are implemented in current version:
 
 =======================  ========================================================================================
        module name       description
 =======================  ========================================================================================
-``image warping``        image resizing, rotating in an efficient way (with 3, 4 or 6 parameters)
-``level sets``           image segmentation with composed energy function
-``optical flow``         implements the inverse compositional algorithms
-``AAM``                  active appearance model for facial image alignment
-``LDA``                  fisher discriminant analysis (linear classifier)
-``KFD``                  kernel fisher discriminant (nonlinear,guassian kernel)
-``PWP``                  pixel-wise posterior, a level sets based tracking framework
-``particle filter``      a probabilistic tracking framework
-``cascade detector``     implements the classic viola-jones detection framework, with pre-trained feature sets
-``sparse coding``        implements ``orthogonal matching pursuit (OMP)`` and ``basis pursuit (BP)`` algorithms
+``InputDataLayer``       data container layer, for storing original input images
+``ConvolutionLayer``     performs 2d convolution upon images
+``SubSamplingLayer``     performs max-pooling operation
+``FullConnectLayer``     full connection layer, with activation options, e.g. tanh, sigmoid, softmax, relu etc.
+``RecurrentNNLayer``     vallina RNN layer
 =======================  ========================================================================================
 
 More modules will be available online !
@@ -37,26 +40,20 @@ More modules will be available online !
 Compilation
 ===========
 
-Typically, ``qmake`` OR ``scons`` is required for successfully compiling the project. However, there is no such
-restriction for Visual C++ developers, click the solution file ``compvis.sln`` and you're ready to go.
+`CMake <https://cmake.org>`_ is required for successfully compiling the project. 
 
-For advance usage, you can create Makefiles with qmake by running
-
-.. code-block:: bash
-
- $ ./configure
-
-under root directory of the project, or build directly with scons
+Under root directory of the project:
 
 .. code-block:: bash
 
- $ scons -u
+ $ cd $DNN_ROOT
+ $ mkdir build
+ $ cmake .. 
+ $ make -j4
 
 Then try anything you want. 
-
-*Note that it is not necessary to install qmake if you don't want to build the demo application*.
 
 License
 =======
 
-The source code is released under `MIT license <https://github.com/liangfu/compvis/blob/master/LICENSE>`_ . There is no actual restrictions in (re)-distributing the code in any form.
+MIT
