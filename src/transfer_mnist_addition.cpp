@@ -84,8 +84,8 @@ int main(int argc, char * argv[])
           "{  h | help    | false | display this help message    }");
   CvCommandLineParser parser(argc,argv,keys);
   const int display_help = parser.get<bool>("help");
-  const int n_train_samples = parser.get<int>("trainsize");
-  const int n_test_samples = parser.get<int>("testsize");
+  const int trainsize = parser.get<int>("trainsize");
+  const int  testsize = parser.get<int>("testsize");
   if (display_help){parser.printParams();return 0;}
   const char * solver_filename  = parser.get<string>("solver").c_str();
   CvNetwork * cnn = new CvNetwork();
@@ -107,10 +107,10 @@ int main(int argc, char * argv[])
   assert(training->rows==response->rows && testing->rows==expected->rows);
 
   const int imsize = 64;
-  CvMat * training_twodigit = cvCreateMat(training->rows,imsize*imsize,CV_32F);
-  CvMat * response_twodigit = cvCreateMat(training->rows,19,CV_32F);
-  CvMat *  testing_twodigit = cvCreateMat( testing->rows,imsize*imsize,CV_32F);
-  CvMat * expected_twodigit = cvCreateMat( testing->rows,19,CV_32F);
+  CvMat * training_twodigit = cvCreateMat(trainsize,imsize*imsize,CV_32F);
+  CvMat * response_twodigit = cvCreateMat(trainsize,19,CV_32F);
+  CvMat *  testing_twodigit = cvCreateMat( testsize,imsize*imsize,CV_32F);
+  CvMat * expected_twodigit = cvCreateMat( testsize,19,CV_32F);
 
   cvGenerateAdditionMNIST(training, training_twodigit, response, response_twodigit);
   cvGenerateAdditionMNIST( testing,  testing_twodigit, expected, expected_twodigit);
@@ -159,7 +159,7 @@ void cvGenerateAdditionMNIST(CvMat * training, CvMat * training_twodigit,
   CV_FUNCNAME("cvGenerateTwoDigitMNIST");
   __BEGIN__;
   CV_ASSERT(training->cols==28*28 && training_twodigit->cols==64*64);
-  CV_ASSERT(training->rows==training_twodigit->rows);
+  // CV_ASSERT(training->rows==training_twodigit->rows);
   CV_ASSERT(CV_MAT_TYPE(training_twodigit->type)==CV_32F);
   CV_ASSERT(CV_MAT_TYPE(response->type)==CV_8U);
   CV_ASSERT(CV_MAT_TYPE(response_twodigit->type)==CV_32F);
@@ -172,8 +172,7 @@ void cvGenerateAdditionMNIST(CvMat * training, CvMat * training_twodigit,
   CvRNG rng = cvRNG(-1); int tidx = 0; int vals[2] = {0,0};
   CvMat vmat = cvMat(1,2,CV_32S,vals);
   cvZero(response_twodigit);
-  for (int idx=0;idx<training->rows;idx++){
-    memcpy(target->data.ptr,training_twodigit->data.ptr+training_twodigit->step*idx,training_twodigit->step);
+  for (int idx=0;idx<training_twodigit->rows;idx++){
     cvZero(target);
     tidx = cvFloor(cvRandReal(&rng)*training->rows);
     vals[0] = CV_MAT_ELEM(*response,uchar,tidx,0);
@@ -191,6 +190,7 @@ void cvGenerateAdditionMNIST(CvMat * training, CvMat * training_twodigit,
     icvWarp(sample,target,warp_p); 
     cvAdd(target0, target, target); 
     CV_MAT_ELEM(*response_twodigit,float,idx,vals[0]+vals[1])=1;
+    memcpy(target->data.ptr,training_twodigit->data.ptr+training_twodigit->step*idx,training_twodigit->step);
 
     // visualize
     // cvPrintf(stderr,"%d ",&vmat);

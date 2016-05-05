@@ -124,9 +124,10 @@ void CvNetwork::loadModel(string inFile)
       const char * input_layer_name = cvReadStringByName(fs,node,"input_layer","");
       if (strlen(input_layer_name)>0){
         input_layer = m_cnn->network->get_layer(m_cnn->network,input_layer_name);
-        n_input_planes = input_layer->n_output_planes;
+        n_input_planes = input_layer->n_output_planes*input_layer->output_height*input_layer->output_width;
+      }else{
+        n_input_planes = n_input_planes*input_height*input_width;
       }
-      n_input_planes = n_input_planes*input_height*input_width;
       n_output_planes = cvReadIntByName(fs,node,"n_output_planes");
       layer = cvCreateCNNFullConnectLayer( dtype, name, visualize, input_layer, 
         n_input_planes, n_output_planes, 

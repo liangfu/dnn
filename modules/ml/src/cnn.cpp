@@ -1314,7 +1314,7 @@ void icvCNNConvolutionForward( CvCNNLayer* _layer, const CvMat* X, CvMat* Y )
 
   __BEGIN__;
 
-  const CvCNNConvolutionLayer* layer = (CvCNNConvolutionLayer*) _layer;
+  CvCNNConvolutionLayer* layer = (CvCNNConvolutionLayer*) _layer;
 
   const int K = layer->K;
   const int n_weights_for_Yplane = K*K + 1;
@@ -1388,6 +1388,7 @@ void icvCNNConvolutionForward( CvCNNLayer* _layer, const CvMat* X, CvMat* Y )
   cvReleaseMat(&Xt);
   cvReleaseMat(&Yt);
   
+  if (layer->Y){cvCopy(Y,layer->Y);}else{layer->Y=cvCloneMat(Y);}
   if (layer->visualize){icvVisualizeCNNLayer((CvCNNLayer*)layer,Y);}
 
   __END__;
@@ -1469,6 +1470,7 @@ icvCNNSubSamplingForward( CvCNNLayer* _layer, const CvMat* X, CvMat* Y )
   cvTranspose(Yt,Y);
   cvReleaseMat(&Xt);
   cvReleaseMat(&Yt);
+  if (layer->Y){cvCopy(Y,layer->Y);}else{layer->Y=cvCloneMat(Y);}
   if (layer->visualize){icvVisualizeCNNLayer((CvCNNLayer*)layer,Y);}
 
   __END__;
@@ -1497,10 +1499,14 @@ static void icvCNNFullConnectForward( CvCNNLayer* _layer, const CvMat* _X, CvMat
   int batch_size = X->cols;
   int seq_length = 1;
   
-  if (input_layer && ICV_IS_CNN_RECURRENTNN_LAYER(input_layer)){
-    CvCNNRecurrentLayer * rnn_layer = ((CvCNNRecurrentLayer*)input_layer);
-    seq_length = rnn_layer->seq_length;
-    CvMat * Xsrc = rnn_layer->Y;
+  if (input_layer){
+    if (ICV_IS_CNN_RECURRENTNN_LAYER(input_layer)){
+      seq_length = ((CvCNNRecurrentLayer*)input_layer)->seq_length;
+    }else if (ICV_IS_CNN_SUBSAMPLING_LAYER(input_layer)){
+      seq_length = 1;
+      n_inputs = input_layer->n_output_planes*input_layer->output_height*input_layer->output_width;
+    }
+    CvMat * Xsrc = input_layer->Y;
     CvMat * Xsrc_transpose = cvCreateMat(Xsrc->cols,Xsrc->rows,dtype);
     cvTranspose(Xsrc,Xsrc_transpose);
     if (layer->n_output_planes*seq_length==Y->rows){
@@ -1519,7 +1525,11 @@ static void icvCNNFullConnectForward( CvCNNLayer* _layer, const CvMat* _X, CvMat
       X = cvCreateMat(n_inputs,batch_size,dtype);
       CV_ASSERT(n_inputs*seq_length*batch_size==Xsrc->rows*Xsrc->cols);
       CvMat X_submat; 
-      cvGetRow(Xsrc_transpose,&X_submat,rnn_layer->time_index);
+      if (ICV_IS_CNN_RECURRENTNN_LAYER(input_layer)){
+        cvGetRow(Xsrc_transpose,&X_submat,((CvCNNRecurrentLayer*)input_layer)->time_index);
+      }else{
+        cvGetRow(Xsrc_transpose,&X_submat,0);
+      }
       cvTranspose(&X_submat,X);
       seq_length=1;
     }
@@ -1552,6 +1562,7 @@ static void icvCNNFullConnectForward( CvCNNLayer* _layer, const CvMat* _X, CvMat
   }else if (!strcmp(layer->activation_type,"softmax")){ CV_CALL(cvSoftmax( layer->WX, Y ));
   }else{CV_ERROR(CV_StsBadArg,"Unknown activation type");}
 
+  if (layer->Y){cvCopy(Y,layer->Y);}else{layer->Y=cvCloneMat(Y);}
   if (layer->visualize==1){icvVisualizeCNNLayer((CvCNNLayer*)layer,Y);}
   else if (layer->visualize==2){fprintf(stderr,"\n");cvPrintf(stderr,"%f ",Y);}
 
@@ -1568,7 +1579,7 @@ static void icvCNNImgCroppingForward( CvCNNLayer * _layer, const CvMat* X, CvMat
   CV_FUNCNAME("icvCNNImgCroppingForward");
   if ( !ICV_IS_CNN_IMGCROPPING_LAYER(_layer) ) { CV_ERROR( CV_StsBadArg, "Invalid layer" ); }
   __BEGIN__;
-  const CvCNNImgCroppingLayer * layer = (CvCNNImgCroppingLayer*)_layer;
+  CvCNNImgCroppingLayer * layer = (CvCNNImgCroppingLayer*)_layer;
   const CvCNNInputDataLayer * input_layer = (CvCNNInputDataLayer*)layer->input_layer;
   const int time_index = layer->time_index;
   const int seq_length = input_layer->seq_length;
@@ -1615,6 +1626,7 @@ static void icvCNNImgCroppingForward( CvCNNLayer * _layer, const CvMat* X, CvMat
     cvGetCol(&input_data_hdr,&input_data_submat,time_index);
     cvCopy(&input_data_submat,Y);
   }
+  if (layer->Y){cvCopy(Y,layer->Y);}else{layer->Y=cvCloneMat(Y);}
   if (layer->visualize){ icvVisualizeCNNLayer((CvCNNLayer*)layer, Y); }
   __END__;
 }
@@ -1782,7 +1794,7 @@ static void icvCNNConvolutionBackward(
 
   {__BEGIN__;
 
-  const CvCNNConvolutionLayer* layer = (CvCNNConvolutionLayer*) _layer;
+  CvCNNConvolutionLayer* layer = (CvCNNConvolutionLayer*) _layer;
   
   const int K = layer->K;
   const int KK = K*K;
@@ -1870,7 +1882,7 @@ static void icvCNNConvolutionBackward(
     if (!layer->dE_dW){
       ((CvCNNLayer*)layer)->dE_dW = cvCloneMat(&dE_dW_mat);
     }else{
-      cvCopy(dE_dW,((CvCNNLayer*)layer)->dE_dW);
+      cvCopy(&dE_dW_mat,((CvCNNLayer*)layer)->dE_dW);
     }
     cvScaleAdd( &dE_dW_mat, cvRealScalar(eta), layer->weights, layer->weights );
   }
@@ -1987,17 +1999,22 @@ void icvCNNFullConnectBackward(CvCNNLayer * _layer, int t,
   CvMat * X = (CvMat*)_X;
   CvMat * dE_dX = (CvMat*)_dE_dX;
 
-  if (input_layer && ICV_IS_CNN_RECURRENTNN_LAYER(input_layer)){
-    CvCNNRecurrentLayer * rnn_layer = (CvCNNRecurrentLayer*)input_layer;
-    n_inputs = rnn_layer->n_input_planes;
-    seq_length = rnn_layer->seq_length;
-    time_index = rnn_layer->time_index;
-    CvMat X_submat; CvMat * Xsrc = rnn_layer->Y;
+  if (input_layer){
+    // CvCNNRecurrentLayer * rnn_layer = (CvCNNRecurrentLayer*)input_layer;
+    n_inputs = input_layer->n_input_planes;
+    if (ICV_IS_CNN_RECURRENTNN_LAYER(input_layer)){
+      seq_length = ((CvCNNRecurrentLayer*)input_layer)->seq_length;
+      time_index = ((CvCNNRecurrentLayer*)input_layer)->time_index;
+    }else if (ICV_IS_CNN_SUBSAMPLING_LAYER(input_layer)){ 
+      seq_length = 1; time_index = 0; 
+      n_inputs = input_layer->n_output_planes*input_layer->output_height*input_layer->output_width;
+    }
+    CvMat X_submat; CvMat * Xsrc = input_layer->Y;
     CvMat * Xsrc_transpose = cvCreateMat(Xsrc->cols,Xsrc->rows,dtype);
     cvTranspose(Xsrc,Xsrc_transpose);
     X = cvCreateMat(n_inputs,batch_size,dtype);
     CV_ASSERT(n_inputs*seq_length*batch_size==Xsrc->rows*Xsrc->cols);
-    cvGetRow(Xsrc_transpose,&X_submat,rnn_layer->time_index);
+    cvGetRow(Xsrc_transpose,&X_submat,time_index);
     cvTranspose(&X_submat,X); 
     cvReleaseMat(&Xsrc_transpose);
     // initialize dE_dX in layer member variable

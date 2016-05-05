@@ -223,6 +223,8 @@ typedef void (CV_CDECL *CvCNNetworkRelease)(CvCNNetwork** network);
     CvMat* weights;                                                 \
     /* Weights matrix from backward pass, for gradient checking */  \
     CvMat * dE_dW;                                                  \
+    /* output states, default size: (n_output_planes, batch_size) */   \
+    CvMat * Y;                                                         \
                                                                     \
     CvCNNLayerForward  forward;                                     \
     CvCNNLayerBackward backward;                                    \
@@ -326,8 +328,6 @@ typedef struct CvCNNRecurrentLayer
   // -------------------------------------------------------
   // hidden states, default size: (n_hiddens*batch_size, seq_length)
   CvMat * H;
-  // output states, default size: (n_output_planes, batch_size)
-  CvMat * Y;
   // input states to hidden states, WX = Wxh*X + Whh*H_prev + bh
   CvMat * WX;
   // hidden states to output states, WH = Why*H_curr + by
