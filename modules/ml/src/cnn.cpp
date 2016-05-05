@@ -263,8 +263,7 @@ cvTrainCNNClassifier( const CvMat* _train_data, int tflag,
   CV_ASSERT(CV_MAT_TYPE(train_data->type)==CV_32F);
 
   // normalize image value range
-  if (ICV_IS_CNN_CONVOLUTION_LAYER(params->network->first_layer->next_layer))
-  {
+  if (ICV_IS_CNN_CONVOLUTION_LAYER(params->network->first_layer->next_layer)){
     double minval, maxval;
     cvMinMaxLoc(train_data,&minval,&maxval,0,0);
     cvSubS(train_data,cvScalar(minval),train_data);

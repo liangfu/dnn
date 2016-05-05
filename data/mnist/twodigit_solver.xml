@@ -1,0 +1,18 @@
+<?xml version="1.0"?>
+<opencv_storage>
+<data>
+	<training_filename>data/mnist/twodigit_training.xml.gz</training_filename>
+	<response_filename>data/mnist/twodigit_response.xml.gz</response_filename>
+	<testing_filename>data/mnist/twodigit_testing.xml.gz</testing_filename>
+	<expected_filename>data/mnist/twodigit_expected.xml.gz</expected_filename>
+</data>
+<network>
+	<model_filename>data/mnist/twodigit_model.yml</model_filename>
+	<weights_filename>data/mnist/twodigit_weights.xml</weights_filename>
+	<lr_init>0.05</lr_init>
+	<decay_type>invsqrt</decay_type>
+	<maxiter>500</maxiter>
+	<batch_size>2</batch_size>
+	<validate_ratio>0.1</validate_ratio>
+</network>
+</opencv_storage>

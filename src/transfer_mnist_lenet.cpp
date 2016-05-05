@@ -87,15 +87,10 @@ int main(int argc, char * argv[])
   const char * response_filename_xml = cnn->solver()->response_filename();
   const char *  testing_filename_xml  = cnn->solver()->testing_filename();
   const char * expected_filename_xml = cnn->solver()->expected_filename();
-  char training_filename[1<<10]={0,}; 
-  char response_filename[1<<10]={0,}; 
-  char  testing_filename[1<<10]={0,}; 
-  char expected_filename[1<<10]={0,}; 
-
-  cvGetBaseName((char*)training_filename_xml,(char*)training_filename);
-  cvGetBaseName((char*)response_filename_xml,(char*)response_filename);
-  cvGetBaseName((char*) testing_filename_xml,(char*) testing_filename);
-  cvGetBaseName((char*)expected_filename_xml,(char*)expected_filename);
+  const char * training_filename = "data/mnist/train-images-idx3-ubyte"; 
+  const char * response_filename = "data/mnist/train-labels-idx1-ubyte"; 
+  const char *  testing_filename = "data/mnist/t10k-images-idx3-ubyte"; 
+  const char * expected_filename = "data/mnist/t10k-labels-idx1-ubyte"; 
 
   const int nclasses = 10;
   CvMat * training    = read_Mnist_Images((char*)training_filename);
@@ -141,7 +136,7 @@ void cvPrepareResponse(CvMat * response, CvMat * responseMat)
     else {CV_ERROR(CV_StsBadArg,"");}
     CV_MAT_ELEM(*responseMat,float,ii,label)=1;
   }
-  fprintf(stderr,"samples:\n");cvPrintf(stderr,"%.0f ",responseMat,cvRect(0,0,nclasses,10));
+  // fprintf(stderr,"samples:\n");cvPrintf(stderr,"%.0f ",responseMat,cvRect(0,0,nclasses,10));
   __END__;
 }
 

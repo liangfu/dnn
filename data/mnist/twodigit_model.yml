@@ -1,0 +1,9 @@
+%YAML:1.0
+layers:
+  - {type: InputData, name: input1, n_input_planes: 1, input_height: 64, input_width: 64, seq_length: 1}
+  - {type: Convolution, name: conv1, visualize: 1, n_output_planes: 6, ksize: 5, stride: 1}
+  - {type: Convolution, name: conv2, visualize: 0, n_output_planes: 16, ksize: 5, stride: 1}
+  - {type: Convolution, name: conv3, visualize: 0, n_output_planes: 32, ksize: 5, stride: 1}
+  - {type: FullConnect, name: fc1, input_layer: conv3, n_output_planes: 10, activation_type: softmax}
+  - {type: FullConnect, name: fc2, input_layer: conv3, n_output_planes: 10, activation_type: softmax}
+  - {type: MultiTarget, name: multi1, n_input_layers: 2, input_layers: "fc1,fc2", n_output_planes: 20}
