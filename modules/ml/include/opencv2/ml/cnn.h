@@ -193,7 +193,7 @@ typedef void (CV_CDECL *CvCNNetworkRelease)(CvCNNetwork** network);
     int dtype;                                                        \
     /* Name of the layer, which should be unique within the network*/ \
     char name[20];                                                    \
-                                        \
+                                                                      \
     /* Number of input images */        \
     int n_input_planes;                 \
     /* Height of each input image */    \
@@ -201,38 +201,43 @@ typedef void (CV_CDECL *CvCNNetworkRelease)(CvCNNetwork** network);
     /* Width of each input image */     \
     int input_width;                    \
                                         \
-    /* Number of output images */       \
-    int n_output_planes;                \
-    /* Height of each output image */   \
-    int output_height;                  \
-    /* Width of each output image */    \
-    int output_width;                   \
-                                        \
-    /* Learning rate at the first iteration */                      \
-    float init_learn_rate;                                          \
-    /* Dynamics of learning rate decreasing */                      \
-    int decay_type;                                                 \
-    /* Dynamics of DELTAw increasing */                             \
-    int delta_w_increase_type;                                      \
-    /* samples used in training */                                  \
-    int nsamples;                                                   \
-    /* max iterations in training */                                \
-    int max_iter;                                                   \
-    /* Trainable weights of the layer (including bias) */           \
-    /* i-th row is a set of weights of the i-th output plane */     \
-    CvMat* weights;                                                 \
-    /* Weights matrix from backward pass, for gradient checking */  \
-    CvMat * dE_dW;                                                  \
+    /* Number of output images */               \
+    int n_output_planes;                        \
+    /* Height of each output image */           \
+    int output_height;                          \
+    /* Width of each output image */            \
+    int output_width;                           \
+                                                \
+    /* Learning rate at the first iteration */                         \
+    float init_learn_rate;                                             \
+    /* Dynamics of learning rate decreasing */                         \
+    int decay_type;                                                    \
+    /* Dynamics of DELTAw increasing */                                \
+    int delta_w_increase_type;                                         \
+    /* samples used in training */                                     \
+    int nsamples;                                                      \
+    /* max iterations in training */                                   \
+    int max_iter;                                                      \
+    /* Trainable weights of the layer (including bias) */              \
+    /* i-th row is a set of weights of the i-th output plane */        \
+    CvMat* weights;                                                    \
+    /* Weights matrix from backward pass, for gradient checking */     \
+    CvMat * dE_dW;                                                     \
     /* output states, default size: (n_output_planes, batch_size) */   \
     CvMat * Y;                                                         \
-                                                                    \
-    CvCNNLayerForward  forward;                                     \
-    CvCNNLayerBackward backward;                                    \
-    CvCNNLayerRelease  release;                                     \
-    /* Pointers to the previous and next layers in the network */   \
-    CvCNNLayer* prev_layer;                                         \
-    CvCNNLayer* next_layer;                                         \
-                                                                    \
+                                                                       \
+    CvCNNLayerForward  forward;                                        \
+    CvCNNLayerBackward backward;                                       \
+    CvCNNLayerRelease  release;                                        \
+    /* Pointers to the previous and next layers in the network */      \
+    CvCNNLayer* prev_layer;                                            \
+    CvCNNLayer* next_layer;                                            \
+    /* Pointers to input/output layer, instead of using prev_layer */  \
+    CvCNNLayer * input_layer;                                          \
+    CvCNNLayer * output_layer;                                         \
+    /* Used in backward pass, in case input_layer is given */          \
+    CvMat * dE_dX;                                                     \
+                                                                       \
     int visualize
 
 typedef struct CvCNNLayer
@@ -282,10 +287,6 @@ typedef struct CvCNNSubSamplingLayer
 typedef struct CvCNNFullConnectLayer
 {
   CV_CNN_LAYER_FIELDS();
-  // assign input layer, instead of using prev_layer
-  CvCNNLayer * input_layer;
-  // used in backward pass, in case input_layer is given
-  CvMat * dE_dX; 
   // WX = (W*X) - is the vector used in computing of the 
   // activation function and it's derivative by the formulae
   CvMat * WX;
@@ -297,8 +298,6 @@ typedef struct CvCNNFullConnectLayer
 typedef struct CvCNNImgCroppingLayer
 {
   CV_CNN_LAYER_FIELDS();
-  // resource to load data for image cropping
-  CvCNNLayer * input_layer;
   // crop specified time index for next layer
   int time_index;
 }CvCNNImgCroppingLayer;
@@ -326,6 +325,8 @@ typedef struct CvCNNRecurrentLayer
   // -------------------------------------------------------
   // VARIABLES REQUIRED FOR COMPUTING FORWARD & BACKWARD PASS
   // -------------------------------------------------------
+  // gradient in complete sequence, default size: (n_output_planes, batch_size)
+  CvMat * dE_dY;                                                     
   // hidden states, default size: (n_hiddens*batch_size, seq_length)
   CvMat * H;
   // input states to hidden states, WX = Wxh*X + Whh*H_prev + bh
@@ -336,8 +337,6 @@ typedef struct CvCNNRecurrentLayer
   double loss;
   // hidden states gradient, size is same as hidden states: (n_hiddens*batch_size, seq_length)
   CvMat * dH;
-  // gradient in complete sequence, size is same as output states: (n_output_planes, batch_size)
-  CvMat * dE_dY;
   // weight updates
   CvMat * dWxh, * dWhh, * dWhy;
 }CvCNNRecurrentLayer;
@@ -429,9 +428,8 @@ CVAPI(void) cvSoftmax(CvMat * src, CvMat * dst);
 CVAPI(void) cvSoftmaxDer(CvMat * X, CvMat * dE_dY, CvMat * dE_dY_afder);
 
 CVAPI(CvCNNLayer*) cvCreateCNNConvolutionLayer( 
-    const int dtype, const char * name, const int visualize,
-    int n_input_planes, int input_height, int input_width,
-    int n_output_planes, int K,
+    const int dtype, const char * name, const int visualize, const CvCNNLayer * input_layer, 
+    int n_input_planes, int input_height, int input_width, int n_output_planes, int K,
     float init_learn_rate, int learn_rate_decrease_type,
     CvMat* connect_mask, CvMat* weights );
 
@@ -465,7 +463,7 @@ CVAPI(CvCNNLayer*) cvCreateCNNInputDataLayer(
     float init_learn_rate, int update_rule);
 
 CVAPI(CvCNNLayer*) cvCreateCNNMultiTargetLayer( 
-    const int dtype, const char * name, 
+    const int dtype, const char * name, const int visualize,
     int n_input_layers, CvCNNLayer ** input_layers, int outputs,
     float init_learn_rate, int update_rule);
 
