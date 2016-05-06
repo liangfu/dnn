@@ -72,7 +72,7 @@ void CvNetwork::loadModel(string inFile)
       }else if (ICV_IS_CNN_IMGCROPPING_LAYER(predefined_layer)){
         int time_index = cvReadIntByName(fs,node,"time_index",0);
         CvCNNImgCroppingLayer * this_layer = (CvCNNImgCroppingLayer*)predefined_layer;
-        CvCNNLayer * input_layer = this_layer->input_layer;
+        CvCNNLayer * input_layer = (this_layer->input_layers.size()>0?this_layer->input_layers[0]:0);
         layer = cvCreateCNNImgCroppingLayer( 
           this_layer->dtype, this_layer->name, this_layer->visualize, input_layer, 
           this_layer->n_output_planes, this_layer->output_height, this_layer->output_width, 
@@ -81,12 +81,14 @@ void CvNetwork::loadModel(string inFile)
         CvCNNFullConnectLayer * this_layer = (CvCNNFullConnectLayer*)predefined_layer;
         layer = cvCreateCNNFullConnectLayer( 
           this_layer->dtype, this_layer->name, this_layer->visualize, 
-          this_layer->input_layer, this_layer->n_input_planes, this_layer->n_output_planes, 
+          this_layer->input_layers.size()>0?this_layer->input_layers[0]:0, 
+          this_layer->n_input_planes, this_layer->n_output_planes, 
           this_layer->init_learn_rate, this_layer->decay_type, this_layer->activation_type, NULL );
       }else if (ICV_IS_CNN_CONVOLUTION_LAYER(predefined_layer)){
         CvCNNConvolutionLayer * this_layer = (CvCNNConvolutionLayer*)predefined_layer;
         layer = cvCreateCNNConvolutionLayer( 
-          this_layer->dtype, this_layer->name, this_layer->visualize, this_layer->input_layer, 
+          this_layer->dtype, this_layer->name, this_layer->visualize, 
+          this_layer->input_layers.size()>0?this_layer->input_layers[0]:0, 
           this_layer->n_input_planes, this_layer->input_height, this_layer->input_width,
           this_layer->n_output_planes, this_layer->K,
           this_layer->init_learn_rate, this_layer->decay_type, NULL, NULL );
@@ -113,7 +115,7 @@ void CvNetwork::loadModel(string inFile)
       layer = cvCreateCNNConvolutionLayer( dtype, name, visualize, input_layer, 
         n_input_planes, input_height, input_width, n_output_planes, ksize,
         lr_init, decay_type, NULL, NULL );
-      if (input_layer){input_layer->output_layer = layer;}
+      if (input_layer){input_layer->output_layers.push_back(layer);}
       n_input_planes = n_output_planes;
       input_height = input_height-ksize+1;
       input_width = input_width-ksize+1;
@@ -127,7 +129,7 @@ void CvNetwork::loadModel(string inFile)
       layer = cvCreateCNNSubSamplingLayer( dtype, name, visualize,
         n_input_planes, input_height, input_width, ksize,
         lr_init, decay_type, NULL);
-      if (input_layer){input_layer->output_layer = layer;}
+      if (input_layer){input_layer->output_layers.push_back(layer);}
       n_input_planes = n_output_planes;
       input_height = input_height/ksize;
       input_width = input_width/ksize;
@@ -144,7 +146,7 @@ void CvNetwork::loadModel(string inFile)
       layer = cvCreateCNNFullConnectLayer( dtype, name, visualize, input_layer, 
         n_input_planes, n_output_planes, 
         lr_init, decay_type, activation_type, NULL );
-      if (input_layer){input_layer->output_layer = layer;}
+      if (input_layer){input_layer->output_layers.push_back(layer);}
       n_input_planes = n_output_planes; input_height = 1; input_width = 1;
     }else if (!strcmp(type,"ImgCropping")){ // image cropping layer
       const char * input_layer_name = cvReadStringByName(fs,node,"input_layer","");
@@ -198,7 +200,7 @@ void CvNetwork::loadModel(string inFile)
       }
       layer = cvCreateCNNMultiTargetLayer( dtype, name, visualize, 
         n_input_layers, input_layers, n_output_planes, lr_init, decay_type );
-      for (int lidx=0;lidx<n_input_layers;lidx++){input_layers[lidx]->output_layer = layer;}
+      for (int lidx=0;lidx<n_input_layers;lidx++){input_layers[lidx]->output_layers.push_back(layer);}
       if (input_layers){delete [] input_layers; input_layers = 0;}
     }else{
       fprintf(stderr,"ERROR: unknown layer type %s\n",type);

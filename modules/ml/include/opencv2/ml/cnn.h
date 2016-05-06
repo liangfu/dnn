@@ -45,6 +45,7 @@
 // #include "highgui.h"
 
 #include "cxcore.h"
+#include "list.h"
 
 #include <limits.h>
 
@@ -233,8 +234,8 @@ typedef void (CV_CDECL *CvCNNetworkRelease)(CvCNNetwork** network);
     CvCNNLayer* prev_layer;                                            \
     CvCNNLayer* next_layer;                                            \
     /* Pointers to input/output layer, instead of using prev_layer */  \
-    CvCNNLayer * input_layer;                                          \
-    CvCNNLayer * output_layer;                                         \
+    List<CvCNNLayer*> input_layers;                                    \
+    List<CvCNNLayer*> output_layers;                                   \
     /* Used in backward pass, in case input_layer is given */          \
     CvMat * dE_dX;                                                     \
                                                                        \
@@ -358,8 +359,8 @@ typedef struct CvCNNInputDataLayer
 typedef struct CvCNNMultiTargetLayer
 {
   CV_CNN_LAYER_FIELDS();
-  CvCNNLayer ** input_layers;
-  int n_input_layers;
+  // CvCNNLayer ** input_layers;
+  // int n_input_layers;
 }CvCNNMultiTargetLayer;
 
 typedef struct CvCNNetwork

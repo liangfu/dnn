@@ -334,8 +334,8 @@ static void icvTrainCNNetwork( CvCNNetwork* network,const CvMat* images, const C
         n_outputs = rnn_layer->seq_length*rnn_layer->n_output_planes;
       }
     }
-    CV_CALL(X[k+1] = cvCreateMat( n_outputs, batch_size, CV_32FC1 ));
-    CV_CALL(dE_dX[k+1] = cvCreateMat( batch_size, X[k+1]->rows, CV_32FC1 ));
+    CV_CALL(X[k+1] = cvCreateMat( n_outputs, batch_size, CV_32FC1 ));  cvZero(X[k+1]);
+    CV_CALL(dE_dX[k+1] = cvCreateMat( batch_size, X[k+1]->rows, CV_32FC1 )); cvZero(dE_dX[k+1]);
   }
 
   for ( n = 1; n <= max_iter; n++ )
@@ -692,7 +692,7 @@ static void icvCNNetworkAddLayer( CvCNNetwork* network, CvCNNLayer* layer )
   prev_layer = cvGetCNNLastLayer(network);
 
   if ( ICV_IS_CNN_FULLCONNECT_LAYER(layer) ){
-    if ( ((CvCNNFullConnectLayer*)layer)->input_layer==0 && 
+    if ( ((CvCNNFullConnectLayer*)layer)->input_layers.size()==0 && 
          layer->n_input_planes != prev_layer->output_width*prev_layer->output_height*
          prev_layer->n_output_planes ) {
       CV_ERROR( CV_StsBadArg, "Unmatched size of the new layer" );
@@ -714,8 +714,8 @@ static void icvCNNetworkAddLayer( CvCNNetwork* network, CvCNNLayer* layer )
     }
   }else if ( ICV_IS_CNN_IMGCROPPING_LAYER(layer) ) {
   }else if ( ICV_IS_CNN_MULTITARGET_LAYER(layer) ) {
-    CV_ASSERT(((CvCNNMultiTargetLayer*)layer)->n_input_layers>=1);
-    CV_ASSERT(((CvCNNMultiTargetLayer*)layer)->n_input_layers<=100);
+    CV_ASSERT(((CvCNNMultiTargetLayer*)layer)->input_layers.size()>=1);
+    CV_ASSERT(((CvCNNMultiTargetLayer*)layer)->input_layers.size()<=100);
   }else{
     CV_ERROR( CV_StsBadArg, "Invalid layer" );
   }
@@ -934,7 +934,7 @@ ML_IMPL CvCNNLayer* cvCreateCNNConvolutionLayer(
 
   layer->K = K;
   layer->visualize = visualize;
-  layer->input_layer = (CvCNNLayer*)input_layer;
+  layer->input_layers.push_back((CvCNNLayer*)input_layer);
   CV_CALL(layer->weights = cvCreateMat( n_output_planes, K*K+1, CV_32FC1 ));
   CV_CALL(layer->connect_mask = cvCreateMat( n_output_planes, n_input_planes, CV_8UC1));
 
@@ -1081,7 +1081,7 @@ CvCNNLayer * cvCreateCNNFullConnectLayer(
 
   strcpy(layer->activation_type,activation_type);//CV_CNN_HYPERBOLIC;
   layer->visualize = visualize;
-  layer->input_layer = (CvCNNLayer*)input_layer;
+  layer->input_layers.push_back((CvCNNLayer*)input_layer);
 
   CV_CALL(layer->weights = cvCreateMat( n_outputs, n_inputs+1, dtype ));
   if ( weights ){
@@ -1211,7 +1211,7 @@ CvCNNLayer * cvCreateCNNImgCroppingLayer(
       n_outputs, output_height, output_width, init_learn_rate, update_rule,
       icvCNNImgCroppingRelease, icvCNNImgCroppingForward, icvCNNImgCroppingBackward ));
 
-  layer->input_layer = (CvCNNLayer*)_image_layer;
+  layer->input_layers.push_back((CvCNNLayer*)_image_layer);
   layer->time_index = time_index;
   layer->visualize = visualize;
 
@@ -1287,10 +1287,11 @@ CvCNNLayer * cvCreateCNNMultiTargetLayer(
       icvCNNMultiTargetRelease, icvCNNMultiTargetForward, icvCNNMultiTargetBackward ));
 
   layer->visualize = visualize;
-  layer->n_input_layers = n_input_layers;
-  layer->input_layers = new CvCNNLayer*[n_input_layers];
+  // layer->n_input_layers = n_input_layers;
+  // layer->input_layers = new CvCNNLayer*[n_input_layers];
   for (int lidx=0; lidx<n_input_layers; lidx++){
-    layer->input_layers[lidx] = input_layers[lidx];
+    // layer->input_layers[lidx] = input_layers[lidx];
+    layer->input_layers.push_back(input_layers[lidx]);
   }
 
   __END__;
@@ -1490,7 +1491,7 @@ static void icvCNNFullConnectForward( CvCNNLayer* _layer, const CvMat* _X, CvMat
 
   CvCNNFullConnectLayer * layer = (CvCNNFullConnectLayer*)_layer;
   int dtype = layer->dtype;
-  CvCNNLayer * input_layer = layer->input_layer;
+  CvCNNLayer * input_layer = layer->input_layers.size()>0?layer->input_layers[0]:0;
   CvMat * weights = layer->weights;
   CvMat sub_weights, biascol;
   CvMat * X = (CvMat*)_X;
@@ -1581,7 +1582,7 @@ static void icvCNNImgCroppingForward( CvCNNLayer * _layer, const CvMat* X, CvMat
   if ( !ICV_IS_CNN_IMGCROPPING_LAYER(_layer) ) { CV_ERROR( CV_StsBadArg, "Invalid layer" ); }
   __BEGIN__;
   CvCNNImgCroppingLayer * layer = (CvCNNImgCroppingLayer*)_layer;
-  const CvCNNInputDataLayer * input_layer = (CvCNNInputDataLayer*)layer->input_layer;
+  const CvCNNInputDataLayer * input_layer = (CvCNNInputDataLayer*)(layer->input_layers.size()>0?layer->input_layers[0]:0);
   const int time_index = layer->time_index;
   const int seq_length = input_layer->seq_length;
   const int input_height = layer->input_height;
@@ -1770,14 +1771,14 @@ static void icvCNNMultiTargetForward( CvCNNLayer * _layer, const CvMat * X, CvMa
   CV_FUNCNAME("icvCNNMultiTargetForward");
   __BEGIN__;
   CvCNNMultiTargetLayer * layer = (CvCNNMultiTargetLayer*)_layer;
-  int n_input_layers = layer->n_input_layers;
-  CvCNNLayer ** input_layers = layer->input_layers;
+  int n_input_layers = layer->input_layers.size();
+  // CvCNNLayer ** input_layers = layer->input_layers;
   int input_layer_data_index = 0;
   for (int lidx=0;lidx<n_input_layers;lidx++){
     CvMat Y_submat;
-    int input_layer_data_size = input_layers[lidx]->n_output_planes;
+    int input_layer_data_size = layer->input_layers[lidx]->n_output_planes;
     cvGetRows(Y,&Y_submat,input_layer_data_index,input_layer_data_index+input_layer_data_size);
-    cvCopy(input_layers[lidx]->Y,&Y_submat);
+    cvCopy(layer->input_layers[lidx]->Y,&Y_submat);
     input_layer_data_index += input_layer_data_size;
   }
   if (layer->visualize){ icvVisualizeCNNLayer((CvCNNLayer*)layer, Y); }
@@ -1811,7 +1812,7 @@ static void icvCNNConvolutionBackward(
   __BEGIN__;
 
   CvCNNConvolutionLayer * layer = (CvCNNConvolutionLayer*) _layer;
-  CvCNNLayer * output_layer = layer->output_layer;
+  int n_output_layers = layer->output_layers.size();
   
   const int K = layer->K;
   const int KK = K*K;
@@ -1829,10 +1830,14 @@ static void icvCNNConvolutionBackward(
   const int batch_size = X->cols;
   CvMat * dE_dY = (CvMat*)_dE_dY;
 
-  if (output_layer){
-    if (ICV_IS_CNN_FULLCONNECT_LAYER(output_layer)){
-      cvCopy(output_layer->dE_dX,dE_dY);
-    }
+  if (n_output_layers){
+    dE_dY = cvCreateMat(batch_size,Y_plane_size*n_Y_planes,CV_32F); cvZero(dE_dY);
+    for (int li=0;li<n_output_layers;li++){
+      CvCNNLayer * output_layer = layer->output_layers[li];
+      if (ICV_IS_CNN_FULLCONNECT_LAYER(output_layer)){
+        cvAddWeighted(dE_dY,1.f,output_layer->dE_dX,1.f/float(n_output_layers),0.f,dE_dY);
+      }
+    } // average loss from all task
   }
 
   CV_ASSERT( t >= 1 );
@@ -1905,6 +1910,8 @@ static void icvCNNConvolutionBackward(
     }
     cvScaleAdd( &dE_dW_mat, cvRealScalar(eta), layer->weights, layer->weights );
   }
+
+  if (n_output_layers){cvReleaseMat(&dE_dY);}
 
   __END__;
 
@@ -2008,8 +2015,8 @@ void icvCNNFullConnectBackward(CvCNNLayer * _layer, int t,
   int i;
   CvCNNFullConnectLayer * layer = (CvCNNFullConnectLayer*)_layer;
   int dtype = layer->dtype;
-  CvCNNLayer * input_layer = layer->input_layer;
-  CvCNNLayer * output_layer = layer->output_layer;
+  CvCNNLayer * input_layer = layer->input_layers.size()>0?layer->input_layers[0]:0;
+  CvCNNLayer * output_layer = layer->output_layers.size()>0?layer->output_layers[0]:0;
   int n_outputs = layer->n_output_planes;
   int n_inputs  = layer->n_input_planes;
   CvMat * weights = layer->weights;
@@ -2064,7 +2071,7 @@ void icvCNNFullConnectBackward(CvCNNLayer * _layer, int t,
 
   if (output_layer){
     if (ICV_IS_CNN_MULTITARGET_LAYER(output_layer)){
-      int n_input_layers = ((CvCNNMultiTargetLayer*)output_layer)->n_input_layers;
+      int n_input_layers = ((CvCNNMultiTargetLayer*)output_layer)->input_layers.size();
       int layer_index = -1;
       int output_layer_index = 0;
       int output_layer_size = 0;
