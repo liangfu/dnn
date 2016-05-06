@@ -83,7 +83,8 @@ static void icvTrainCNNetwork( CvCNNetwork* network,
 static void icvCNNetworkAddLayer( CvCNNetwork* network, CvCNNLayer* layer );
 static CvCNNLayer* icvCNNetworkGetLayer( CvCNNetwork* network, const char * name );
 static void icvCNNetworkRelease( CvCNNetwork** network );
-
+static CvCNNetwork * icvCNNetworkRead( CvFileStorage * fs );
+static void icvCNNetworkWrite( CvCNNetwork * struct_ptr, CvFileStorage * fs );
 /* In all layer functions we denote input by X and output by Y, where
    X and Y are column-vectors, so that
    length(X)==<n_input_planes>*<input_height>*<input_width>,
@@ -664,7 +665,8 @@ ML_IMPL CvCNNetwork* cvCreateCNNetwork( CvCNNLayer* first_layer )
     network->n_layers  = 1;
     network->release   = icvCNNetworkRelease;
     network->add_layer = icvCNNetworkAddLayer;
-    network->get_layer = icvCNNetworkGetLayer;
+    network->read      = icvCNNetworkRead;
+    network->write     = icvCNNetworkWrite;
 
     __END__;
 
@@ -2772,103 +2774,101 @@ static void icvWriteCNNLayer( CvFileStorage* fs, CvCNNLayer* layer )
 }
 
 /****************************************************************************************/
-static void* icvReadCNNModel( CvFileStorage* fs, CvFileNode* root_node )
+static CvCNNetwork * icvCNNetworkRead( CvFileStorage * fs )
 {
-  CvCNNStatModel* cnn = 0;
-  CvCNNLayer* layer = 0;
+  CvCNNetwork * cnn = 0;
+  CvCNNLayer * layer = 0;
 
   CV_FUNCNAME("icvReadCNNModel");
   __BEGIN__;
 
-  CvFileNode* node;
-  CvSeq* seq;
-  CvSeqReader reader;
-  int i;
-
-  CV_CALL(cnn = (CvCNNStatModel*)cvCreateCNNStatModel(
-    CV_STAT_MODEL_MAGIC_VAL|CV_CNN_MAGIC_VAL, sizeof(CvCNNStatModel)));
-
-  CV_CALL(cnn->etalons = (CvMat*)cvReadByName( fs, root_node, "etalons" ));
-  CV_CALL(cnn->cls_labels = (CvMat*)cvReadByName( fs, root_node, "cls_labels" ));
-
-  if ( !cnn->etalons || !cnn->cls_labels ) {
-    CV_ERROR( CV_StsParseError, "No <etalons> or <cls_labels> in CNN model" );
-  }
-
-  CV_CALL( node = cvGetFileNodeByName( fs, root_node, "network" ));
-  seq = node->data.seq;
-  if ( !CV_NODE_IS_SEQ(node->tag) ) { CV_ERROR( CV_StsBadArg, "" ); }
-
-  CV_CALL( cvStartReadSeq( seq, &reader, 0 ));
-  CV_CALL(layer = icvReadCNNLayer( fs, (CvFileNode*)reader.ptr ));
-  CV_CALL(cnn->network = cvCreateCNNetwork( layer ));
-
-  for ( i = 1; i < seq->total; i++ ) {
-    CV_NEXT_SEQ_ELEM( seq->elem_size, reader );
-    CV_CALL(layer = icvReadCNNLayer( fs, (CvFileNode*)reader.ptr ));
-    CV_CALL(cnn->network->add_layer( cnn->network, layer ));
-  }
-
+//  CvFileNode* node;
+//  CvSeq* seq;
+//  CvSeqReader reader;
+//  int i;
+//
+//  CV_CALL(cnn = (CvCNNStatModel*)cvCreateCNNStatModel(
+//    CV_STAT_MODEL_MAGIC_VAL|CV_CNN_MAGIC_VAL, sizeof(CvCNNStatModel)));
+//
+//  CV_CALL(cnn->etalons = (CvMat*)cvReadByName( fs, root_node, "etalons" ));
+//  CV_CALL(cnn->cls_labels = (CvMat*)cvReadByName( fs, root_node, "cls_labels" ));
+//
+//  if ( !cnn->etalons || !cnn->cls_labels ) {
+//    CV_ERROR( CV_StsParseError, "No <etalons> or <cls_labels> in CNN model" );
+//  }
+//
+//  CV_CALL( node = cvGetFileNodeByName( fs, root_node, "network" ));
+//  seq = node->data.seq;
+//  if ( !CV_NODE_IS_SEQ(node->tag) ) { CV_ERROR( CV_StsBadArg, "" ); }
+//
+//  CV_CALL( cvStartReadSeq( seq, &reader, 0 ));
+//  CV_CALL(layer = icvReadCNNLayer( fs, (CvFileNode*)reader.ptr ));
+//  CV_CALL(cnn->network = cvCreateCNNetwork( layer ));
+//
+//  for ( i = 1; i < seq->total; i++ ) {
+//    CV_NEXT_SEQ_ELEM( seq->elem_size, reader );
+//    CV_CALL(layer = icvReadCNNLayer( fs, (CvFileNode*)reader.ptr ));
+//    CV_CALL(cnn->network->add_layer( cnn->network, layer ));
+//  }
+//
   __END__;
 
-  if ( cvGetErrStatus() < 0 ) {
-    if ( cnn ) { cnn->release( (CvCNNStatModel**)&cnn ); }
-    if ( layer ) { layer->release( &layer ); }
-  }
-  return (void*)cnn;
+  // if ( cvGetErrStatus() < 0 ) {
+  //   if ( cnn ) { cnn->release( (CvCNNStatModel**)&cnn ); }
+  //   if ( layer ) { layer->release( &layer ); }
+  // }
+  return cnn;
 }
 
 /****************************************************************************************/
-static void icvWriteCNNModel( CvFileStorage* fs, const char* name, 
-                              const void* struct_ptr, CvAttrList attr)
+// static void icvWriteCNNModel( CvFileStorage* fs, const char* name, 
+//                               const void* struct_ptr, CvAttrList attr)
+static void icvCNNetworkWrite( CvCNNetwork * struct_ptr, CvFileStorage * fs )
 
 {
-  CV_FUNCNAME ("icvWriteCNNModel");
+  CV_FUNCNAME ("icvWriteCNNetwork");
   __BEGIN__;
-
-  CvCNNStatModel* cnn = (CvCNNStatModel*)struct_ptr;
-  int n_layers, i;
-  CvCNNLayer* layer;
-
-  if ( !CV_IS_CNN(cnn) ) { CV_ERROR( CV_StsBadArg, "Invalid pointer" ); }
-
-  n_layers = cnn->network->n_layers;
-
-  CV_CALL( cvStartWriteStruct( fs, name, CV_NODE_MAP, CV_TYPE_NAME_ML_CNN ));
-
-  CV_CALL(cvWrite( fs, "etalons", cnn->etalons ));
-  CV_CALL(cvWrite( fs, "cls_labels", cnn->cls_labels ));
-
-  CV_CALL( cvStartWriteStruct( fs, "network", CV_NODE_SEQ ));
-
-  layer = cnn->network->first_layer;
-  for ( i = 0; i < n_layers && layer; i++, layer = layer->next_layer ) {
-    CV_CALL(icvWriteCNNLayer( fs, layer ));
-  }
-  if ( i < n_layers || layer ) { CV_ERROR( CV_StsBadArg, "Invalid network" ); }
-
-  CV_CALL( cvEndWriteStruct( fs )); //"network"
-  CV_CALL( cvEndWriteStruct( fs )); //"opencv-ml-cnn"
-
+//
+//  CvCNNStatModel* cnn = (CvCNNStatModel*)struct_ptr;
+//  int n_layers, i;
+//  CvCNNLayer* layer;
+//
+//  if ( !CV_IS_CNN(cnn) ) { CV_ERROR( CV_StsBadArg, "Invalid pointer" ); }
+//
+//  n_layers = cnn->network->n_layers;
+//
+//  CV_CALL( cvStartWriteStruct( fs, name, CV_NODE_MAP, CV_TYPE_NAME_ML_CNN ));
+//
+//  CV_CALL(cvWrite( fs, "etalons", cnn->etalons ));
+//  CV_CALL(cvWrite( fs, "cls_labels", cnn->cls_labels ));
+//
+//  CV_CALL( cvStartWriteStruct( fs, "network", CV_NODE_SEQ ));
+//
+//  layer = cnn->network->first_layer;
+//  for ( i = 0; i < n_layers && layer; i++, layer = layer->next_layer ) {
+//    CV_CALL(icvWriteCNNLayer( fs, layer ));
+//  }
+//  if ( i < n_layers || layer ) { CV_ERROR( CV_StsBadArg, "Invalid network" ); }
+//
+//  CV_CALL( cvEndWriteStruct( fs )); //"network"
+//  CV_CALL( cvEndWriteStruct( fs )); //"opencv-ml-cnn"
+//
   __END__;
 }
 
-static int icvRegisterCNNStatModelType()
-{
-  CvTypeInfo info;
-
-  info.header_size = sizeof( info );
-  info.is_instance = icvIsCNNModel;
-  info.release = icvReleaseCNNModel;
-  info.read = icvReadCNNModel;
-  info.write = icvWriteCNNModel;
-  info.clone = NULL;
-  info.type_name = CV_TYPE_NAME_ML_CNN;
-  cvRegisterType( &info );
-
-  return 1;
-} // End of icvRegisterCNNStatModelType
-
+// static int icvRegisterCNNStatModelType()
+// {
+//   CvTypeInfo info;
+//   info.header_size = sizeof( info );
+//   info.is_instance = icvIsCNNModel;
+//   info.release = icvReleaseCNNModel;
+//   info.read = icvCNNetworkRead;
+//   info.write = icvCNNetworkWrite;
+//   info.clone = NULL;
+//   info.type_name = CV_TYPE_NAME_ML_CNN;
+//   cvRegisterType( &info );
+//   return 1;
+// } // End of icvRegisterCNNStatModelType
 // static int cnn = icvRegisterCNNStatModelType();
 
 #endif

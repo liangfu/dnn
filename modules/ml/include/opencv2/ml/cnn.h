@@ -173,18 +173,12 @@ typedef struct CvCNNetwork CvCNNetwork;
 
 typedef void (CV_CDECL *CvCNNLayerForward)
     ( CvCNNLayer* layer, const CvMat* input, CvMat* output );
-
-// typedef void (CV_CDECL *CvCNNLayerBackward)
-//     ( CvCNNLayer* layer, int t, const CvMat* X, CvMat* Y, const CvMat* dE_dY, CvMat* dE_dX, const CvMat* d2E_dY2, CvMat* d2E_dX2);
 typedef void (CV_CDECL *CvCNNLayerBackward)
     ( CvCNNLayer* layer, int t, const CvMat* X, const CvMat* dE_dY, CvMat* dE_dX);
-
 typedef void (CV_CDECL *CvCNNLayerRelease)(CvCNNLayer** layer);
 
 typedef void (CV_CDECL *CvCNNetworkAddLayer)(CvCNNetwork* network, CvCNNLayer* layer);
-
 typedef CvCNNLayer* (CV_CDECL *CvCNNetworkGetLayer)(CvCNNetwork* network, const char * name);
-
 typedef void (CV_CDECL *CvCNNetworkRelease)(CvCNNetwork** network);
 
 #define CV_CNN_LAYER_FIELDS()           \
@@ -363,12 +357,17 @@ typedef struct CvCNNMultiTargetLayer
   // int n_input_layers;
 }CvCNNMultiTargetLayer;
 
+typedef CvCNNetwork * (CV_CDECL *CvCNNetworkRead)( CvFileStorage * fs);
+typedef void (CV_CDECL *CvCNNetworkWrite)( CvCNNetwork *, CvFileStorage * fs);
+
 typedef struct CvCNNetwork
 {
   int n_layers;
   CvCNNLayer * first_layer;
   CvCNNetworkAddLayer add_layer;
   CvCNNetworkGetLayer get_layer;
+  CvCNNetworkRead read;                           
+  CvCNNetworkWrite write;                           
   CvCNNetworkRelease release;
 }CvCNNetwork;
 
@@ -394,7 +393,6 @@ typedef struct CvCNNStatModelParams
 struct CvCNNStatModel;
 
 typedef float (CV_CDECL *CvCNNStatModelPredict) (const CvCNNStatModel *,const CvMat *,CvMat *);
-
 typedef void (CV_CDECL *CvCNNStatModelUpdate)(
         CvCNNStatModel* _cnn_model, const CvMat* _train_data, int tflag,
         const CvMat* _responses, const CvStatModelParams* _params,
@@ -402,20 +400,17 @@ typedef void (CV_CDECL *CvCNNStatModelUpdate)(
         const CvMat*, const CvMat* );
 typedef void (CV_CDECL *CvCNNStatModelRelease) (CvCNNStatModel **);
 
-#define CV_STAT_MODEL_FIELDS()                           \
-  int flags;                                             \
-  CvCNNStatModelPredict predict;                         \
-  CvCNNStatModelUpdate update;                           \
-  CvCNNStatModelRelease release
-
 typedef struct CvCNNStatModel
 {
-    CV_STAT_MODEL_FIELDS();
-    CvCNNetwork* network;
-    // etalons are allocated as rows, the i-th etalon has label cls_labeles[i]
-    CvMat* etalons;
-    // classes labels
-    CvMat* cls_labels;
+  int flags;                                             
+  CvCNNStatModelPredict predict;                         
+  CvCNNStatModelUpdate update;                           
+  CvCNNStatModelRelease release;
+  CvCNNetwork* network;
+  // etalons are allocated as rows, the i-th etalon has label cls_labeles[i]
+  CvMat* etalons;
+  // classes labels
+  CvMat* cls_labels;
 }CvCNNStatModel;
 
 /*------------------------ activation functions -----------------------*/

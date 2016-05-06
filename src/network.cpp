@@ -242,22 +242,25 @@ void CvNetwork::saveWeights(string outFile)
   CvFileStorage * fs = cvOpenFileStorage(outFile.c_str(),0,CV_STORAGE_WRITE);
   
   if(m_cnn == NULL){fprintf(stderr,"ERROR: CNN has not been built yet\n");exit(0);}
+
+  m_cnn->network->write(m_cnn->network,fs);
   
-  layer=(CvCNNLayer*)m_cnn->network->first_layer;
-  for (int ii=0;ii<n_layers;ii++,layer=layer->next_layer){
-    if (ICV_IS_CNN_RECURRENTNN_LAYER(layer)){
-      CvCNNRecurrentLayer * rnnlayer = (CvCNNRecurrentLayer*)layer;
-      char xhstr[1024],hhstr[1024],hystr[1024];
-      sprintf(xhstr,"%s_step%d_Wxh",rnnlayer->name,rnnlayer->time_index);
-      sprintf(hhstr,"%s_step%d_Whh",rnnlayer->name,rnnlayer->time_index);
-      sprintf(hystr,"%s_step%d_Why",rnnlayer->name,rnnlayer->time_index);
-      if (rnnlayer->Wxh){
-        cvWrite(fs,xhstr,rnnlayer->Wxh);
-        cvWrite(fs,hhstr,rnnlayer->Whh);
-        cvWrite(fs,hystr,rnnlayer->Why);
-      }else{assert(!rnnlayer->Wxh && !rnnlayer->Whh && !rnnlayer->Why);}
-    }
-  }
+  // layer=(CvCNNLayer*)m_cnn->network->first_layer;
+  // for (int ii=0;ii<n_layers;ii++,layer=layer->next_layer){
+  //   if (ICV_IS_CNN_RECURRENTNN_LAYER(layer)){
+  //     CvCNNRecurrentLayer * rnnlayer = (CvCNNRecurrentLayer*)layer;
+  //     char xhstr[1024],hhstr[1024],hystr[1024];
+  //     sprintf(xhstr,"%s_step%d_Wxh",rnnlayer->name,rnnlayer->time_index);
+  //     sprintf(hhstr,"%s_step%d_Whh",rnnlayer->name,rnnlayer->time_index);
+  //     sprintf(hystr,"%s_step%d_Why",rnnlayer->name,rnnlayer->time_index);
+  //     if (rnnlayer->Wxh){
+  //       cvWrite(fs,xhstr,rnnlayer->Wxh);
+  //       cvWrite(fs,hhstr,rnnlayer->Whh);
+  //       cvWrite(fs,hystr,rnnlayer->Why);
+  //     }else{assert(!rnnlayer->Wxh && !rnnlayer->Whh && !rnnlayer->Why);}
+  //   }
+  // }
+  
   // cvWrite(fs,"conv1",layer->weights);
   // cvWrite(fs,"conv2",layer->next_layer->next_layer->weights);
   // cvWrite(fs,"softmax1",layer->next_layer->next_layer->next_layer->next_layer->weights);
