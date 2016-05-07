@@ -18,6 +18,8 @@ after_success:
  - ./data/mnist/get_mnist.sh
  - transfer_mnist_lenet --solver data/mnist/lenet_solver.xml
  - network train --solver data/mnist/lenet_solver.xml
+ - transfer_mnist_twodigit --solver data/mnist/twodigit_solver.xml
+ - network train --solver data/mnist/twodigit_solver.xml
  - transfer_addition --solver data/addition/rnn_solver.xml
  - network train --solver data/addition/rnn_solver.xml
 

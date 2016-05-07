@@ -1,8 +1,8 @@
 %YAML:1.0
 layers:
   - {type: InputData, name: input1, n_input_planes: 1, input_height: 28, input_width: 28, seq_length: 1}
-  - {type: Convolution, name: conv1, visualize: 1, n_output_planes: 6, ksize: 5, stride: 1}
+  - {type: Convolution, name: conv1, visualize: 0, n_output_planes: 6, ksize: 5, stride: 1}
   - {type: SubSampling, name: pool1, visualize: 0, ksize: 2, stride: 2}
   - {type: Convolution, name: conv2, visualize: 0, n_output_planes: 16, ksize: 5, stride: 1}
   - {type: SubSampling, name: pool2, visualize: 0, ksize: 2, stride: 2}
-  - {type: FullConnect, name: fc1, visualize: 1, n_output_planes: 10, activation_type: tanh}
+  - {type: FullConnect, name: fc1, visualize: 0, n_output_planes: 10, activation_type: tanh}
