@@ -1,0 +1,102 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="chrome=1">
+    <title>Dnn by liangfu</title>
+
+    <link rel="stylesheet" href="stylesheets/styles.css">
+    <link rel="stylesheet" href="stylesheets/github-light.css">
+    <meta name="viewport" content="width=device-width">
+    <!--[if lt IE 9]>
+    <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+  </head>
+  <body>
+    <div class="wrapper">
+      <header>
+        <h1>Dnn</h1>
+        <p>Deep Neural Nets - A light-weight yet efficient framework for deep learning</p>
+
+        <p class="view"><a href="https://github.com/liangfu/dnn">View the Project on GitHub <small>liangfu/dnn</small></a></p>
+
+
+        <ul>
+          <li><a href="https://github.com/liangfu/dnn/zipball/master">Download <strong>ZIP File</strong></a></li>
+          <li><a href="https://github.com/liangfu/dnn/tarball/master">Download <strong>TAR Ball</strong></a></li>
+          <li><a href="https://github.com/liangfu/dnn">View On <strong>GitHub</strong></a></li>
+        </ul>
+      </header>
+      <section>
+        <h1></h1>
+
+<h1>
+<a id="deep-neural-nets" class="anchor" href="#deep-neural-nets" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Deep Neural Nets</h1>
+
+<p>.. image:: <a href="https://travis-ci.org/liangfu/dnn.svg">https://travis-ci.org/liangfu/dnn.svg</a><br>
+ :target: <a href="https://travis-ci.org/liangfu/dnn">https://travis-ci.org/liangfu/dnn</a></p>
+
+<h1>
+<a id="introduction" class="anchor" href="#introduction" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Introduction</h1>
+
+<p>The design principle of the Deep Neural Nets (DNN) library is to make it 
+small in size, efficient computation and portable to multiple operating systems.
+We started the project as a fork of the popular <code>OpenCV &lt;http://opencv.org/&gt;</code>_ library,
+while removing some components that is not tightly related to the deep learning framework, 
+e.g. motion history imaging, camera calibration, kalman filter, haar feature based object detection etc.</p>
+
+<h1>
+<a id="available-modules" class="anchor" href="#available-modules" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Available Modules</h1>
+
+<p>The following features have been implemented:</p>
+
+<ul>
+<li>mini-batch based learning</li>
+<li>YAML based network definition</li>
+<li>gradient checking for all implemented layers</li>
+</ul>
+
+<p>The following modules are implemented in current version:</p>
+
+<p>=======================  ========================================================================================
+       module name       description
+=======================  ========================================================================================
+<code>InputDataLayer</code>       data container layer, for storing original input images
+<code>ConvolutionLayer</code>     performs 2d convolution upon images
+<code>SubSamplingLayer</code>     performs max-pooling operation
+<code>FullConnectLayer</code>     full connection layer, with activation options, e.g. tanh, sigmoid, softmax, relu etc.
+<code>RecurrentNNLayer</code>     vallina RNN layer
+=======================  ========================================================================================</p>
+
+<p>More modules will be available online !</p>
+
+<h1>
+<a id="compilation" class="anchor" href="#compilation" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Compilation</h1>
+
+<p><code>CMake &lt;https://cmake.org&gt;</code>_ is required for successfully compiling the project. </p>
+
+<p>Under root directory of the project:</p>
+
+<p>.. code-block:: bash</p>
+
+<p>$ cd $DNN_ROOT
+ $ mkdir build
+ $ cmake .. 
+ $ make -j4</p>
+
+<p>Then try anything you want. </p>
+
+<h1>
+<a id="license" class="anchor" href="#license" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>License</h1>
+
+<p>MIT</p>
+      </section>
+      <footer>
+        <p>This project is maintained by <a href="https://github.com/liangfu">liangfu</a></p>
+        <p><small>Hosted on GitHub Pages &mdash; Theme by <a href="https://github.com/orderedlist">orderedlist</a></small></p>
+      </footer>
+    </div>
+    <script src="javascripts/scale.fix.js"></script>
+    
+  </body>
+</html>
