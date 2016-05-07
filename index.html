@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8">
     <meta http-equiv="X-UA-Compatible" content="chrome=1">
-    <title>Dnn by liangfu</title>
+    <title>dnn by liangfu</title>
 
     <link rel="stylesheet" href="stylesheets/styles.css">
     <link rel="stylesheet" href="stylesheets/github-light.css">
@@ -15,8 +15,8 @@
   <body>
     <div class="wrapper">
       <header>
-        <h1>Dnn</h1>
-        <p>Deep Neural Nets - A light-weight yet efficient framework for deep learning</p>
+        <h1>dnn</h1>
+        <p>A light-weight yet efficient framework for deep learning</p>
 
         <p class="view"><a href="https://github.com/liangfu/dnn">View the Project on GitHub <small>liangfu/dnn</small></a></p>
 
@@ -28,66 +28,89 @@
         </ul>
       </header>
       <section>
-        <h1></h1>
-
-<h1>
+        <h1>
 <a id="deep-neural-nets" class="anchor" href="#deep-neural-nets" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Deep Neural Nets</h1>
 
-<p>.. image:: <a href="https://travis-ci.org/liangfu/dnn.svg">https://travis-ci.org/liangfu/dnn.svg</a><br>
- :target: <a href="https://travis-ci.org/liangfu/dnn">https://travis-ci.org/liangfu/dnn</a></p>
+<p><a href="https://travis-ci.org/liangfu/dnn"><img src="https://travis-ci.org/liangfu/dnn.svg?branch=master" alt="Build Status"></a>
+<a href="LICENSE"><img src="https://img.shields.io/badge/license-BSD-blue.svg" alt="License"></a></p>
 
-<h1>
-<a id="introduction" class="anchor" href="#introduction" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Introduction</h1>
+<h2>
+<a id="introduction" class="anchor" href="#introduction" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Introduction</h2>
 
-<p>The design principle of the Deep Neural Nets (DNN) library is to make it 
-small in size, efficient computation and portable to multiple operating systems.
-We started the project as a fork of the popular <code>OpenCV &lt;http://opencv.org/&gt;</code>_ library,
-while removing some components that is not tightly related to the deep learning framework, 
-e.g. motion history imaging, camera calibration, kalman filter, haar feature based object detection etc.</p>
+<p>The Deep Neural Nets (DNN) library is a deep learning framework designed to be small in size, computationally efficient and portable.</p>
 
-<h1>
-<a id="available-modules" class="anchor" href="#available-modules" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Available Modules</h1>
+<p>We started the project as a fork of the popular <a href="http://opencv.org/">OpenCV</a> library,
+while removing some components that is not tightly related to the deep learning framework.
+Comparing to Caffe and many other implements, DNN is relatively independent to third-party libraries, 
+(Yes, we don't require Boost and Database systems to be install before crafting your own network models)
+and it can be more easily portable to mobile systems, like iOS, Android and RaspberryPi etc.</p>
+
+<h2>
+<a id="available-modules" class="anchor" href="#available-modules" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Available Modules</h2>
 
 <p>The following features have been implemented:</p>
 
 <ul>
-<li>mini-batch based learning</li>
+<li>Mini-batch based learning, with OpenMP support for parallel processing on CPU.</li>
 <li>YAML based network definition</li>
-<li>gradient checking for all implemented layers</li>
+<li>Gradient checking for all implemented layers</li>
 </ul>
 
 <p>The following modules are implemented in current version:</p>
 
-<p>=======================  ========================================================================================
-       module name       description
-=======================  ========================================================================================
-<code>InputDataLayer</code>       data container layer, for storing original input images
-<code>ConvolutionLayer</code>     performs 2d convolution upon images
-<code>SubSamplingLayer</code>     performs max-pooling operation
-<code>FullConnectLayer</code>     full connection layer, with activation options, e.g. tanh, sigmoid, softmax, relu etc.
-<code>RecurrentNNLayer</code>     vallina RNN layer
-=======================  ========================================================================================</p>
+<table>
+<thead>
+<tr>
+<th>Module Name</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>InputDataLayer</code></td>
+<td>Data Container Layer, for storing original input images</td>
+</tr>
+<tr>
+<td><code>ConvolutionLayer</code></td>
+<td>Convolutional Neural Network Layer, performs 2d convolution upon images</td>
+</tr>
+<tr>
+<td><code>SubSamplingLayer</code></td>
+<td>Sub-Sampling Layer, performs max-pooling operation</td>
+</tr>
+<tr>
+<td><code>FullConnectLayer</code></td>
+<td>Fully Connected Layer, with activation options, e.g. tanh, sigmoid, softmax, relu etc.</td>
+</tr>
+<tr>
+<td><code>RecurrentNNLayer</code></td>
+<td>vallina Recurrent Neural Network (RNN) Layer, for processing sequence data</td>
+</tr>
+<tr>
+<td><code>CombineLayer</code></td>
+<td>Combine Layer, for combining output results from multiple different layers</td>
+</tr>
+</tbody>
+</table>
 
 <p>More modules will be available online !</p>
 
-<h1>
-<a id="compilation" class="anchor" href="#compilation" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Compilation</h1>
+<h2>
+<a id="compilation" class="anchor" href="#compilation" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Compilation</h2>
 
-<p><code>CMake &lt;https://cmake.org&gt;</code>_ is required for successfully compiling the project. </p>
+<p><a href="https://cmake.org">CMake</a> is required for successfully compiling the project. </p>
 
 <p>Under root directory of the project:</p>
 
-<p>.. code-block:: bash</p>
-
-<p>$ cd $DNN_ROOT
+<div class="highlight highlight-source-shell"><pre> $ <span class="pl-c1">cd</span> <span class="pl-smi">$DNN_ROOT</span>
  $ mkdir build
  $ cmake .. 
- $ make -j4</p>
+ $ make -j4</pre></div>
 
 <p>Then try anything you want. </p>
 
-<h1>
-<a id="license" class="anchor" href="#license" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>License</h1>
+<h2>
+<a id="license" class="anchor" href="#license" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>License</h2>
 
 <p>MIT</p>
       </section>
