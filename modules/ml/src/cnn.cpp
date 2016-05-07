@@ -61,23 +61,16 @@ static float icvCNNModelPredict(
         const CvCNNStatModel* cnn_model,
         const CvMat* image,
         CvMat* probs CV_DEFAULT(0) );
-
 static void icvCNNModelUpdate(
         CvCNNStatModel* cnn_model, const CvMat* images, int tflag,
         const CvMat* responses, const CvStatModelParams* params,
         const CvMat* CV_DEFAULT(0), const CvMat* sample_idx CV_DEFAULT(0),
         const CvMat* CV_DEFAULT(0), const CvMat* CV_DEFAULT(0));
-
 static void icvCNNModelRelease( CvCNNStatModel** cnn_model );
 
 static void icvTrainCNNetwork( CvCNNetwork* network,
-                               const CvMat* images,
-                               const CvMat* responses,
-                               const CvMat* etalons,
-                               int grad_estim_type,
-                               int max_iter,
-                               int start_iter,
-                               int batch_size);
+        const CvMat* images, const CvMat* responses, const CvMat* etalons,
+        int grad_estim_type, int max_iter, int start_iter, int batch_size);
 
 /*-------------- functions for the CNN network -------------------------*/
 static void icvCNNetworkAddLayer( CvCNNetwork* network, CvCNNLayer* layer );
@@ -665,6 +658,7 @@ ML_IMPL CvCNNetwork* cvCreateCNNetwork( CvCNNLayer* first_layer )
     network->n_layers  = 1;
     network->release   = icvCNNetworkRelease;
     network->add_layer = icvCNNetworkAddLayer;
+    network->get_layer = icvCNNetworkGetLayer;
     network->read      = icvCNNetworkRead;
     network->write     = icvCNNetworkWrite;
 
