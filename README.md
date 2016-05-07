@@ -23,12 +23,14 @@ The following features have been implemented:
 
 The following modules are implemented in current version:
 
-* InputDataLayer       Data Container Layer, for storing original input images
-* ConvolutionLayer     Convolutional Neural Network Layer, performs 2d convolution upon images
-* SubSamplingLayer     Sub-Sampling Layer, performs max-pooling operation
-* FullConnectLayer     Fully Connected Layer, with activation options, e.g. tanh, sigmoid, softmax, relu etc.
-* RecurrentNNLayer     vallina Recurrent Neural Network (RNN) Layer, for processing sequence data
-* CombineLayer         Combine Layer, for combining output results from multiple different layers
+ Module Name           | Description
+ ---                   | ---
+ `InputDataLayer`      | Data Container Layer, for storing original input images
+ `ConvolutionLayer`    | Convolutional Neural Network Layer, performs 2d convolution upon images
+ `SubSamplingLayer`    | Sub-Sampling Layer, performs max-pooling operation
+ `FullConnectLayer`    | Fully Connected Layer, with activation options, e.g. tanh, sigmoid, softmax, relu etc.
+ `RecurrentNNLayer`    | vallina Recurrent Neural Network (RNN) Layer, for processing sequence data
+ `CombineLayer`        | Combine Layer, for combining output results from multiple different layers
 
 More modules will be available online !
 
@@ -38,10 +40,11 @@ More modules will be available online !
 
 Under root directory of the project:
 
+ ```bash
  $ cd $DNN_ROOT
  $ mkdir build
  $ cmake .. 
- $ make -j4
+ $ make -j4```
 
 Then try anything you want. 
 
