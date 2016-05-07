@@ -44,7 +44,8 @@ Under root directory of the project:
  $ cd $DNN_ROOT
  $ mkdir build
  $ cmake .. 
- $ make -j4```
+ $ make -j4
+ ```
 
 Then try anything you want. 
 
