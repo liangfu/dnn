@@ -1,7 +1,7 @@
 # Deep Neural Nets
 
 [![Build Status](https://travis-ci.org/liangfu/dnn.svg?branch=master)](https://travis-ci.org/liangfu/dnn)
-[![License](https://img.shields.io/badge/license-BSD-blue.svg)](LICENSE)
+[![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
 ## Introduction
 
@@ -17,7 +17,7 @@ and it can be more easily portable to mobile systems, like iOS, Android and Rasp
 
 The following features have been implemented:
 
- - Mini-batch based learning, with OpenMP support for parallel processing on CPU.
+ - Mini-batch based learning, with OpenMP support
  - YAML based network definition
  - Gradient checking for all implemented layers
 
@@ -34,6 +34,38 @@ The following modules are implemented in current version:
 
 More modules will be available online !
 
+### Network Definition
+
+Layer Type | Attributes
+--- | ---
+`InputData` | `name`,`n_input_planes`,`input_height`,`input_width`,`seq_length`
+`Convolution` | `name`,`visualize`,`n_output_planes`,`ksize`
+`SubSampling` | `name`,`visualize`,`ksize`
+`FullConnect` | `name`,`input_layer(optional)`,`visualize`,`n_output_planes`,`activation_type`
+`Combine` | `name`,`input_layers`,`visualize`,`n_output_planes`
+
+With the above parameters given in YAML format, one can simply define a network. 
+For instance, a modifed lenet can be:
+
+```yaml
+%YAML:1.0
+layers:
+  - {type: InputData, name: input1, n_input_planes: 1, input_height: 28, input_width: 28, seq_length: 1}
+  - {type: Convolution, name: conv1, visualize: 0, n_output_planes: 6, ksize: 5, stride: 1}
+  - {type: SubSampling, name: pool1, visualize: 0, ksize: 2, stride: 2}
+  - {type: Convolution, name: conv2, visualize: 0, n_output_planes: 16, ksize: 5, stride: 1}
+  - {type: SubSampling, name: pool2, visualize: 0, ksize: 2, stride: 2}
+  - {type: FullConnect, name: fc1, visualize: 0, n_output_planes: 10, activation_type: tanh}
+```
+
+Then, by ruuning network training program:
+
+```bash
+$ network train --solver data/mnist/lenet_solver.xml
+```
+
+one can start to train a simple network right away. And this is the way the source code and data models are tested in Travis-Ci. (See [.travis.yml](https://github.com/liangfu/dnn/blob/master/.travis.yml) in the root directory)
+
 ## Compilation
 
 [CMake](https://cmake.org) is required for successfully compiling the project. 
@@ -46,8 +78,6 @@ Under root directory of the project:
  $ cmake .. 
  $ make -j4
  ```
-
-Then try anything you want. 
 
 ## License
 
