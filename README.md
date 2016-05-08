@@ -42,6 +42,7 @@ Layer Type | Attributes
 `Convolution` | `name`,`visualize`,`n_output_planes`,`ksize`
 `SubSampling` | `name`,`visualize`,`ksize`
 `FullConnect` | `name`,`input_layer(optional)`,`visualize`,`n_output_planes`,`activation_type`
+`RecurrentNN` | `name`,`n_output_planes`,`seq_length`,`time_index`,`activation_type`
 `Combine` | `name`,`input_layers`,`visualize`,`n_output_planes`
 
 With the above parameters given in YAML format, one can simply define a network. 
