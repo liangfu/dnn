@@ -9,7 +9,7 @@
 
 #include "cv.h"
 #include "highgui.h"
-#include "ml.h"
+#include "cnn.h"
 // #include "_ml.h"
 #include "cxcore.h"
 #include "cvext_c.h"

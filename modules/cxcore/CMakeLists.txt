@@ -2,7 +2,9 @@ cmake_minimum_required(VERSION 2.8.2)
 
 project(cxcore)
 
-INCLUDE_DIRECTORIES(./include ../znzlib ../zlib/include ../ts/include ../cv/include ../highgui/include)
+INCLUDE_DIRECTORIES(./include 
+ ../../thirdparty/znzlib ../../thirdparty/zlib/include 
+ ../ts/include ../cv/include ../highgui/include)
 
 add_library(cxcore SHARED
 	src/algorithm.cpp

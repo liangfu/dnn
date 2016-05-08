@@ -482,29 +482,29 @@ CVAPI(CvCNNLayer*) cvGetCNNLastLayer(CvCNNetwork * network);
 /****************************************************************************************\
 *                               Estimate classifiers algorithms                          *
 \****************************************************************************************/
-typedef const CvMat* (CV_CDECL *CvStatModelEstimateGetMat)
-                    ( const CvStatModel* estimateModel );
+// typedef const CvMat* (CV_CDECL *CvStatModelEstimateGetMat)
+//                     ( const CvStatModel* estimateModel );
 
-typedef int (CV_CDECL *CvStatModelEstimateNextStep)
-                    ( CvStatModel* estimateModel );
+// typedef int (CV_CDECL *CvStatModelEstimateNextStep)
+//                     ( CvStatModel* estimateModel );
 
-typedef void (CV_CDECL *CvStatModelEstimateCheckClassifier)
-                    ( CvStatModel* estimateModel,
-                const CvStatModel* model, 
-                const CvMat*       features, 
-                      int          sample_t_flag,
-                const CvMat*       responses );
+// typedef void (CV_CDECL *CvStatModelEstimateCheckClassifier)
+//                     ( CvStatModel* estimateModel,
+//                 const CvStatModel* model, 
+//                 const CvMat*       features, 
+//                       int          sample_t_flag,
+//                 const CvMat*       responses );
 
-typedef void (CV_CDECL *CvStatModelEstimateCheckClassifierEasy)
-                    ( CvStatModel* estimateModel,
-                const CvStatModel* model );
+// typedef void (CV_CDECL *CvStatModelEstimateCheckClassifierEasy)
+//                     ( CvStatModel* estimateModel,
+//                 const CvStatModel* model );
 
-typedef float (CV_CDECL *CvStatModelEstimateGetCurrentResult)
-                    ( const CvStatModel* estimateModel,
-                            float*       correlation );
+// typedef float (CV_CDECL *CvStatModelEstimateGetCurrentResult)
+//                     ( const CvStatModel* estimateModel,
+//                             float*       correlation );
 
-typedef void (CV_CDECL *CvStatModelEstimateReset)
-                    ( CvStatModel* estimateModel );
+// typedef void (CV_CDECL *CvStatModelEstimateReset)
+//                     ( CvStatModel* estimateModel );
 
 CVAPI(CvCNNStatModel*) cvCreateCNNStatModel(int flag, int size);
 

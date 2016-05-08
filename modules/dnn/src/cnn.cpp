@@ -42,10 +42,13 @@
 //M*/
 
 #include "precomp.hpp"
+// #include "cvconfig.h"
+// #include "opencv2/core/core_c.h"
+// #include "opencv2/core/internal.hpp"
 
 #if 1 
 
-// #include "cnn.h"
+#include "cnn.h"
 #include "cvext.h"
 
 // sigmoid function
