@@ -32,7 +32,7 @@
 <a id="deep-neural-nets" class="anchor" href="#deep-neural-nets" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Deep Neural Nets</h1>
 
 <p><a href="https://travis-ci.org/liangfu/dnn"><img src="https://travis-ci.org/liangfu/dnn.svg?branch=master" alt="Build Status"></a>
-<a href="LICENSE"><img src="https://img.shields.io/badge/license-BSD-blue.svg" alt="License"></a></p>
+<a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="License"></a></p>
 
 <h2>
 <a id="introduction" class="anchor" href="#introduction" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Introduction</h2>
@@ -51,7 +51,7 @@ and it can be more easily portable to mobile systems, like iOS, Android and Rasp
 <p>The following features have been implemented:</p>
 
 <ul>
-<li>Mini-batch based learning, with OpenMP support for parallel processing on CPU.</li>
+<li>Mini-batch based learning, with OpenMP support</li>
 <li>YAML based network definition</li>
 <li>Gradient checking for all implemented layers</li>
 </ul>
@@ -95,6 +95,68 @@ and it can be more easily portable to mobile systems, like iOS, Android and Rasp
 
 <p>More modules will be available online !</p>
 
+<h3>
+<a id="network-definition" class="anchor" href="#network-definition" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Network Definition</h3>
+
+<table>
+<thead>
+<tr>
+<th>Layer Type</th>
+<th>Attributes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>InputData</code></td>
+<td>
+<code>name</code>,<code>n_input_planes</code>,<code>input_height</code>,<code>input_width</code>,<code>seq_length</code>
+</td>
+</tr>
+<tr>
+<td><code>Convolution</code></td>
+<td>
+<code>name</code>,<code>visualize</code>,<code>n_output_planes</code>,<code>ksize</code>
+</td>
+</tr>
+<tr>
+<td><code>SubSampling</code></td>
+<td>
+<code>name</code>,<code>visualize</code>,<code>ksize</code>
+</td>
+</tr>
+<tr>
+<td><code>FullConnect</code></td>
+<td>
+<code>name</code>,<code>input_layer(optional)</code>,<code>visualize</code>,<code>n_output_planes</code>,<code>activation_type</code>
+</td>
+</tr>
+<tr>
+<td><code>Combine</code></td>
+<td>
+<code>name</code>,<code>input_layers</code>,<code>visualize</code>,<code>n_output_planes</code>
+</td>
+</tr>
+</tbody>
+</table>
+
+<p>With the above parameters given in YAML format, one can simply define a network. 
+For instance, a modifed lenet can be:</p>
+
+<div class="highlight highlight-source-yaml"><pre>%<span class="pl-ent">YAML</span>:1.0
+<span class="pl-s"><span class="pl-ent">layers:</span></span>
+  <span class="pl-s">- <span class="pl-ent">{type:</span> <span class="pl-s">InputData, name: input1, n_input_planes: 1, input_height: 28, input_width: 28, seq_length: 1}</span></span>
+  <span class="pl-s">- <span class="pl-ent">{type:</span> <span class="pl-s">Convolution, name: conv1, visualize: 0, n_output_planes: 6, ksize: 5, stride: 1}</span></span>
+  <span class="pl-s">- <span class="pl-ent">{type:</span> <span class="pl-s">SubSampling, name: pool1, visualize: 0, ksize: 2, stride: 2}</span></span>
+  <span class="pl-s">- <span class="pl-ent">{type:</span> <span class="pl-s">Convolution, name: conv2, visualize: 0, n_output_planes: 16, ksize: 5, stride: 1}</span></span>
+  <span class="pl-s">- <span class="pl-ent">{type:</span> <span class="pl-s">SubSampling, name: pool2, visualize: 0, ksize: 2, stride: 2}</span></span>
+  <span class="pl-s">- <span class="pl-ent">{type:</span> <span class="pl-s">FullConnect, name: fc1, visualize: 0, n_output_planes: 10, activation_type: tanh}</span></span></pre></div>
+
+<p>Then, by ruuning network training program:</p>
+
+<div class="highlight highlight-source-shell"><pre>$ network train --solver data/mnist/lenet_solver.xml</pre></div>
+
+<p>one can start to train a simple network right away. And this is the way the source code and data models are tested in Travis-Ci. (See <a href="https://github.com/liangfu/dnn/blob/master/.travis.yml">.travis.yml</a> in the root directory)</p>
+
 <h2>
 <a id="compilation" class="anchor" href="#compilation" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Compilation</h2>
 
@@ -106,8 +168,6 @@ and it can be more easily portable to mobile systems, like iOS, Android and Rasp
  $ mkdir build
  $ cmake .. 
  $ make -j4</pre></div>
-
-<p>Then try anything you want. </p>
 
 <h2>
 <a id="license" class="anchor" href="#license" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>License</h2>
