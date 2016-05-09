@@ -21,8 +21,8 @@ int main(int argc, char * argv[])
   char keys[1<<12];
   sprintf(keys,
           "{  s | solver     |       | location of solver file      }"
-          "{ tr | trainsize  | 5000  | number of training samples   }"
-          "{ ts | testsize   | 1000  | number of testing samples    }"
+          "{ tr | trainsize  | 180   | number of training samples   }"
+          "{ ts | testsize   | 60    | number of testing samples    }"
           "{  h | help       | false | display this help message    }");
   CvCommandLineParser parser(argc,argv,keys);
   const int display_help = parser.get<bool>("help");
@@ -30,23 +30,22 @@ int main(int argc, char * argv[])
   const char * solver_filename  = parser.get<string>("solver").c_str();
   CvNetwork * cnn = new CvNetwork();
   cnn->loadSolver(solver_filename);
-  const char * training_filename = "data/primate/train/%d.png";
-  const char * response_filename = "data/primate/train/digitStruct.xml";
-  const char *  testing_filename = "data/primate/test/%d.png";
-  const char * expected_filename = "data/primate/test/digitStruct.xml";
+  const char * training_filename = "data/primate/video_frames/%d.png";
+  const char * response_filename = "data/primate/train.xml";
+  const char *  testing_filename = "data/primate/video_frames/%d.png";
+  const char * expected_filename = "data/primate/test.xml";
   const char * training_filename_xml = cnn->solver()->training_filename();
   const char * response_filename_xml = cnn->solver()->response_filename();
   const char *  testing_filename_xml = cnn->solver()->testing_filename();
   const char * expected_filename_xml = cnn->solver()->expected_filename();
-  const int n_train_samples = parser.get<int>("trainsize");
-  const int n_test_samples = parser.get<int>("testsize");
-  const int ndigits = 3;
+  const int trainsize = parser.get<int>("trainsize");
+  const int testsize = parser.get<int>("testsize");
 
   fprintf(stderr,"Loading Primate Images ...\n");
-  CvMat * response = icvReadPrimateLabels((char*)response_filename,n_train_samples);
+  CvMat * response = icvReadPrimateLabels((char*)response_filename,trainsize);
   CvMat * training = icvReadPrimateImages((char*)training_filename,response);
   assert(CV_MAT_TYPE(training->type)==CV_32F);
-  CvMat * expected = icvReadPrimateLabels((char*)expected_filename,n_test_samples);
+  CvMat * expected = icvReadPrimateLabels((char*)expected_filename,testsize);
   CvMat * testing  = icvReadPrimateImages((char*) testing_filename,expected);
   CvMat * response_mat = icvConvertLabels(response);
   CvMat * expected_mat = icvConvertLabels(expected);
@@ -163,27 +162,26 @@ CvMat * icvReadPrimateLabels(char * filename, const int max_samples)
   CvFileStorage * fs = cvOpenFileStorage(filename,0,CV_STORAGE_READ);
   if (!fs){fprintf(stderr,"file loading error: %s\n",filename);return 0;}
   CvFileNode * fnode = cvGetRootFileNode(fs);
-  char tagname[20]; int ii;
-  const int nparams = 4;
-  CvMat * data = cvCreateMat(max_samples,1+nparams*10,CV_32S); cvZero(data);
-  for (ii=0;;ii++){
-    sprintf(tagname,"img%d",ii+1);
-    CvMat * sample = (CvMat*)cvReadByName(fs,fnode,tagname);
-    if (!sample || ii==max_samples){break;}
-    int nnumbers = sample->rows;
-    CV_MAT_ELEM(*data,int,ii,0)=nnumbers;
-    for (int jj=0;jj<nnumbers;jj++){
-      float xx = CV_MAT_ELEM(*sample,float,jj,0);
-      float yy = CV_MAT_ELEM(*sample,float,jj,1);
-      float ww = CV_MAT_ELEM(*sample,float,jj,2);
-      float hh = CV_MAT_ELEM(*sample,float,jj,3);
-      float ll = CV_MAT_ELEM(*sample,float,jj,4);
-      CV_MAT_ELEM(*data,int,ii,1+nparams*jj+0)=cvRound(xx+ww*.5f);  // x
-      CV_MAT_ELEM(*data,int,ii,1+nparams*jj+1)=cvRound(yy+hh*.5f);  // y
-      CV_MAT_ELEM(*data,int,ii,1+nparams*jj+2)=cvRound(MAX(ww,hh));   // scale
-      CV_MAT_ELEM(*data,int,ii,1+nparams*jj+3)=cvRound(ll);           // label
-    }
-    cvReleaseMat(&sample);
+  CvSeqReader reader; char tagname[20]; 
+  CvMat * data = cvCreateMat(max_samples,6,CV_32F); cvZero(data);
+  for (int ii=0;;ii++){
+    // sprintf(tagname,"img%d",ii+1);
+    // CvMat * sample = (CvMat*)cvReadByName(fs,fnode,tagname);
+    // if (!sample || ii==max_samples){break;}
+    // int nnumbers = sample->rows;
+    // CV_MAT_ELEM(*data,int,ii,0)=nnumbers;
+    // for (int jj=0;jj<nnumbers;jj++){
+    //   float xx = CV_MAT_ELEM(*sample,float,jj,0);
+    //   float yy = CV_MAT_ELEM(*sample,float,jj,1);
+    //   float ww = CV_MAT_ELEM(*sample,float,jj,2);
+    //   float hh = CV_MAT_ELEM(*sample,float,jj,3);
+    //   float ll = CV_MAT_ELEM(*sample,float,jj,4);
+    //   CV_MAT_ELEM(*data,int,ii,1+nparams*jj+0)=cvRound(xx+ww*.5f);  // x
+    //   CV_MAT_ELEM(*data,int,ii,1+nparams*jj+1)=cvRound(yy+hh*.5f);  // y
+    //   CV_MAT_ELEM(*data,int,ii,1+nparams*jj+2)=cvRound(MAX(ww,hh));   // scale
+    //   CV_MAT_ELEM(*data,int,ii,1+nparams*jj+3)=cvRound(ll);           // label
+    // }
+    // cvReleaseMat(&sample);
   }
   data->rows = ii;
   cvReleaseFileStorage(&fs);

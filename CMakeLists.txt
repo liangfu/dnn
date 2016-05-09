@@ -133,6 +133,9 @@ endif( OPENMP_FOUND )
 # add_executable(test046_dram src/test046_dram.cpp src/dram.cpp)
 # target_link_libraries(test046_dram cxcore cvutil cv highgui dnn ${FFMPEG_LIBRARIES} ${OPENMP_LIBRARIES}) # video
 
+add_executable(annotator src/annotator_main.cpp)
+target_link_libraries(annotator cxcore cvutil cv highgui dnn ${FFMPEG_LIBRARIES} ${OPENMP_LIBRARIES})
+
 add_executable(network src/network_main.cpp src/network.cpp)
 target_link_libraries(network cxcore cvutil cv highgui dnn ${FFMPEG_LIBRARIES} ${OPENMP_LIBRARIES})
 
