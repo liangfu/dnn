@@ -59,7 +59,7 @@ int main(int argc, char * argv[])
   CvMouseInfo mouse_info;
   cvSetMouseCallback("Annotator", on_mouse, &mouse_info);
   CvFileStorage * fs = cvOpenFileStorage(output_filename,0,CV_STORAGE_WRITE);
-  CvSeqWriter writer;
+  CvSeqWriter writer; CvSeqReader reader;
   cvStartWriteSeq(0,sizeof(CvSeq),sizeof(CvMouseInfo),cvCreateMemStorage(),&writer);
 
   for (int idx=start_index;; idx++){
@@ -80,16 +80,16 @@ int main(int argc, char * argv[])
     if (mouse_info.centers.size()>0){
       cvStartWriteStruct(fs,"frame",CV_NODE_SEQ,0,cvAttrList(0,0));
       cvWriteString(fs,0,mouse_info.imgname);
+      fprintf(stderr,"%s: (%d,%d) (%d,%d) (%d,%d)\n",filepath);
       for (int cc=0;cc<mouse_info.centers.size();cc++){
         cvWriteInt(fs,0,mouse_info.centers[cc].x);
         cvWriteInt(fs,0,mouse_info.centers[cc].y);
+        fprintf(stderr," (%d,%d)",
+                mouse_info.centers[cc].x,mouse_info.centers[cc].y);
       }
+      fprintf(stderr,"\n");
       cvEndWriteStruct(fs);
       cvFlushSeqWriter(&writer);
-      fprintf(stderr,"%s: (%d,%d) (%d,%d) (%d,%d)\n",filepath,
-              mouse_info.centers[0].x,mouse_info.centers[0].y,
-              mouse_info.centers[1].x,mouse_info.centers[1].y,
-              mouse_info.centers[2].x,mouse_info.centers[2].y);
     }
     mouse_info.clear();
   }
