@@ -185,17 +185,15 @@ void CvNetwork::loadModel(string inFile)
         n_input_planes, input_height, input_width, seq_length,
         lr_init, decay_type );
     }else if (!strcmp(type,"MultiTarget")){ // merge multiple data source  layer
-      int n_input_layers = cvReadIntByName(fs,node,"n_input_layers",1);
+      int n_input_layers = 1;
       const char * input_layer_names = cvReadStringByName(fs,node,"input_layers","");
-      if (!(n_input_layers>=1 && n_input_layers<=100)){
-        LOGE("Invalid number of input layers [%d] while defining MultiTarget layer.",
-             n_input_layers);exit(-1);}
       n_output_planes = cvReadIntByName(fs,node,"n_output_planes",1);
-      CvCNNLayer ** input_layers = new CvCNNLayer*[n_input_layers];
+      CvCNNLayer ** input_layers = new CvCNNLayer*[256];
       char * input_layer_name = strtok((char*)input_layer_names," ,");
       input_layers[0] = m_cnn->network->get_layer(m_cnn->network, input_layer_name);
-      for (int ii=1; ii<n_input_layers; ii++){
+      for (int ii=1; ii<256; ii++){
         input_layer_name = strtok(0," ,");
+        if (!input_layer_name){break;}else{n_input_layers++;}
         input_layers[ii] = m_cnn->network->get_layer(m_cnn->network, input_layer_name);
       }
       layer = cvCreateCNNMultiTargetLayer( dtype, name, visualize, 

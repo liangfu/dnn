@@ -44,22 +44,23 @@ int main(int argc, char * argv[])
 {
   char keys[1<<12];
   sprintf(keys,
-          "{  i | input   | im%04d.jpg | path to list of images or video }"
-          "{  o | output  | output.xml | path to annotation file in xml }"
-          "{  s | start   | 1          | start index of input file format }"
-          "{  h | help    | false      | display this help message    }");
+          "{  i | input   | im%%04d.jpg | path to list of images or video }"
+          "{  o | output  | train.yml   | path to annotation file in yml }"
+          "{  s | start   | 1           | start index of input file format }"
+          "{  h | help    | false       | display this help message    }");
   CvCommandLineParser parser(argc,argv,keys);
   const char * path = parser.get<string>("input").c_str();
   const char * output_filename = parser.get<string>("output").c_str();
   const int start_index = parser.get<int>("start");
   const int display_help = parser.get<bool>("help");
   if (display_help){parser.printParams();return 0;}
-  char filepath[1<<10];
+  char filepath[1<<10]; memset(filepath,0,sizeof(filepath));
   cvNamedWindow("Annotator");
   CvMouseInfo mouse_info;
   cvSetMouseCallback("Annotator", on_mouse, &mouse_info);
   CvFileStorage * fs = cvOpenFileStorage(output_filename,0,CV_STORAGE_WRITE);
   CvSeqWriter writer; CvSeqReader reader;
+  cvStartWriteStruct(fs,"frames",CV_NODE_SEQ,0,cvAttrList(0,0));
   cvStartWriteSeq(0,sizeof(CvSeq),sizeof(CvMouseInfo),cvCreateMemStorage(),&writer);
 
   for (int idx=start_index;; idx++){
@@ -78,9 +79,9 @@ int main(int argc, char * argv[])
     }
 
     if (mouse_info.centers.size()>0){
-      cvStartWriteStruct(fs,"frame",CV_NODE_SEQ,0,cvAttrList(0,0));
+      cvStartWriteStruct(fs,0,CV_NODE_SEQ,0,cvAttrList(0,0));
       cvWriteString(fs,0,mouse_info.imgname);
-      fprintf(stderr,"%s: (%d,%d) (%d,%d) (%d,%d)\n",filepath);
+      fprintf(stderr,"%s: ",filepath);
       for (int cc=0;cc<mouse_info.centers.size();cc++){
         cvWriteInt(fs,0,mouse_info.centers[cc].x);
         cvWriteInt(fs,0,mouse_info.centers[cc].y);
@@ -94,6 +95,7 @@ int main(int argc, char * argv[])
     mouse_info.clear();
   }
 
+  cvEndWriteStruct(fs);
   cvDestroyAllWindows();
   cvReleaseFileStorage(&fs);
 

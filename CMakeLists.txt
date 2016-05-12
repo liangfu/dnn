@@ -154,5 +154,8 @@ target_link_libraries(transfer_addition cxcore cvutil cv highgui dnn ${FFMPEG_LI
 add_executable(transfer_svhn_dram src/transfer_svhn_dram.cpp  src/network.cpp)
 target_link_libraries(transfer_svhn_dram cxcore cvutil cv highgui dnn ${FFMPEG_LIBRARIES} ${OPENMP_LIBRARIES})
 
+add_executable(transfer_primate_convnet src/transfer_primate_convnet.cpp  src/network.cpp)
+target_link_libraries(transfer_primate_convnet cxcore cvutil cv highgui dnn ${FFMPEG_LIBRARIES} ${OPENMP_LIBRARIES})
+
 
 

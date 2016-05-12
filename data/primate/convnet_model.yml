@@ -1,15 +1,17 @@
 %YAML:1.0
 layers:
   - {type: InputData, name: input1, n_input_planes: 1, input_height: 240, input_width: 240, seq_length: 1}
-  - {type: Convolution, name: conv1, visualize: 0, n_output_planes: 6, ksize: 9}
-  - {type: SubSampling, name: pool1, visualize: 0, ksize: 3, stride: 3}
-  - {type: Convolution, name: conv1, visualize: 0, n_output_planes: 16, ksize: 5}
-  - {type: SubSampling, name: pool1, visualize: 0, ksize: 2, stride: 2}
-  - {type: Convolution, name: conv2, visualize: 0, n_output_planes: 26, ksize: 5}
-  - {type: SubSampling, name: pool2, visualize: 0, ksize: 2, stride: 2}
-  - {type: Convolution, name: conv3, visualize: 0, n_output_planes: 36, ksize: 5}
-  - {type: RecurrentNN, name: rnn1, n_output_planes: 400, seq_length: 2, time_index: -1, activation_type: tanh}
-  - {type: FullConnect, name: fc1, input_layer: conv3, visualize: 0, n_output_planes: 2, activation_type: none}
-  - {type: FullConnect, name: fc2, input_layer: conv3, visualize: 0, n_output_planes: 2, activation_type: none}
-  - {type: FullConnect, name: fc3, input_layer: conv3, visualize: 0, n_output_planes: 2, activation_type: none}
+  - {type: Convolution, name: conv1, visualize: 1, n_output_planes: 6, ksize: 9}
+  - {type: SubSampling, name: pool1, visualize: 1, ksize: 2, stride: 2}
+  - {type: Convolution, name: conv1, visualize: 1, n_output_planes: 16, ksize: 5}
+  - {type: SubSampling, name: pool1, visualize: 1, ksize: 2, stride: 2}
+  - {type: Convolution, name: conv2, visualize: 1, n_output_planes: 36, ksize: 5}
+  - {type: SubSampling, name: pool2, visualize: 1, ksize: 2, stride: 2}
+  - {type: Convolution, name: conv3, visualize: 1, n_output_planes: 64, ksize: 5}
+  - {type: SubSampling, name: pool2, visualize: 1, ksize: 2, stride: 2}
+  - {type: Convolution, name: conv3, visualize: 1, n_output_planes: 96, ksize: 5}
+  - {type: RecurrentNN, name: rnn1, n_output_planes: 400, seq_length: 2, time_index: 0, activation_type: tanh}
+  - {type: FullConnect, name: fc1, input_layer: rnn1, visualize: 0, n_output_planes: 2, activation_type: none}
+  - {type: FullConnect, name: fc2, input_layer: rnn1, visualize: 0, n_output_planes: 2, activation_type: none}
+  - {type: FullConnect, name: fc3, input_layer: rnn1, visualize: 0, n_output_planes: 2, activation_type: none}
   - {type: MultiTarget, name: multi1, input_layers: "fc1,fc2,fc3", visualize: 0, n_output_planes: 6}

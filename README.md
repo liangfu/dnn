@@ -5,7 +5,8 @@
 
 ## Introduction
 
-The Deep Neural Nets (DNN) library is a deep learning framework designed to be small in size, computationally efficient and portable.
+The Deep Neural Nets (DNN) library is a deep learning framework designed to be small in size, 
+computationally efficient and portable.
 
 We started the project as a fork of the popular [OpenCV](http://opencv.org/) library,
 while removing some components that is not tightly related to the deep learning framework.
@@ -65,7 +66,9 @@ Then, by ruuning network training program:
 $ network train --solver data/mnist/lenet_solver.xml
 ```
 
-one can start to train a simple network right away. And this is the way the source code and data models are tested in Travis-Ci. (See [.travis.yml](https://github.com/liangfu/dnn/blob/master/.travis.yml) in the root directory)
+one can start to train a simple network right away. And this is the way the source code 
+and data models are tested in Travis-Ci. 
+(See [.travis.yml](https://github.com/liangfu/dnn/blob/master/.travis.yml) in the root directory)
 
 ## Compilation
 
