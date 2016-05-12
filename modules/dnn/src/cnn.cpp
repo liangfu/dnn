@@ -2027,7 +2027,7 @@ void icvCNNFullConnectBackward(CvCNNLayer * _layer, int t,
   CvMat * dE_dX = (CvMat*)_dE_dX;
 
   if (input_layer){
-    n_inputs = input_layer->n_input_planes;
+    n_inputs = input_layer->n_output_planes;
     if (ICV_IS_CNN_RECURRENTNN_LAYER(input_layer)){
       seq_length = ((CvCNNRecurrentLayer*)input_layer)->seq_length;
       time_index = ((CvCNNRecurrentLayer*)input_layer)->time_index;
@@ -2239,9 +2239,13 @@ static void icvCNNRecurrentBackward( CvCNNLayer* _layer, int t,
       CV_ASSERT(dE_dY->cols==n_outputs && layer_dE_dY==hidden_layer->dE_dY && 
                 layer_dH==hidden_layer->dH && layer_dWxh==hidden_layer->dWxh && 
                 layer_dWhh==hidden_layer->dWhh   && layer_dWhy==hidden_layer->dWhy);
+      CV_ASSERT(layer_dH && layer_dWxh && layer_dWhh && layer_dWhy);
     }
-  }else{ CV_ASSERT(dE_dY->cols==n_outputs && layer_dE_dY==layer->dE_dY && 
-                   layer_dWxh==layer->dWxh && layer_dWhh==layer->dWhh && layer_dWhy==layer->dWhy); 
+  }else{
+    CV_ASSERT(dE_dY->cols==n_outputs && layer_dE_dY==layer->dE_dY && 
+              layer_dH==layer->dH && layer_dWxh==layer->dWxh &&
+              layer_dWhh==layer->dWhh && layer_dWhy==layer->dWhy); 
+    CV_ASSERT(layer_dH && layer_dWxh && layer_dWhh && layer_dWhy);
   }
   
   // memory allocation
