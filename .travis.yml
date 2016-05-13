@@ -16,11 +16,13 @@ script: make -j2 && cd ..
 after_success:
  - export PATH=$PATH:$TRAVIS_BUILD_DIR/bin
  - ./data/mnist/get_mnist.sh
+ - ./data/primate/get_primate.sh
  - transfer_mnist_lenet --solver data/mnist/lenet_solver.xml
  - network train --solver data/mnist/lenet_solver.xml
  - transfer_mnist_twodigit --solver data/mnist/twodigit_solver.xml
  - network train --solver data/mnist/twodigit_solver.xml
  - transfer_addition --solver data/addition/rnn_solver.xml
  - network train --solver data/addition/rnn_solver.xml
-
+ - transfer_primate_convet --solver data/primate/convnet_solver.xml
+ - network train --solver data/primate/convnet_solver.xml
 
