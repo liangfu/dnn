@@ -30,55 +30,6 @@
 
 typedef struct CvCNNLayer CvCNNLayer;
 
-#define ICV_CNN_LAYER                0x55550000
-#define ICV_CNN_INPUTDATA_LAYER      0x00001111
-#define ICV_CNN_CONVOLUTION_LAYER    0x00002222
-#define ICV_CNN_SUBSAMPLING_LAYER    0x00003333
-#define ICV_CNN_FULLCONNECT_LAYER    0x00004444
-#define ICV_CNN_IMGCROPPING_LAYER    0x00005555
-#define ICV_CNN_RECURRENTNN_LAYER    0x00006666
-#define ICV_CNN_MULTITARGET_LAYER    0x00007777
-#define ICV_CNN_LSTM_LAYER           0x00008888
-
-#define CV_CNN_LEARN_RATE_DECREASE_HYPERBOLICALLY  1
-#define CV_CNN_LEARN_RATE_DECREASE_SQRT_INV        2
-#define CV_CNN_LEARN_RATE_DECREASE_LOG_INV         3
-
-#define CV_IS_CNN(cnn)                                                     \
-	( (cnn)!=NULL )
-
-#define ICV_IS_CNN_LAYER( layer )                                          \
-    ( ((layer) != NULL) && ((((CvCNNLayer*)(layer))->flags & CV_MAGIC_MASK)\
-        == ICV_CNN_LAYER ))
-
-#define ICV_IS_CNN_CONVOLUTION_LAYER( layer )                              \
-    ( (ICV_IS_CNN_LAYER( layer )) && (((CvCNNLayer*) (layer))->flags       \
-        & ~CV_MAGIC_MASK) == ICV_CNN_CONVOLUTION_LAYER )
-
-#define ICV_IS_CNN_SUBSAMPLING_LAYER( layer )                              \
-    ( (ICV_IS_CNN_LAYER( layer )) && (((CvCNNLayer*) (layer))->flags       \
-        & ~CV_MAGIC_MASK) == ICV_CNN_SUBSAMPLING_LAYER )
-
-#define ICV_IS_CNN_FULLCONNECT_LAYER( layer )                              \
-    ( (ICV_IS_CNN_LAYER( layer )) && (((CvCNNLayer*) (layer))->flags       \
-        & ~CV_MAGIC_MASK) == ICV_CNN_FULLCONNECT_LAYER )
-
-#define ICV_IS_CNN_IMGCROPPING_LAYER( layer )                              \
-    ( (ICV_IS_CNN_LAYER( layer )) && (((CvCNNLayer*) (layer))->flags       \
-        & ~CV_MAGIC_MASK) == ICV_CNN_IMGCROPPING_LAYER )
-
-#define ICV_IS_CNN_RECURRENTNN_LAYER( layer )                              \
-    ( (ICV_IS_CNN_LAYER( layer )) && (((CvCNNLayer*) (layer))->flags       \
-        & ~CV_MAGIC_MASK) == ICV_CNN_RECURRENTNN_LAYER )
-
-#define ICV_IS_CNN_MULTITARGET_LAYER( layer )                              \
-    ( (ICV_IS_CNN_LAYER( layer )) && (((CvCNNLayer*) (layer))->flags       \
-        & ~CV_MAGIC_MASK) == ICV_CNN_MULTITARGET_LAYER )
-
-#define ICV_IS_CNN_INPUTDATA_LAYER( layer )                                \
-    ( (ICV_IS_CNN_LAYER( layer )) && (((CvCNNLayer*) (layer))->flags       \
-        & ~CV_MAGIC_MASK) == ICV_CNN_INPUTDATA_LAYER )
-
 typedef void (CV_CDECL *CvCNNLayerForward)
     ( CvCNNLayer* layer, const CvMat* input, CvMat* output );
 typedef void (CV_CDECL *CvCNNLayerBackward)
@@ -143,6 +94,104 @@ typedef struct CvCNNLayer
 {
     CV_CNN_LAYER_FIELDS();
 }CvCNNLayer;
+
+#define ICV_CNN_LAYER                0x55550000
+#define ICV_CNN_INPUTDATA_LAYER      0x00001111
+#define ICV_CNN_CONVOLUTION_LAYER    0x00002222
+#define ICV_CNN_SUBSAMPLING_LAYER    0x00003333
+#define ICV_CNN_FULLCONNECT_LAYER    0x00004444
+#define ICV_CNN_IMGCROPPING_LAYER    0x00005555
+#define ICV_CNN_RECURRENTNN_LAYER    0x00006666
+#define ICV_CNN_MULTITARGET_LAYER    0x00007777
+#define ICV_CNN_LSTM_LAYER           0x00008888
+
+#define CV_CNN_LEARN_RATE_DECREASE_HYPERBOLICALLY  1
+#define CV_CNN_LEARN_RATE_DECREASE_SQRT_INV        2
+#define CV_CNN_LEARN_RATE_DECREASE_LOG_INV         3
+
+// #define CV_IS_CNN(cnn)                                                     \
+// 	( (cnn)!=NULL )
+// 
+// #define ICV_IS_CNN_LAYER( layer )                                          \
+//     ( ((layer) != NULL) && ((((CvCNNLayer*)(layer))->flags & CV_MAGIC_MASK)\
+//         == ICV_CNN_LAYER ))
+// 
+// #define ICV_IS_CNN_CONVOLUTION_LAYER( layer )                              \
+//     ( (ICV_IS_CNN_LAYER( layer )) && (((CvCNNLayer*) (layer))->flags       \
+//         & ~CV_MAGIC_MASK) == ICV_CNN_CONVOLUTION_LAYER )
+// 
+// #define ICV_IS_CNN_SUBSAMPLING_LAYER( layer )                              \
+//     ( (ICV_IS_CNN_LAYER( layer )) && (((CvCNNLayer*) (layer))->flags       \
+//         & ~CV_MAGIC_MASK) == ICV_CNN_SUBSAMPLING_LAYER )
+// 
+// #define ICV_IS_CNN_FULLCONNECT_LAYER( layer )                              \
+//     ( (ICV_IS_CNN_LAYER( layer )) && (((CvCNNLayer*) (layer))->flags       \
+//         & ~CV_MAGIC_MASK) == ICV_CNN_FULLCONNECT_LAYER )
+// 
+// #define ICV_IS_CNN_IMGCROPPING_LAYER( layer )                              \
+//     ( (ICV_IS_CNN_LAYER( layer )) && (((CvCNNLayer*) (layer))->flags       \
+//         & ~CV_MAGIC_MASK) == ICV_CNN_IMGCROPPING_LAYER )
+// 
+// #define ICV_IS_CNN_RECURRENTNN_LAYER( layer )                              \
+//     ( (ICV_IS_CNN_LAYER( layer )) && (((CvCNNLayer*) (layer))->flags       \
+//         & ~CV_MAGIC_MASK) == ICV_CNN_RECURRENTNN_LAYER )
+// 
+// #define ICV_IS_CNN_MULTITARGET_LAYER( layer )                              \
+//     ( (ICV_IS_CNN_LAYER( layer )) && (((CvCNNLayer*) (layer))->flags       \
+//         & ~CV_MAGIC_MASK) == ICV_CNN_MULTITARGET_LAYER )
+// 
+// #define ICV_IS_CNN_INPUTDATA_LAYER( layer )                                \
+//     ( (ICV_IS_CNN_LAYER( layer )) && (((CvCNNLayer*) (layer))->flags       \
+//         & ~CV_MAGIC_MASK) == ICV_CNN_INPUTDATA_LAYER )
+//
+
+CV_INLINE
+int icvIsCNNLayer( CvCNNLayer * layer ) {
+  return ( ((layer) != NULL) &&
+           ((((CvCNNLayer*)(layer))->flags & CV_MAGIC_MASK) == ICV_CNN_LAYER ));
+}
+
+CV_INLINE
+int icvIsCNNConvolutionLayer( CvCNNLayer * layer ) {                              
+  return ( (icvIsCNNLayer( layer )) &&
+           (((CvCNNLayer*)layer)->flags & ~CV_MAGIC_MASK) == ICV_CNN_CONVOLUTION_LAYER );
+}
+
+CV_INLINE
+int icvIsCNNSubSamplingLayer( CvCNNLayer * layer ) {                              
+  return ( (icvIsCNNLayer( layer )) &&
+           (((CvCNNLayer*) (layer))->flags & ~CV_MAGIC_MASK) == ICV_CNN_SUBSAMPLING_LAYER );
+}
+
+CV_INLINE
+int icvIsCNNFullConnectLayer( CvCNNLayer * layer ) {                              
+  return ( (icvIsCNNLayer( layer )) &&
+           (((CvCNNLayer*) (layer))->flags & ~CV_MAGIC_MASK) == ICV_CNN_FULLCONNECT_LAYER );
+}
+
+CV_INLINE
+int icvIsCNNImgCroppingLayer( CvCNNLayer * layer ) {                              
+  return ( (icvIsCNNLayer( layer )) &&
+           (((CvCNNLayer*) (layer))->flags & ~CV_MAGIC_MASK) == ICV_CNN_IMGCROPPING_LAYER );
+}
+
+CV_INLINE
+int icvIsCNNRecurrentNNLayer( CvCNNLayer * layer ) {                              
+  return ( (icvIsCNNLayer( layer )) &&
+           (((CvCNNLayer*) (layer))->flags & ~CV_MAGIC_MASK) == ICV_CNN_RECURRENTNN_LAYER );
+}
+
+CV_INLINE
+int icvIsCNNMultiTargetLayer( CvCNNLayer * layer ) {                              
+  return ( (icvIsCNNLayer( layer )) &&
+           (((CvCNNLayer*) (layer))->flags & ~CV_MAGIC_MASK) == ICV_CNN_MULTITARGET_LAYER );
+}
+
+CV_INLINE
+int icvIsCNNInputDataLayer( CvCNNLayer * layer ) {                                
+  return ( (icvIsCNNLayer( layer )) &&
+           (((CvCNNLayer*) (layer))->flags & ~CV_MAGIC_MASK) == ICV_CNN_INPUTDATA_LAYER );
+}
 
 typedef struct CvCNNConvolutionLayer
 {

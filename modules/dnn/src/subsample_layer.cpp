@@ -47,7 +47,7 @@ CvCNNLayer * cvCreateCNNImgCroppingLayer(
   __BEGIN__;
 
   if ( init_learn_rate <= 0) { CV_ERROR( CV_StsBadArg, "Incorrect parameters" ); }
-  CV_ASSERT(ICV_IS_CNN_INPUTDATA_LAYER(_image_layer));
+  CV_ASSERT(icvIsCNNInputDataLayer((CvCNNLayer*)_image_layer));
 
   fprintf(stderr,"ImgCroppingLayer(%s): "
           "input (%d@%dx%d), output (%d@%dx%d), seq_length: %d, time_index: %d\n", name,
@@ -77,7 +77,7 @@ CvCNNLayer * cvCreateCNNImgCroppingLayer(
 static void icvCNNImgCroppingForward( CvCNNLayer * _layer, const CvMat* X, CvMat* Y )
 {
   CV_FUNCNAME("icvCNNImgCroppingForward");
-  if ( !ICV_IS_CNN_IMGCROPPING_LAYER(_layer) ) { CV_ERROR( CV_StsBadArg, "Invalid layer" ); }
+  if ( !icvIsCNNImgCroppingLayer(_layer) ) { CV_ERROR( CV_StsBadArg, "Invalid layer" ); }
   __BEGIN__;
   CvCNNImgCroppingLayer * layer = (CvCNNImgCroppingLayer*)_layer;
   const CvCNNInputDataLayer * input_layer = 

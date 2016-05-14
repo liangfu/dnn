@@ -5,7 +5,7 @@ project(dnn)
 INCLUDE_DIRECTORIES(./include ../cxcore/include 
   ../cvutil/include ../cv/include ../highgui/include ../ts/include)
 
-add_library(dnn # SHARED
+add_library(dnn SHARED
 	src/cnn.cpp
 	# src/inner_functions.cpp
 	src/combine_layer.cpp

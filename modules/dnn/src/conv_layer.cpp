@@ -111,7 +111,7 @@ void icvCNNConvolutionForward( CvCNNLayer* _layer, const CvMat* X, CvMat* Y )
 {
   CV_FUNCNAME("icvCNNConvolutionForward");
 
-  if (!ICV_IS_CNN_CONVOLUTION_LAYER(_layer)){CV_ERROR( CV_StsBadArg, "Invalid layer" );}
+  if (!icvIsCNNConvolutionLayer(_layer)){CV_ERROR( CV_StsBadArg, "Invalid layer" );}
 
   __BEGIN__;
 
@@ -212,7 +212,7 @@ void icvCNNConvolutionBackward(
 
   CV_FUNCNAME("icvCNNConvolutionBackward");
 
-  if ( !ICV_IS_CNN_CONVOLUTION_LAYER(_layer) )
+  if ( !icvIsCNNConvolutionLayer(_layer) )
     CV_ERROR( CV_StsBadArg, "Invalid layer" );
 
   __BEGIN__;
@@ -240,7 +240,7 @@ void icvCNNConvolutionBackward(
     dE_dY = cvCreateMat(batch_size,Y_plane_size*n_Y_planes,CV_32F); cvZero(dE_dY);
     for (int li=0;li<n_output_layers;li++){
       CvCNNLayer * output_layer = layer->output_layers[li];
-      if (ICV_IS_CNN_FULLCONNECT_LAYER(output_layer)){
+      if (icvIsCNNFullConnectLayer(output_layer)){
         cvAddWeighted(dE_dY,1.f,output_layer->dE_dX,1.f/float(n_output_layers),0.f,dE_dY);
       }
     } // average loss from all task
@@ -340,7 +340,7 @@ void icvCNNConvolutionRelease( CvCNNLayer** p_layer )
 
   if ( !layer )
       return;
-  if ( !ICV_IS_CNN_CONVOLUTION_LAYER(layer) )
+  if ( !icvIsCNNConvolutionLayer((CvCNNLayer*)layer) )
       CV_ERROR( CV_StsBadArg, "Invalid layer" );
 
   cvReleaseMat( &layer->weights );

@@ -67,7 +67,7 @@ CvCNNLayer * cvCreateCNNInputDataLayer(
 void icvCNNInputDataForward( CvCNNLayer * _layer, const CvMat * X, CvMat * Y )
 {
   CV_FUNCNAME("icvCNNInputDataForward");
-  if ( !ICV_IS_CNN_INPUTDATA_LAYER(_layer) ) { CV_ERROR( CV_StsBadArg, "Invalid layer" ); }
+  if ( !icvIsCNNInputDataLayer(_layer) ) { CV_ERROR( CV_StsBadArg, "Invalid layer" ); }
   __BEGIN__;
   CvCNNInputDataLayer * layer = (CvCNNInputDataLayer*)_layer;
   if (!layer->input_data){
@@ -80,7 +80,7 @@ void icvCNNInputDataForward( CvCNNLayer * _layer, const CvMat * X, CvMat * Y )
       layer->input_data = cvCloneMat(X);
     }
   }
-  if (ICV_IS_CNN_CONVOLUTION_LAYER(layer->next_layer)){cvCopy(X,Y);}
+  if (icvIsCNNConvolutionLayer(layer->next_layer)){cvCopy(X,Y);}
   __END__;
 }
 

@@ -21,18 +21,24 @@
 #endif
 #endif
 
+#ifndef LOGE
 #define LOGE(fmt,...)                                   \
   do {                                                  \
   fprintf(stderr,"%s: %d: %s: error: " fmt "\n",__FILE__,__LINE__,__FUNCTION__,##__VA_ARGS__);   \
   }while(0)
+#endif
+#ifndef LOGW
 #define LOGW(fmt,...)                                   \
   do {                                                  \
   fprintf(stderr,"%s: %d: %s: warning: " fmt "\n",__FILE__,__LINE__,__FUNCTION__,##__VA_ARGS__); \
   }while(0)
+#endif
+#ifndef LOGI
 #define LOGI(fmt,...)                                   \
   do {                                                  \
   fprintf(stderr,"%s: %d: %s: info:" fmt "\n",__FILE__,__LINE__,__FUNCTION__,##__VA_ARGS__);    \
   }while(0)
+#endif
 
 template <typename T>
 class Node

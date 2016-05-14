@@ -101,7 +101,7 @@ ML_IMPL CvCNNLayer* cvCreateCNNRecurrentLayer(
 void icvCNNRecurrentForward( CvCNNLayer* _layer, const CvMat* X, CvMat * Y) 
 {
   CV_FUNCNAME("icvCNNRecurrentForward");
-  if ( !ICV_IS_CNN_RECURRENTNN_LAYER(_layer) ) { CV_ERROR( CV_StsBadArg, "Invalid layer" ); }
+  if ( !icvIsCNNRecurrentNNLayer(_layer) ) { CV_ERROR( CV_StsBadArg, "Invalid layer" ); }
   __BEGIN__;
 
   CvCNNRecurrentLayer * layer = (CvCNNRecurrentLayer*)_layer;
@@ -227,7 +227,7 @@ void icvCNNRecurrentBackward( CvCNNLayer* _layer, int t,
   CvMat * dE_dY_afder = 0;
   CvMat * dE_dWxh = 0, * dE_dWhh = 0, * dE_dWhy = 0;
   CV_FUNCNAME( "icvCNNRecurrentBackward" );
-  if ( !ICV_IS_CNN_RECURRENTNN_LAYER(_layer) ) { CV_ERROR( CV_StsBadArg, "Invalid layer" ); }
+  if ( !icvIsCNNRecurrentNNLayer(_layer) ) { CV_ERROR( CV_StsBadArg, "Invalid layer" ); }
 
   __BEGIN__;
 
@@ -418,7 +418,7 @@ void icvCNNRecurrentRelease( CvCNNLayer** p_layer )
   layer = *(CvCNNRecurrentLayer**)p_layer;
 
   if ( !layer ) { return; }
-  if ( !ICV_IS_CNN_RECURRENTNN_LAYER(layer) ) { 
+  if ( !icvIsCNNRecurrentNNLayer((CvCNNLayer*)layer) ) { 
     CV_ERROR( CV_StsBadArg, "Invalid layer" ); 
   }
 

@@ -61,7 +61,7 @@ void CvNetwork::loadModel(string inFile)
     // parse layer-specific parameters
     if (strlen(predefined)>0){
       CvCNNLayer * predefined_layer = m_cnn->network->get_layer(m_cnn->network,predefined);
-      if (ICV_IS_CNN_RECURRENTNN_LAYER(predefined_layer)){
+      if (icvIsCNNRecurrentNNLayer(predefined_layer)){
         int time_index = cvReadIntByName(fs,node,"time_index",0);
         CvCNNRecurrentLayer * recurrent_layer = (CvCNNRecurrentLayer*)predefined_layer;
         layer = cvCreateCNNRecurrentLayer( 
@@ -69,7 +69,7 @@ void CvNetwork::loadModel(string inFile)
           predefined_layer->n_input_planes, predefined_layer->n_output_planes, 
           recurrent_layer->n_hiddens, recurrent_layer->seq_length, time_index, lr_init, decay_type, 
           recurrent_layer->activation_type, NULL, NULL, NULL );
-      }else if (ICV_IS_CNN_IMGCROPPING_LAYER(predefined_layer)){
+      }else if (icvIsCNNImgCroppingLayer(predefined_layer)){
         int time_index = cvReadIntByName(fs,node,"time_index",0);
         CvCNNImgCroppingLayer * this_layer = (CvCNNImgCroppingLayer*)predefined_layer;
         CvCNNLayer * input_layer = (this_layer->input_layers.size()>0?this_layer->input_layers[0]:0);
@@ -77,14 +77,14 @@ void CvNetwork::loadModel(string inFile)
           this_layer->dtype, this_layer->name, this_layer->visualize, input_layer, 
           this_layer->n_output_planes, this_layer->output_height, this_layer->output_width, 
           time_index, this_layer->init_learn_rate, this_layer->decay_type );
-      }else if (ICV_IS_CNN_FULLCONNECT_LAYER(predefined_layer)){
+      }else if (icvIsCNNFullConnectLayer(predefined_layer)){
         CvCNNFullConnectLayer * this_layer = (CvCNNFullConnectLayer*)predefined_layer;
         layer = cvCreateCNNFullConnectLayer( 
           this_layer->dtype, this_layer->name, this_layer->visualize, 
           this_layer->input_layers.size()>0?this_layer->input_layers[0]:0, 
           this_layer->n_input_planes, this_layer->n_output_planes, 
           this_layer->init_learn_rate, this_layer->decay_type, this_layer->activation_type, NULL );
-      }else if (ICV_IS_CNN_CONVOLUTION_LAYER(predefined_layer)){
+      }else if (icvIsCNNConvolutionLayer(predefined_layer)){
         CvCNNConvolutionLayer * this_layer = (CvCNNConvolutionLayer*)predefined_layer;
         layer = cvCreateCNNConvolutionLayer( 
           this_layer->dtype, this_layer->name, this_layer->visualize, 
@@ -92,7 +92,7 @@ void CvNetwork::loadModel(string inFile)
           this_layer->n_input_planes, this_layer->input_height, this_layer->input_width,
           this_layer->n_output_planes, this_layer->K,
           this_layer->init_learn_rate, this_layer->decay_type, NULL, NULL );
-      }else if (ICV_IS_CNN_SUBSAMPLING_LAYER(predefined_layer)){
+      }else if (icvIsCNNSubSamplingLayer(predefined_layer)){
         CvCNNSubSamplingLayer * this_layer = (CvCNNSubSamplingLayer*)predefined_layer;
         layer = cvCreateCNNSubSamplingLayer( 
           this_layer->dtype, this_layer->name, this_layer->visualize,
@@ -245,7 +245,7 @@ void CvNetwork::saveWeights(string outFile)
   
   // layer=(CvCNNLayer*)m_cnn->network->first_layer;
   // for (int ii=0;ii<n_layers;ii++,layer=layer->next_layer){
-  //   if (ICV_IS_CNN_RECURRENTNN_LAYER(layer)){
+  //   if (icvIsCNNRecurrentNNLayer(layer)){
   //     CvCNNRecurrentLayer * rnnlayer = (CvCNNRecurrentLayer*)layer;
   //     char xhstr[1024],hhstr[1024],hystr[1024];
   //     sprintf(xhstr,"%s_step%d_Wxh",rnnlayer->name,rnnlayer->time_index);
@@ -275,7 +275,7 @@ void CvNetwork::train(CvMat *trainingData, CvMat *responseMat)
 
   CvCNNLayer * last_layer = cvGetCNNLastLayer(m_cnn->network);
   int n_outputs = last_layer->n_output_planes;
-  if (ICV_IS_CNN_RECURRENTNN_LAYER(last_layer)){
+  if (icvIsCNNRecurrentNNLayer(last_layer)){
     n_outputs *= ((CvCNNRecurrentLayer*)last_layer)->seq_length;
   }
 

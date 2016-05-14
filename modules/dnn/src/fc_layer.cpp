@@ -89,7 +89,7 @@ void icvCNNFullConnectForward( CvCNNLayer* _layer, const CvMat* _X, CvMat* _Y )
 {
   CV_FUNCNAME("icvCNNFullConnectForward");
 
-  if ( !ICV_IS_CNN_FULLCONNECT_LAYER(_layer) ) {
+  if ( !icvIsCNNFullConnectLayer(_layer) ) {
     CV_ERROR( CV_StsBadArg, "Invalid layer" );
   }
 
@@ -108,9 +108,9 @@ void icvCNNFullConnectForward( CvCNNLayer* _layer, const CvMat* _X, CvMat* _Y )
   int seq_length = 1;
   
   if (input_layer){
-    if (ICV_IS_CNN_RECURRENTNN_LAYER(input_layer)){
+    if (icvIsCNNRecurrentNNLayer(input_layer)){
       seq_length = ((CvCNNRecurrentLayer*)input_layer)->seq_length;
-    }else if (ICV_IS_CNN_SUBSAMPLING_LAYER(input_layer)){
+    }else if (icvIsCNNSubSamplingLayer(input_layer)){
       seq_length = 1;
       n_inputs = input_layer->n_output_planes*input_layer->output_height*input_layer->output_width;
     }
@@ -133,7 +133,7 @@ void icvCNNFullConnectForward( CvCNNLayer* _layer, const CvMat* _X, CvMat* _Y )
       X = cvCreateMat(n_inputs,batch_size,dtype);
       CV_ASSERT(n_inputs*seq_length*batch_size==Xsrc->rows*Xsrc->cols);
       CvMat X_submat; 
-      if (ICV_IS_CNN_RECURRENTNN_LAYER(input_layer)){
+      if (icvIsCNNRecurrentNNLayer(input_layer)){
         cvGetRow(Xsrc_transpose,&X_submat,((CvCNNRecurrentLayer*)input_layer)->time_index);
       }else{
         cvGetRow(Xsrc_transpose,&X_submat,0);
@@ -142,7 +142,7 @@ void icvCNNFullConnectForward( CvCNNLayer* _layer, const CvMat* _X, CvMat* _Y )
       seq_length=1;
     }
     cvReleaseMat(&Xsrc_transpose);
-  }else if (ICV_IS_CNN_RECURRENTNN_LAYER(layer->prev_layer) && n_inputs*seq_length!=X->rows){
+  }else if (icvIsCNNRecurrentNNLayer(layer->prev_layer) && n_inputs*seq_length!=X->rows){
     CvCNNRecurrentLayer * rnn_layer = ((CvCNNRecurrentLayer*)layer->prev_layer);
     CV_ASSERT(X->rows==rnn_layer->seq_length*n_inputs);
     X = cvCreateMat(n_inputs,batch_size,dtype);
@@ -174,8 +174,8 @@ void icvCNNFullConnectForward( CvCNNLayer* _layer, const CvMat* _X, CvMat* _Y )
   if (layer->visualize==1){icvVisualizeCNNLayer((CvCNNLayer*)layer,Y);}
   else if (layer->visualize==2){fprintf(stderr,"\n");cvPrintf(stderr,"%f ",Y);}
 
-  if ( (input_layer && ICV_IS_CNN_RECURRENTNN_LAYER(input_layer)) ||
-       (ICV_IS_CNN_RECURRENTNN_LAYER(layer->prev_layer) && n_inputs*seq_length!=X->rows) ){
+  if ( (input_layer && icvIsCNNRecurrentNNLayer(input_layer)) ||
+       (icvIsCNNRecurrentNNLayer(layer->prev_layer) && n_inputs*seq_length!=X->rows) ){
     CV_ASSERT(X!=_X);
     if (X) { cvReleaseMat(&X); X = 0; }
   }
@@ -201,7 +201,7 @@ void icvCNNFullConnectBackward(CvCNNLayer * _layer, int t,
 
   CV_FUNCNAME( "icvCNNFullConnectBackward" );
 
-  if ( !ICV_IS_CNN_FULLCONNECT_LAYER(_layer) ) {
+  if ( !icvIsCNNFullConnectLayer(_layer) ) {
       CV_ERROR( CV_StsBadArg, "Invalid layer" );
   }
 
@@ -224,10 +224,10 @@ void icvCNNFullConnectBackward(CvCNNLayer * _layer, int t,
 
   if (input_layer){
     n_inputs = input_layer->n_output_planes;
-    if (ICV_IS_CNN_RECURRENTNN_LAYER(input_layer)){
+    if (icvIsCNNRecurrentNNLayer(input_layer)){
       seq_length = ((CvCNNRecurrentLayer*)input_layer)->seq_length;
       time_index = ((CvCNNRecurrentLayer*)input_layer)->time_index;
-    }else if (ICV_IS_CNN_SUBSAMPLING_LAYER(input_layer) || ICV_IS_CNN_CONVOLUTION_LAYER(input_layer)){ 
+    }else if (icvIsCNNSubSamplingLayer(input_layer) || icvIsCNNConvolutionLayer(input_layer)){ 
       seq_length = 1; time_index = 0; 
       n_inputs = input_layer->n_output_planes*input_layer->output_height*input_layer->output_width;
     }
@@ -246,7 +246,7 @@ void icvCNNFullConnectBackward(CvCNNLayer * _layer, int t,
     cvZero(layer->dE_dX);
     // following variables are modified if input layer is given
     seq_length=1; dE_dX = layer->dE_dX;
-  }else if (ICV_IS_CNN_RECURRENTNN_LAYER(layer->prev_layer)){
+  }else if (icvIsCNNRecurrentNNLayer(layer->prev_layer)){
     CvCNNRecurrentLayer * rnn_layer = (CvCNNRecurrentLayer*)layer->prev_layer;
     if (X->rows!=n_inputs){
       CV_ASSERT(X->rows==rnn_layer->seq_length*n_inputs);
@@ -265,7 +265,7 @@ void icvCNNFullConnectBackward(CvCNNLayer * _layer, int t,
   }
 
   if (output_layer){
-    if (ICV_IS_CNN_MULTITARGET_LAYER(output_layer)){
+    if (icvIsCNNMultiTargetLayer(output_layer)){
       int n_input_layers = ((CvCNNMultiTargetLayer*)output_layer)->input_layers.size();
       int layer_index = -1;
       int output_layer_index = 0;
@@ -375,7 +375,7 @@ void icvCNNFullConnectRelease( CvCNNLayer** p_layer )
 
   if ( !layer )
       return;
-  if ( !ICV_IS_CNN_FULLCONNECT_LAYER(layer) )
+  if ( !icvIsCNNFullConnectLayer((CvCNNLayer*)layer) )
       CV_ERROR( CV_StsBadArg, "Invalid layer" );
 
   cvReleaseMat( &layer->WX );

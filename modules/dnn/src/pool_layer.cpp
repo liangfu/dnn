@@ -96,7 +96,7 @@ void icvCNNSubSamplingForward( CvCNNLayer* _layer, const CvMat* X, CvMat* Y )
 {
   CV_FUNCNAME("icvCNNSubSamplingForward");
 
-  if ( !ICV_IS_CNN_SUBSAMPLING_LAYER(_layer) )
+  if ( !icvIsCNNSubSamplingLayer(_layer) )
       CV_ERROR( CV_StsBadArg, "Invalid layer" );
 
   __BEGIN__;
@@ -184,7 +184,7 @@ void icvCNNSubSamplingBackward(
 
   CV_FUNCNAME("icvCNNSubSamplingBackward");
 
-  if ( !ICV_IS_CNN_SUBSAMPLING_LAYER(_layer) ) {
+  if ( !icvIsCNNSubSamplingLayer(_layer) ) {
     CV_ERROR( CV_StsBadArg, "Invalid layer" );
   }
 
@@ -254,7 +254,7 @@ void icvCNNSubSamplingRelease( CvCNNLayer** p_layer )
 
   if ( !layer )
       return;
-  if ( !ICV_IS_CNN_SUBSAMPLING_LAYER(layer) )
+  if ( !icvIsCNNSubSamplingLayer((CvCNNLayer*)layer) )
       CV_ERROR( CV_StsBadArg, "Invalid layer" );
 
   if (layer->mask      ){cvReleaseMat( &layer->mask       ); layer->mask      =0;}

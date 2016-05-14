@@ -179,7 +179,7 @@ void FullConnectLayerTest(int n_inputs, int n_outputs, int batch_size,
 {
   CvCNNLayer * layer = 
     cvCreateCNNFullConnectLayer(dtype,"fc1",0,0,n_inputs,n_outputs,.01,1,actype,0);
-  ASSERT_TRUE(ICV_IS_CNN_FULLCONNECT_LAYER(layer));
+  ASSERT_TRUE(icvIsCNNFullConnectLayer(layer));
   CvMat * X = cvCreateMat(n_inputs,batch_size,dtype);
   CvMat * Y = cvCreateMat(n_outputs,batch_size,dtype);
   CvMat * target = cvCreateMat(Y->rows,Y->cols,dtype);
