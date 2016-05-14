@@ -5,24 +5,19 @@ project(dnn)
 INCLUDE_DIRECTORIES(./include ../cxcore/include 
   ../cvutil/include ../cv/include ../highgui/include ../ts/include)
 
-add_library(dnn SHARED
-	# src/em.cpp
-	# src/testset.cpp
-	# src/gbt.cpp
-	# src/ann_mlp.cpp
-	# src/precomp.hpp
-	# src/data.cpp
-	# src/ertrees.cpp
-	# src/nbayes.cpp
-	# src/estimate.cpp
-	# src/knearest.cpp
-	# src/rtrees.cpp
-	# src/ml_init.cpp
-	# src/boost.cpp
+add_library(dnn # SHARED
 	src/cnn.cpp
 	# src/inner_functions.cpp
-	# src/svm.cpp
-	# src/tree.cpp
+	src/combine_layer.cpp
+	src/conv_layer.cpp
+	src/fc_layer.cpp
+	src/input_layer.cpp
+	src/pool_layer.cpp
+	src/relu_layer.cpp
+	src/rnn_layer.cpp
+	src/sigmoid_layer.cpp
+	src/softmax_layer.cpp
+	src/subsample_layer.cpp
 	)
 
 add_executable(test_dnn

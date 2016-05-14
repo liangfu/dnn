@@ -46,6 +46,7 @@
 
 #include "cxcore.h"
 #include "list.h"
+#include "layers.h"
 
 #include <limits.h>
 
@@ -66,19 +67,6 @@
 
 #define CV_IS_ROW_SAMPLE(flags) ((flags) & CV_ROW_SAMPLE)
 
-// struct CvVectors
-// {
-//     int type;
-//     int dims, count;
-//     CvVectors* next;
-//     union
-//     {
-//         uchar** ptr;
-//         float** fl;
-//         double** db;
-//     } data;
-// };
-
 /* Variable type */
 #define CV_VAR_NUMERICAL    0
 #define CV_VAR_ORDERED      0
@@ -86,39 +74,15 @@
 
 #define CV_TYPE_NAME_ML_CNN         "opencv-ml-cnn"
 
-// class CV_EXPORTS CvStatModel
-// {
-// public:
-//     CvStatModel();
-//     virtual ~CvStatModel();
-//     virtual void clear();
-//     virtual void save( const char* filename, const char* name=0 );
-//     virtual void load( const char* filename, const char* name=0 );
-//     virtual void write( CvFileStorage* storage, const char* name );
-//     virtual void read( CvFileStorage* storage, CvFileNode* node );
-// protected:
-//     const char* default_model_name;
-// };
-
 #if 1
 #define CV_STAT_MODEL_MAGIC_VAL 0x77770000 //added by lxts
 #define CV_CNN_MAGIC_VAL 0x00008888 //added by lxts
 /****************************************************************************************\
 *                            Convolutional Neural Network                                *
 \****************************************************************************************/
-typedef struct CvCNNLayer CvCNNLayer;
 typedef struct CvCNNetwork CvCNNetwork;
 
 #define CV_CNN_NONE          0
-
-// #define CV_CNN_LOGISTIC      1
-// #define CV_CNN_HYPERBOLIC    2
-// #define CV_CNN_RELU          3
-// #define CV_CNN_SOFTMAX       4
-
-#define CV_CNN_LEARN_RATE_DECREASE_HYPERBOLICALLY  1
-#define CV_CNN_LEARN_RATE_DECREASE_SQRT_INV        2
-#define CV_CNN_LEARN_RATE_DECREASE_LOG_INV         3
 
 #define CV_CNN_DELTA_W_INCREASE_FIRSTORDER  0
 #define CV_CNN_DELTA_W_INCREASE_LM        1
@@ -126,119 +90,9 @@ typedef struct CvCNNetwork CvCNNetwork;
 #define CV_CNN_GRAD_ESTIM_RANDOM        0
 #define CV_CNN_GRAD_ESTIM_BY_WORST_IMG  1
 
-#define ICV_CNN_LAYER                0x55550000
-#define ICV_CNN_INPUTDATA_LAYER      0x00001111
-#define ICV_CNN_CONVOLUTION_LAYER    0x00002222
-#define ICV_CNN_SUBSAMPLING_LAYER    0x00003333
-#define ICV_CNN_FULLCONNECT_LAYER    0x00004444
-#define ICV_CNN_IMGCROPPING_LAYER    0x00005555
-#define ICV_CNN_RECURRENTNN_LAYER    0x00006666
-#define ICV_CNN_MULTITARGET_LAYER    0x00007777
-#define ICV_CNN_LSTM_LAYER           0x00008888
-
-#define CV_IS_CNN(cnn)                                                     \
-	( (cnn)!=NULL )
-
-#define ICV_IS_CNN_LAYER( layer )                                          \
-    ( ((layer) != NULL) && ((((CvCNNLayer*)(layer))->flags & CV_MAGIC_MASK)\
-        == ICV_CNN_LAYER ))
-
-#define ICV_IS_CNN_CONVOLUTION_LAYER( layer )                              \
-    ( (ICV_IS_CNN_LAYER( layer )) && (((CvCNNLayer*) (layer))->flags       \
-        & ~CV_MAGIC_MASK) == ICV_CNN_CONVOLUTION_LAYER )
-
-#define ICV_IS_CNN_SUBSAMPLING_LAYER( layer )                              \
-    ( (ICV_IS_CNN_LAYER( layer )) && (((CvCNNLayer*) (layer))->flags       \
-        & ~CV_MAGIC_MASK) == ICV_CNN_SUBSAMPLING_LAYER )
-
-#define ICV_IS_CNN_FULLCONNECT_LAYER( layer )                              \
-    ( (ICV_IS_CNN_LAYER( layer )) && (((CvCNNLayer*) (layer))->flags       \
-        & ~CV_MAGIC_MASK) == ICV_CNN_FULLCONNECT_LAYER )
-
-#define ICV_IS_CNN_IMGCROPPING_LAYER( layer )                              \
-    ( (ICV_IS_CNN_LAYER( layer )) && (((CvCNNLayer*) (layer))->flags       \
-        & ~CV_MAGIC_MASK) == ICV_CNN_IMGCROPPING_LAYER )
-
-#define ICV_IS_CNN_RECURRENTNN_LAYER( layer )                              \
-    ( (ICV_IS_CNN_LAYER( layer )) && (((CvCNNLayer*) (layer))->flags       \
-        & ~CV_MAGIC_MASK) == ICV_CNN_RECURRENTNN_LAYER )
-
-#define ICV_IS_CNN_MULTITARGET_LAYER( layer )                              \
-    ( (ICV_IS_CNN_LAYER( layer )) && (((CvCNNLayer*) (layer))->flags       \
-        & ~CV_MAGIC_MASK) == ICV_CNN_MULTITARGET_LAYER )
-
-#define ICV_IS_CNN_INPUTDATA_LAYER( layer )                                \
-    ( (ICV_IS_CNN_LAYER( layer )) && (((CvCNNLayer*) (layer))->flags       \
-        & ~CV_MAGIC_MASK) == ICV_CNN_INPUTDATA_LAYER )
-
-typedef void (CV_CDECL *CvCNNLayerForward)
-    ( CvCNNLayer* layer, const CvMat* input, CvMat* output );
-typedef void (CV_CDECL *CvCNNLayerBackward)
-    ( CvCNNLayer* layer, int t, const CvMat* X, const CvMat* dE_dY, CvMat* dE_dX);
-typedef void (CV_CDECL *CvCNNLayerRelease)(CvCNNLayer** layer);
-
 typedef void (CV_CDECL *CvCNNetworkAddLayer)(CvCNNetwork* network, CvCNNLayer* layer);
 typedef CvCNNLayer* (CV_CDECL *CvCNNetworkGetLayer)(CvCNNetwork* network, const char * name);
 typedef void (CV_CDECL *CvCNNetworkRelease)(CvCNNetwork** network);
-
-#define CV_CNN_LAYER_FIELDS()           \
-    /* Indicator of the layer's type */ \
-    int flags;                          \
-    /* the layer's data type, either CV_32F or CV_64F */              \
-    int dtype;                                                        \
-    /* Name of the layer, which should be unique within the network*/ \
-    char name[20];                                                    \
-                                                                      \
-    /* Number of input images */        \
-    int n_input_planes;                 \
-    /* Height of each input image */    \
-    int input_height;                   \
-    /* Width of each input image */     \
-    int input_width;                    \
-                                        \
-    /* Number of output images */               \
-    int n_output_planes;                        \
-    /* Height of each output image */           \
-    int output_height;                          \
-    /* Width of each output image */            \
-    int output_width;                           \
-                                                \
-    /* Learning rate at the first iteration */                         \
-    float init_learn_rate;                                             \
-    /* Dynamics of learning rate decreasing */                         \
-    int decay_type;                                                    \
-    /* Dynamics of DELTAw increasing */                                \
-    int delta_w_increase_type;                                         \
-    /* samples used in training */                                     \
-    int nsamples;                                                      \
-    /* max iterations in training */                                   \
-    int max_iter;                                                      \
-    /* Trainable weights of the layer (including bias) */              \
-    /* i-th row is a set of weights of the i-th output plane */        \
-    CvMat* weights;                                                    \
-    /* Weights matrix from backward pass, for gradient checking */     \
-    CvMat * dE_dW;                                                     \
-    /* output states, default size: (n_output_planes, batch_size) */   \
-    CvMat * Y;                                                         \
-                                                                       \
-    CvCNNLayerForward  forward;                                        \
-    CvCNNLayerBackward backward;                                       \
-    CvCNNLayerRelease  release;                                        \
-    /* Pointers to the previous and next layers in the network */      \
-    CvCNNLayer* prev_layer;                                            \
-    CvCNNLayer* next_layer;                                            \
-    /* Pointers to input/output layer, instead of using prev_layer */  \
-    List<CvCNNLayer*> input_layers;                                    \
-    List<CvCNNLayer*> output_layers;                                   \
-    /* Used in backward pass, in case input_layer is given */          \
-    CvMat * dE_dX;                                                     \
-                                                                       \
-    int visualize
-
-typedef struct CvCNNLayer
-{
-    CV_CNN_LAYER_FIELDS();
-}CvCNNLayer;
 
 // #define CV_STAT_MODEL_PARAM_FIELDS() int flags
 
@@ -247,115 +101,6 @@ typedef struct CvStatModelParams
   // CV_STAT_MODEL_PARAM_FIELDS();
   int flags;
 } CvStatModelParams;
-
-typedef struct CvCNNConvolutionLayer
-{
-    CV_CNN_LAYER_FIELDS();
-    // Kernel size (height and width) for convolution.
-    int K;
-    CvMat * WX;//for simard method
-    // (x1+x2+x3+x4), where x1,...x4 are some elements of X
-    // - is the vector used in computing of the activation function in backward
-    CvMat * sumX;//for simard method
-    // connections matrix, (i,j)-th element is 1 iff there is a connection between
-    // i-th plane of the current layer and j-th plane of the previous layer;
-    // (i,j)-th element is equal to 0 otherwise
-    CvMat * connect_mask;
-    // value of the learning rate for updating weights at the first iteration
-}CvCNNConvolutionLayer;
-
-typedef struct CvCNNSubSamplingLayer
-{
-    CV_CNN_LAYER_FIELDS();
-    // ratio between the heights (or widths - ratios are supposed to be equal)
-    // of the input and output planes
-    int sub_samp_scale;
-    CvMat * WX;
-    // (x1+x2+x3+x4), where x1,...x4 are some elements of X
-    // - is the vector used in computing of the activation function in backward
-    CvMat * sumX;
-    // location where max pooling values are taken from
-    CvMat * mask;
-}CvCNNSubSamplingLayer;
-
-// Structure of the last layer.
-typedef struct CvCNNFullConnectLayer
-{
-  CV_CNN_LAYER_FIELDS();
-  // WX = (W*X) - is the vector used in computing of the 
-  // activation function and it's derivative by the formulae
-  CvMat * WX;
-  // activation function type,
-  // either CV_CNN_LOGISTIC,CV_CNN_HYPERBOLIC,CV_CNN_RELU or CV_CNN_NONE
-  char activation_type[20];
-}CvCNNFullConnectLayer;
-
-typedef struct CvCNNImgCroppingLayer
-{
-  CV_CNN_LAYER_FIELDS();
-  // crop specified time index for next layer
-  int time_index;
-}CvCNNImgCroppingLayer;
-
-typedef struct CvCNNRecurrentLayer
-{
-  CV_CNN_LAYER_FIELDS();
-  // reference layer
-  CvCNNLayer * hidden_layer;
-  // current time index used for training the testing, via step by step approach
-  int time_index;
-  // sequence length, for attention model: n_glimpses*n_targets
-  int seq_length;
-  // number of hidden layers within RNN model, default: exp((log(n_inputs)+log(n_outputs))*.5f)
-  int n_hiddens;
-  // weight matrix for input data, default size: (n_hiddens, n_inputs)
-  CvMat * Wxh;
-  // weight matrix with bias for hidden data, default size: (n_hiddens, n_hiddens+1)
-  CvMat * Whh;
-  // weight matrix with bias for generating output data, default size: (n_outputs, n_hiddens+1)
-  CvMat * Why;
-  // activation function type for hidden layer activation, 
-  // either CV_CNN_LOGISTIC, CV_CNN_HYPERBOLIC, CV_CNN_RELU or CV_CNN_NONE
-  char activation_type[20];
-  // -------------------------------------------------------
-  // VARIABLES REQUIRED FOR COMPUTING FORWARD & BACKWARD PASS
-  // -------------------------------------------------------
-  // gradient in complete sequence, default size: (n_output_planes, batch_size)
-  CvMat * dE_dY;                                                     
-  // hidden states, default size: (n_hiddens*batch_size, seq_length)
-  CvMat * H;
-  // input states to hidden states, WX = Wxh*X + Whh*H_prev + bh
-  CvMat * WX;
-  // hidden states to output states, WH = Why*H_curr + by
-  CvMat * WH;
-  // accumulated loss for output state loss in complete sequence, loss = \sum_t^T(Y-target)
-  double loss;
-  // hidden states gradient, size is same as hidden states: (n_hiddens*batch_size, seq_length)
-  CvMat * dH;
-  // weight updates
-  CvMat * dWxh, * dWhh, * dWhy;
-}CvCNNRecurrentLayer;
-
-typedef struct CvCNNInputDataLayer
-{
-  // shape of the data are available in common `layer fields`
-  CV_CNN_LAYER_FIELDS();
-  // the sequential length of input data
-  int seq_length;
-  // original input data, default size: 
-  //          (n_input_planes*n_input_width*n_input_height*seq_length, nsamples)
-  CvMat * input_data;
-  // original response matrix, default size:
-  //          (1, nsamples)
-  CvMat * response;
-}CvCNNInputDataLayer;
-
-typedef struct CvCNNMultiTargetLayer
-{
-  CV_CNN_LAYER_FIELDS();
-  // CvCNNLayer ** input_layers;
-  // int n_input_layers;
-}CvCNNMultiTargetLayer;
 
 typedef CvCNNetwork * (CV_CDECL *CvCNNetworkRead)( CvFileStorage * fs);
 typedef void (CV_CDECL *CvCNNetworkWrite)( CvCNNetwork *, CvFileStorage * fs);
@@ -413,56 +158,6 @@ typedef struct CvCNNStatModel
   CvMat* cls_labels;
 }CvCNNStatModel;
 
-/*------------------------ activation functions -----------------------*/
-CVAPI(void) cvTanh(CvMat * src, CvMat * dst);
-CVAPI(void) cvTanhDer(CvMat * src, CvMat * dst);
-CVAPI(void) cvSigmoid(CvMat * src, CvMat * dst);
-CVAPI(void) cvSigmoidDer(CvMat * src, CvMat * dst);
-CVAPI(void) cvReLU(CvMat * src, CvMat * dst);
-CVAPI(void) cvReLUDer(CvMat * src, CvMat * dst);
-CVAPI(void) cvSoftmax(CvMat * src, CvMat * dst);
-CVAPI(void) cvSoftmaxDer(CvMat * X, CvMat * dE_dY, CvMat * dE_dY_afder);
-
-CVAPI(CvCNNLayer*) cvCreateCNNConvolutionLayer( 
-    const int dtype, const char * name, const int visualize, const CvCNNLayer * input_layer, 
-    int n_input_planes, int input_height, int input_width, int n_output_planes, int K,
-    float init_learn_rate, int learn_rate_decrease_type,
-    CvMat* connect_mask, CvMat* weights );
-
-CVAPI(CvCNNLayer*) cvCreateCNNSubSamplingLayer( 
-    const int dtype, const char * name, const int visualize,
-    int n_input_planes, int input_height, int input_width,
-    int sub_samp_scale, 
-    float init_learn_rate, int learn_rate_decrease_type, CvMat* weights );
-
-CVAPI(CvCNNLayer*) cvCreateCNNFullConnectLayer( 
-    const int dtype, const char * name, const int visualize,
-    const CvCNNLayer * input_layer, int n_inputs, int n_outputs, 
-    float init_learn_rate, int learn_rate_decrease_type, const char * activation_type,
-    CvMat * weights );
-
-CVAPI(CvCNNLayer*) cvCreateCNNImgCroppingLayer( 
-    const int dtype, const char * name, const int visualize, 
-    const CvCNNLayer * input_layer,
-    int n_output_planes, int output_height, int output_width, int time_index,
-    float init_learn_rate, int update_rule);
-
-CVAPI(CvCNNLayer*) cvCreateCNNRecurrentLayer( 
-    const int dtype, const char * name, const CvCNNLayer * hidden_layer, 
-    int n_inputs, int n_outputs, int n_hiddens, int seq_length, int time_index, 
-    float init_learn_rate, int update_rule, const char * activation_type, 
-    CvMat * Wxh, CvMat * Whh, CvMat * Why );
-
-CVAPI(CvCNNLayer*) cvCreateCNNInputDataLayer( 
-    const int dtype, const char * name, 
-    int n_inputs, int input_height, int input_width, int seq_length,
-    float init_learn_rate, int update_rule);
-
-CVAPI(CvCNNLayer*) cvCreateCNNMultiTargetLayer( 
-    const int dtype, const char * name, const int visualize,
-    int n_input_layers, CvCNNLayer ** input_layers, int outputs,
-    float init_learn_rate, int update_rule);
-
 CVAPI(CvCNNetwork*) cvCreateCNNetwork( CvCNNLayer* first_layer );
 
 CVAPI(CvCNNStatModel*) cvTrainCNNClassifier(
@@ -482,29 +177,6 @@ CVAPI(CvCNNLayer*) cvGetCNNLastLayer(CvCNNetwork * network);
 /****************************************************************************************\
 *                               Estimate classifiers algorithms                          *
 \****************************************************************************************/
-// typedef const CvMat* (CV_CDECL *CvStatModelEstimateGetMat)
-//                     ( const CvStatModel* estimateModel );
-
-// typedef int (CV_CDECL *CvStatModelEstimateNextStep)
-//                     ( CvStatModel* estimateModel );
-
-// typedef void (CV_CDECL *CvStatModelEstimateCheckClassifier)
-//                     ( CvStatModel* estimateModel,
-//                 const CvStatModel* model, 
-//                 const CvMat*       features, 
-//                       int          sample_t_flag,
-//                 const CvMat*       responses );
-
-// typedef void (CV_CDECL *CvStatModelEstimateCheckClassifierEasy)
-//                     ( CvStatModel* estimateModel,
-//                 const CvStatModel* model );
-
-// typedef float (CV_CDECL *CvStatModelEstimateGetCurrentResult)
-//                     ( const CvStatModel* estimateModel,
-//                             float*       correlation );
-
-// typedef void (CV_CDECL *CvStatModelEstimateReset)
-//                     ( CvStatModel* estimateModel );
 
 CVAPI(CvCNNStatModel*) cvCreateCNNStatModel(int flag, int size);
 
