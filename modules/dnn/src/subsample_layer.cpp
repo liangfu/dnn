@@ -34,7 +34,7 @@ static void icvCNNImgCroppingBackward( CvCNNLayer* layer, int t, const CvMat*, c
 CvCNNLayer * cvCreateCNNImgCroppingLayer( 
     const int dtype, const char * name, const int visualize, 
     const CvCNNLayer * _image_layer,
-    int n_output_planes, int output_height, int output_width, int time_index,
+    int n_output_planes, int output_height, int output_width, int seq_length, int time_index,
     float init_learn_rate, int update_rule
 )
 {
@@ -61,6 +61,7 @@ CvCNNLayer * cvCreateCNNImgCroppingLayer(
       icvCNNImgCroppingRelease, icvCNNImgCroppingForward, icvCNNImgCroppingBackward ));
 
   layer->input_layers.push_back((CvCNNLayer*)_image_layer);
+  layer->seq_length = seq_length;
   layer->time_index = time_index;
   layer->visualize = visualize;
 
@@ -83,17 +84,30 @@ static void icvCNNImgCroppingForward( CvCNNLayer * _layer, const CvMat* X, CvMat
   const CvCNNInputDataLayer * input_layer = 
     (CvCNNInputDataLayer*)(layer->input_layers.size()>0?layer->input_layers[0]:0);
   const int time_index = layer->time_index;
-  const int seq_length = input_layer->seq_length;
+  const int input_seqlen = input_layer->seq_length;
   const int input_height = layer->input_height;
   const int input_width = layer->input_width;
   const int n_outputs = Y->rows;
+  const int output_seqlen = layer->seq_length;
   const int output_height = layer->output_height;
   const int output_width = layer->output_width;
   CV_ASSERT(Y->rows==layer->n_output_planes*layer->output_height*layer->output_width);
   CV_ASSERT(X->cols==Y->cols); // batch_size
   CvMat * input_data = input_layer->input_data;
   CV_ASSERT(CV_MAT_TYPE(input_data->type)==CV_32F);
-  if (output_height==output_width && output_height>1 && output_width>1){ // image processing
+  if (input_seqlen>output_seqlen){ // temporal sampling
+    if (output_height==output_width && output_height>1 && output_width>1){ // image processing
+      CvMat input_data_submat;
+      CvMat input_data_hdr = cvMat(input_seqlen,n_outputs,CV_32F,input_data->data.ptr);
+      cvGetRow(&input_data_hdr,&input_data_submat,time_index);
+      cvTranspose(&input_data_submat,Y);
+    }else{
+      CvMat input_data_submat;
+      CvMat input_data_hdr = cvMat(n_outputs,input_seqlen,CV_32F,input_data->data.ptr);
+      cvGetCol(&input_data_hdr,&input_data_submat,time_index);
+      cvCopy(&input_data_submat,Y);
+    }
+  }else if (output_height==output_width && output_height>1 && output_width>1){ // image processing
     CvMat * I = input_data;
     CvMat * p = cvCreateMat(2,3,CV_32F); cvZero(p);
     if (X->rows==2){ CV_ASSERT(X->cols==1); // crop only
@@ -121,11 +135,8 @@ static void icvCNNImgCroppingForward( CvCNNLayer * _layer, const CvMat* X, CvMat
       icvWarp(&srchdr,&dsthdr,p); // CV_SHOW(&srchdr); CV_SHOW(&dsthdr);
     }
     cvReleaseMat(&p);
-  }else{ // temporal sampling
-    CvMat input_data_submat;
-    CvMat input_data_hdr = cvMat(n_outputs,seq_length,CV_32F,input_data->data.ptr);
-    cvGetCol(&input_data_hdr,&input_data_submat,time_index);
-    cvCopy(&input_data_submat,Y);
+  }else{
+    CV_Error(CV_StsBadArg,"invalid layer definition.");
   }
   if (layer->Y){cvCopy(Y,layer->Y);}else{layer->Y=cvCloneMat(Y);}
   if (layer->visualize){ icvVisualizeCNNLayer((CvCNNLayer*)layer, Y); }

@@ -52,14 +52,10 @@
 // #include "cvext.h"
 // #include "_dnn.h"
 
-// sigmoid function
-// #define SIG(p) (1.7159*tanh(0.66666667*p))
-// derivative of the sigmoid
-// #define DSIG(p) (0.66666667/1.7159*(1.7159+(p))*(1.7159-(p)))  
-
 /*************************************************************************\
  *               Auxilary functions declarations                         *
 \*************************************************************************/
+
 /*------------ functions for the CNN classifier --------------------*/
 static float icvCNNModelPredict(
         const CvCNNStatModel* cnn_model,
@@ -87,7 +83,6 @@ static void icvCNNetworkWrite( CvCNNetwork * struct_ptr, CvFileStorage * fs );
    length(X)==<n_input_planes>*<input_height>*<input_width>,
    length(Y)==<n_output_planes>*<output_height>*<output_width>.
 */
-// static void icvVisualizeCNNLayer(CvCNNLayer * layer, const CvMat * Y);
 
 /*--------------------------- utility functions -----------------------*/
 static float icvEvalAccuracy(CvCNNLayer * last_layer, CvMat * result, CvMat * expected);
@@ -292,7 +287,13 @@ static void icvTrainCNNetwork( CvCNNetwork* network,const CvMat* images, const C
   for ( k = 0, layer = first_layer; k < n_layers; k++, layer = layer->next_layer ){
     int n_outputs = // ICV_IS_CNN_RECURRENTNN_LAYER(layer)?layer->n_input_planes:
       layer->n_output_planes*layer->output_height*layer->output_width;
-    if (icvIsCNNRecurrentNNLayer(layer)){
+    if (icvIsCNNInputDataLayer(layer)){
+      CvCNNInputDataLayer * id_layer = (CvCNNInputDataLayer*)layer;
+      if (seq_length>1 && img_size!=images->cols){
+        CV_ASSERT(img_size==images->cols*seq_length); // continuous sequence sampling
+        n_outputs = img_size;
+      }
+    }else if (icvIsCNNRecurrentNNLayer(layer)){
       CvCNNRecurrentLayer * rnn_layer = (CvCNNRecurrentLayer*)layer;
       if (rnn_layer->time_index==rnn_layer->seq_length-1){
         n_outputs = rnn_layer->seq_length*rnn_layer->n_output_planes;
@@ -308,54 +309,39 @@ static void icvTrainCNNetwork( CvCNNetwork* network,const CvMat* images, const C
     int i;
     int nclasses = X[n_layers]->rows;
     CvMat * worst_img_idx = cvCreateMat(batch_size,1,CV_32S);
-    int* right_etal_idx = responses->data.i;
+    int * right_etal_idx = responses->data.i;
     CvMat * etalon = cvCreateMat(batch_size,nclasses,CV_32F);
 
     // Use the random image
-    cvRandArr(&rng,worst_img_idx,CV_RAND_UNI,cvScalar(0),cvScalar(n_images-1));
+    if (seq_length>1 && img_size!=images->cols){
+      cvRandArr(&rng,worst_img_idx,CV_RAND_UNI,cvScalar(0),cvScalar(n_images-(seq_length-1)-1));
+    }else{
+      cvRandArr(&rng,worst_img_idx,CV_RAND_UNI,cvScalar(0),cvScalar(n_images-1));
+    }
 
     // 1) Compute the network output on the <X0_transpose>
     CV_ASSERT(CV_MAT_TYPE(X0_transpose->type)==CV_32F && CV_MAT_TYPE(images->type)==CV_32F);
-    for ( k = 0; k < batch_size; k++ ){
-      memcpy(X0_transpose->data.fl+img_size*k,
-             images->data.fl+images->cols*worst_img_idx->data.i[k],
-             sizeof(float)*img_size);
+    CV_ASSERT(img_size==X0_transpose->cols);
+    if (seq_length>1 && img_size!=images->cols){
+      CV_ASSERT(img_size==images->cols*seq_length); // continuous sequence sampling
+      for ( k = 0; k < batch_size; k++ ){
+        memcpy(X0_transpose->data.fl+img_size*k,
+               images->data.fl+img_size*worst_img_idx->data.i[k],sizeof(float)*img_size);
+      }
+    }else{
+      CV_ASSERT(img_size==images->cols);
+      for ( k = 0; k < batch_size; k++ ){
+        memcpy(X0_transpose->data.fl+img_size*k,
+               images->data.fl+img_size*worst_img_idx->data.i[k],sizeof(float)*img_size);
+      }
     }
     CV_CALL(cvTranspose( X0_transpose, X[0] ));
 
-    for ( k = 0, layer = first_layer; k < n_layers - 1; k++, layer = layer->next_layer )
-#if 1
-    { CV_CALL(layer->forward( layer, X[k], X[k+1] )); 
+    // Perform prediction with current weight parameters
+    for ( k = 0, layer = first_layer; k < n_layers - 1; k++, layer = layer->next_layer ){
+      CV_CALL(layer->forward( layer, X[k], X[k+1] )); 
     }
     CV_CALL(layer->forward( layer, X[k], X[k+1] ));
-#else
-    { CV_CALL(layer->forward( layer, X[k], X[k+1] ));
-      if (ICV_IS_CNN_RECURRENTNN_LAYER(layer) && n==max_iter){
-        CvCNNLayer * hidden_layer = ((CvCNNRecurrentLayer*)layer)->hidden_layer;
-        CvMat * Y = hidden_layer?((CvCNNRecurrentLayer*)hidden_layer)->Y:
-                                 ((CvCNNRecurrentLayer*)layer)->Y;
-        cvPrintf(stderr,"%.2f ", Y); // CV_SHOW(Y);
-      }else if (!ICV_IS_CNN_IMGCROPPING_LAYER(layer) && n==max_iter){
-        icvVisualizeCNNLayer(layer, X[k+1]);
-      }
-    }
-    CV_CALL(layer->forward( layer, X[k], X[k+1] ));
-    if (ICV_IS_CNN_RECURRENTNN_LAYER(layer) && n==max_iter){
-      CvCNNLayer * hidden_layer = ((CvCNNRecurrentLayer*)layer)->hidden_layer;
-      CvMat * Y = hidden_layer?
-        ((CvCNNRecurrentLayer*)hidden_layer)->Y:((CvCNNRecurrentLayer*)layer)->Y;
-      CvMat X0_reshaped = cvMat(X0_transpose->cols/first_layer->input_height,
-                                first_layer->input_height,CV_32F,X0_transpose->data.ptr);
-      CvMat * Y_transpose = cvCreateMat(Y->cols,Y->rows,CV_32F);
-      cvTranspose(Y,Y_transpose);
-      CV_ASSERT(X0_reshaped.rows*X0_reshaped.cols==X0_transpose->rows*X0_transpose->cols);
-      fprintf(stderr,"input: \n");cvPrintf(stderr,"%.0f ", &X0_reshaped);
-      fprintf(stderr,"output: \n");cvPrintf(stderr,"%.2f ", Y_transpose); // CV_SHOW(Y);
-      cvReleaseMat(&Y_transpose);
-    }else if (!ICV_IS_CNN_IMGCROPPING_LAYER(layer) && n==max_iter){
-      icvVisualizeCNNLayer(layer, X[k+1]);fprintf(stderr,"\n");
-    }
-#endif
 
     // 2) Compute the gradient
     CvMat etalon_src, etalon_dst;
@@ -374,17 +360,9 @@ static void icvTrainCNNetwork( CvCNNetwork* network,const CvMat* images, const C
     cvSub( dE_dX[n_layers], etalon, dE_dX[n_layers] );
 
     // 3) Update weights by the gradient descent
-    for ( k = n_layers; k > 0; k--, layer = layer->prev_layer )
-#if 1
-    { CV_CALL(layer->backward( layer, n + start_iter, X[k-1], dE_dX[k], dE_dX[k-1] ));}
-#else
-    { CV_CALL(layer->backward( layer, n + start_iter, X[k-1], dE_dX[k], dE_dX[k-1] ));
-      CvMat * dE_dX_T = cvCreateMat(dE_dX[k]->cols,dE_dX[k]->rows,CV_32F);
-      cvTranspose(dE_dX[k],dE_dX_T);
-      icvVisualizeCNNLayer(layer, dE_dX_T);
-      cvReleaseMat(&dE_dX_T);
-    }fprintf(stderr,"\n");
-#endif
+    for ( k = n_layers; k > 0; k--, layer = layer->prev_layer ){
+      CV_CALL(layer->backward( layer, n + start_iter, X[k-1], dE_dX[k], dE_dX[k-1] ));
+    }
 
 #if 1        
     // print progress
@@ -869,24 +847,6 @@ void icvVisualizeCNNLayer(CvCNNLayer * layer, const CvMat * Y)
 }
 
 
-
-
-/*************************************************************************\
- *                 Layer FORWARD functions                               *
-\*************************************************************************/
-/**************************************************************************/
-
-
-
-/*************************************************************************\
-*                           Layer BACKWARD functions                      *
-\*************************************************************************/
-
-
-/****************************************************************************************/
-
-
-
 /*************************************************************************\
  *                           Utility functions                           *
 \*************************************************************************/
@@ -943,14 +903,6 @@ void cvTanhDer(CvMat * src, CvMat * dst) {
   __CV_END__
 }
   
-/*************************************************************************\
-*                           Layer RELEASE functions                       *
-\*************************************************************************/
-
-/****************************************************************************************/
-
-
-
 /****************************************************************************************\
 *                              Read/Write CNN classifier                                *
 \****************************************************************************************/

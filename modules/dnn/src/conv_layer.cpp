@@ -158,7 +158,8 @@ void icvCNNConvolutionForward( CvCNNLayer* _layer, const CvMat* X, CvMat* Y )
     cvSubS(&img,avg,&img);
     cvScale(&img,&img,.5f/sdv.val[0]);
   }
-  }    
+  }
+  CV_ASSERT(layer->weights);
   
   // for ( no = 0; no < nYplanes; no++, Yplane += Ysize, w += n_weights_for_Yplane ){
 #pragma omp parallel for

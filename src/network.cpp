@@ -69,6 +69,12 @@ void CvNetwork::loadModel(string inFile)
           predefined_layer->n_input_planes, predefined_layer->n_output_planes, 
           recurrent_layer->n_hiddens, recurrent_layer->seq_length, time_index, lr_init, decay_type, 
           recurrent_layer->activation_type, NULL, NULL, NULL );
+        if (((CvCNNRecurrentLayer*)layer)->Wxh){
+          cvReleaseMat(&((CvCNNRecurrentLayer*)layer)->Wxh);((CvCNNRecurrentLayer*)layer)->Wxh=0;}
+        if (((CvCNNRecurrentLayer*)layer)->Whh){
+          cvReleaseMat(&((CvCNNRecurrentLayer*)layer)->Whh);((CvCNNRecurrentLayer*)layer)->Whh=0;}
+        if (((CvCNNRecurrentLayer*)layer)->Why){
+          cvReleaseMat(&((CvCNNRecurrentLayer*)layer)->Why);((CvCNNRecurrentLayer*)layer)->Why=0;}
       }else if (icvIsCNNImgCroppingLayer(predefined_layer)){
         int time_index = cvReadIntByName(fs,node,"time_index",0);
         CvCNNImgCroppingLayer * this_layer = (CvCNNImgCroppingLayer*)predefined_layer;
@@ -76,7 +82,7 @@ void CvNetwork::loadModel(string inFile)
         layer = cvCreateCNNImgCroppingLayer( 
           this_layer->dtype, this_layer->name, this_layer->visualize, input_layer, 
           this_layer->n_output_planes, this_layer->output_height, this_layer->output_width, 
-          time_index, this_layer->init_learn_rate, this_layer->decay_type );
+          this_layer->seq_length, time_index, this_layer->init_learn_rate, this_layer->decay_type );
       }else if (icvIsCNNFullConnectLayer(predefined_layer)){
         CvCNNFullConnectLayer * this_layer = (CvCNNFullConnectLayer*)predefined_layer;
         layer = cvCreateCNNFullConnectLayer( 
@@ -101,6 +107,8 @@ void CvNetwork::loadModel(string inFile)
       }else{
         assert(false);
       }
+      // release weights matrix, use the one on predefined layer instead.
+      if (layer->weights){cvReleaseMat(&layer->weights);layer->weights=0;}
       n_input_planes = layer->n_output_planes; 
       input_height = layer->output_height; 
       input_width = layer->output_width;
@@ -158,9 +166,10 @@ void CvNetwork::loadModel(string inFile)
       n_output_planes = cvReadIntByName(fs,node,"n_output_planes",1);
       output_height = cvReadIntByName(fs,node,"output_height",output_height);
       output_width = cvReadIntByName(fs,node,"output_width",output_width);
+      const int seq_length = cvReadIntByName(fs,node,"seq_length",1);
       const int time_index = cvReadIntByName(fs,node,"time_index",0);
       layer = cvCreateCNNImgCroppingLayer( dtype, name, visualize, input_layer, 
-        n_output_planes, output_height, output_width, time_index, 
+        n_output_planes, output_height, output_width, seq_length, time_index, 
         lr_init, decay_type );
       n_input_planes = n_output_planes; // input_height = 1; input_width = 1;
       input_height = output_height; input_width = output_width;
