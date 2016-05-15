@@ -204,6 +204,8 @@ void icvCNNRecurrentForward( CvCNNLayer* _layer, const CvMat* X, CvMat * Y)
   if (WH){cvReleaseMat(&WH);WH=0;}
   if (H_prev){cvReleaseMat(&H_prev);H_prev=0;}
   if (H_curr){cvReleaseMat(&H_curr);H_curr=0;}
+  if (WX_curr){cvReleaseMat(&WX_curr);WX_curr=0;}
+  if (WH_curr){cvReleaseMat(&WH_curr);WH_curr=0;}
   if (hbias){cvReleaseMat(&hbias);hbias=0;}
   if (ybias){cvReleaseMat(&ybias);ybias=0;}
 
@@ -224,8 +226,6 @@ void icvCNNRecurrentForward( CvCNNLayer* _layer, const CvMat* X, CvMat * Y)
 void icvCNNRecurrentBackward( CvCNNLayer* _layer, int t,
                                      const CvMat * X, const CvMat * dE_dY, CvMat * dE_dX )
 {
-  CvMat * dE_dY_afder = 0;
-  CvMat * dE_dWxh = 0, * dE_dWhh = 0, * dE_dWhy = 0;
   CV_FUNCNAME( "icvCNNRecurrentBackward" );
   if ( !icvIsCNNRecurrentNNLayer(_layer) ) { CV_ERROR( CV_StsBadArg, "Invalid layer" ); }
 
@@ -254,6 +254,7 @@ void icvCNNRecurrentBackward( CvCNNLayer* _layer, int t,
   int n_outputs = layer->n_output_planes;
   int n_hiddens = layer->n_hiddens;
   int batch_size = X->cols;
+  CvMat * dE_dY_afder = 0;
   CvMat * WX = 0, * WH = 0, * H_prev = 0, * H_curr = 0, * WX_curr = 0, * WH_curr = 0;
   CvMat * dE_dY_curr = 0, * dH_curr = 0, * dH_next = 0, * dH_raw = 0, 
         * dWxh = 0, * dWhh = 0, * dWhy = 0;
@@ -396,12 +397,22 @@ void icvCNNRecurrentBackward( CvCNNLayer* _layer, int t,
     }
   }
 
-  __END__;
+  if (WX){cvReleaseMat(&WX);WX=0;}
+  if (WH){cvReleaseMat(&WH);WH=0;}
+  if (H_prev){cvReleaseMat(&H_prev);H_prev=0;}
+  if (H_curr){cvReleaseMat(&H_curr);H_curr=0;}
+  if (WX_curr){cvReleaseMat(&WX_curr);WX_curr=0;}
+  if (WH_curr){cvReleaseMat(&WH_curr);WH_curr=0;}
+  if (dE_dY_curr){cvReleaseMat(&dE_dY_curr);dE_dY_curr=0;}
+  if (dE_dY_afder){cvReleaseMat(&dE_dY_afder);dE_dY_afder=0;}
+  if (dH_curr){cvReleaseMat(&dH_curr);dH_curr=0;}
+  if (dH_next){cvReleaseMat(&dH_next);dH_next=0;}
+  if (dH_raw ){cvReleaseMat(&dH_raw );dH_raw =0;}
+  if (dWxh){cvReleaseMat(&dWxh);dWxh=0;}
+  if (dWhh){cvReleaseMat(&dWhh);dWhh=0;}
+  if (dWhy){cvReleaseMat(&dWhy);dWhy=0;}
 
-  if (dE_dWxh) { cvReleaseMat( &dE_dWxh ); dE_dWxh=0; }
-  if (dE_dWhh) { cvReleaseMat( &dE_dWhh ); dE_dWhh=0; }
-  if (dE_dWhy) { cvReleaseMat( &dE_dWhy ); dE_dWhy=0; }
-  if (dE_dY_afder) { cvReleaseMat( &dE_dY_afder ); dE_dY_afder=0; }
+  __END__;
 }
 
 
