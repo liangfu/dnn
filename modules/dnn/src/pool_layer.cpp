@@ -146,7 +146,7 @@ void icvCNNSubSamplingForward( CvCNNLayer* _layer, const CvMat* X, CvMat* Y )
   for ( ni = 0; ni < nplanes; ni++ ){
     for ( yy = 0; yy < Yheight; yy++ ){
     for ( xx = 0; xx < Ywidth; xx++ ){
-      float maxval = *xptr;
+      float maxval = (xptr+stride_size*xx+Xwidth*0)[0];//*xptr;
       int maxloc = 0;
       for ( ky = 0; ky < stride_size; ky++ ){
       for ( kx = 0; kx < stride_size; kx++ ){
