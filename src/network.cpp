@@ -93,7 +93,7 @@ void CvNetwork::loadModel(string inFile)
       }else if (icvIsCNNConvolutionLayer(predefined_layer)){
         CvCNNConvolutionLayer * this_layer = (CvCNNConvolutionLayer*)predefined_layer;
         layer = cvCreateCNNConvolutionLayer( 
-          this_layer->dtype, this_layer->name, this_layer->visualize, 
+          this_layer->dtype, this_layer->name, predefined_layer, this_layer->visualize, 
           this_layer->input_layers.size()>0?this_layer->input_layers[0]:0, 
           this_layer->n_input_planes, this_layer->input_height, this_layer->input_width,
           this_layer->n_output_planes, this_layer->K,
@@ -120,7 +120,7 @@ void CvNetwork::loadModel(string inFile)
       }
       n_output_planes = cvReadIntByName(fs,node,"n_output_planes");
       int ksize = cvReadIntByName(fs,node,"ksize");
-      layer = cvCreateCNNConvolutionLayer( dtype, name, visualize, input_layer, 
+      layer = cvCreateCNNConvolutionLayer( dtype, name, 0, visualize, input_layer, 
         n_input_planes, input_height, input_width, n_output_planes, ksize,
         lr_init, decay_type, NULL, NULL );
       if (input_layer){input_layer->output_layers.push_back(layer);}
@@ -146,6 +146,7 @@ void CvNetwork::loadModel(string inFile)
       const char * input_layer_name = cvReadStringByName(fs,node,"input_layer","");
       if (strlen(input_layer_name)>0){
         input_layer = m_cnn->network->get_layer(m_cnn->network,input_layer_name);
+        if (!input_layer){LOGE("input_layer [%s] not found.",input_layer_name);exit(-1);}
         n_input_planes = input_layer->n_output_planes*input_layer->output_height*input_layer->output_width;
       }else{
         n_input_planes = n_input_planes*input_height*input_width;

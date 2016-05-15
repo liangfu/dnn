@@ -86,6 +86,8 @@ typedef void (CV_CDECL *CvCNNLayerRelease)(CvCNNLayer** layer);
     /* Pointers to the previous and next layers in the network */       \
     CvCNNLayer* prev_layer;                                             \
     CvCNNLayer* next_layer;                                             \
+    /* Pointers to the reference layer where weights are taken */       \
+    CvCNNLayer* ref_layer;                                              \
     /* Pointers to input/output layer, instead of using prev_layer */   \
     List<CvCNNLayer*> input_layers;                                     \
     List<CvCNNLayer*> output_layers;                                    \
@@ -250,7 +252,7 @@ typedef struct CvCNNRecurrentLayer
 {
   CV_CNN_LAYER_FIELDS();
   // reference layer
-  CvCNNLayer * hidden_layer;
+  // CvCNNLayer * hidden_layer;
   // number of hidden layers within RNN model, default: exp((log(n_inputs)+log(n_outputs))*.5f)
   int n_hiddens;
   // weight matrix for input data, default size: (n_hiddens, n_inputs)
@@ -313,7 +315,8 @@ CVAPI(void) cvSoftmax(CvMat * src, CvMat * dst);
 CVAPI(void) cvSoftmaxDer(CvMat * X, CvMat * dE_dY, CvMat * dE_dY_afder);
 
 CVAPI(CvCNNLayer*) cvCreateCNNConvolutionLayer( 
-    const int dtype, const char * name, const int visualize, const CvCNNLayer * input_layer, 
+    const int dtype, const char * name, const CvCNNLayer * ref_layer,
+    const int visualize, const CvCNNLayer * input_layer, 
     int n_input_planes, int input_height, int input_width, int n_output_planes, int K,
     float init_learn_rate, int learn_rate_decrease_type,
     CvMat* connect_mask, CvMat* weights );
