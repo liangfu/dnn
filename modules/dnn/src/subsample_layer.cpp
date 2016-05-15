@@ -96,17 +96,10 @@ static void icvCNNImgCroppingForward( CvCNNLayer * _layer, const CvMat* X, CvMat
   CvMat * input_data = input_layer->input_data;
   CV_ASSERT(CV_MAT_TYPE(input_data->type)==CV_32F);
   if (input_seqlen>output_seqlen){ // temporal sampling
-    if (output_height==output_width && output_height>1 && output_width>1){ // image processing
-      CvMat input_data_submat;
-      CvMat input_data_hdr = cvMat(input_seqlen,n_outputs,CV_32F,input_data->data.ptr);
-      cvGetRow(&input_data_hdr,&input_data_submat,time_index);
-      cvTranspose(&input_data_submat,Y);
-    }else{
-      CvMat input_data_submat;
-      CvMat input_data_hdr = cvMat(n_outputs,input_seqlen,CV_32F,input_data->data.ptr);
-      cvGetCol(&input_data_hdr,&input_data_submat,time_index);
-      cvCopy(&input_data_submat,Y);
-    }
+    CvMat input_data_submat;
+    CvMat input_data_hdr = cvMat(input_seqlen,n_outputs,CV_32F,input_data->data.ptr);
+    cvGetRow(&input_data_hdr,&input_data_submat,time_index);
+    cvTranspose(&input_data_submat,Y);
   }else if (output_height==output_width && output_height>1 && output_width>1){ // image processing
     CvMat * I = input_data;
     CvMat * p = cvCreateMat(2,3,CV_32F); cvZero(p);
