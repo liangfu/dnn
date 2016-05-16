@@ -93,6 +93,9 @@ typedef void (CV_CDECL *CvCNNLayerRelease)(CvCNNLayer** layer);
     List<CvCNNLayer*> output_layers;                                    \
     /* Used in backward pass, in case input_layer is given */           \
     CvMat * dE_dX;                                                      \
+    /* Enable memory cache for reducing memory allocation overhead */   \
+    CvMat * dY_dX;                                                      \
+    int enable_cache;                                                   \
                                                                         \
     int visualize
 

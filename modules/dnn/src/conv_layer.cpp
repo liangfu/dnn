@@ -56,6 +56,7 @@ ML_IMPL CvCNNLayer* cvCreateCNNConvolutionLayer(
     init_learn_rate, learn_rate_decrease_type,
     icvCNNConvolutionRelease, icvCNNConvolutionForward, icvCNNConvolutionBackward ));
 
+  layer->enable_cache = 1;
   layer->K = K;
   layer->visualize = visualize;
   layer->ref_layer = (CvCNNLayer*)ref_layer;
@@ -211,14 +212,8 @@ void icvCNNConvolutionForward( CvCNNLayer* _layer, const CvMat* X, CvMat* Y )
 void icvCNNConvolutionBackward(
     CvCNNLayer * _layer, int t, const CvMat* X, const CvMat* _dE_dY, CvMat* dE_dX )
 {
-  CvMat* dY_dX = 0;
-  CvMat* dY_dW = 0;
-  CvMat* dE_dW = 0;
-
   CV_FUNCNAME("icvCNNConvolutionBackward");
-
-  if ( !icvIsCNNConvolutionLayer(_layer) )
-    CV_ERROR( CV_StsBadArg, "Invalid layer" );
+  if ( !icvIsCNNConvolutionLayer(_layer) ) { CV_ERROR( CV_StsBadArg, "Invalid layer" ); }
 
   __BEGIN__;
 
@@ -242,6 +237,9 @@ void icvCNNConvolutionBackward(
 
   const int batch_size = X->cols;
   CvMat * dE_dY = (CvMat*)_dE_dY;
+  CvMat* dY_dX = 0;
+  CvMat* dY_dW = 0;
+  CvMat* dE_dW = 0;
 
   if (n_output_layers){
     dE_dY = cvCreateMat(batch_size,Y_plane_size*n_Y_planes,CV_32F); cvZero(dE_dY);
@@ -256,9 +254,14 @@ void icvCNNConvolutionBackward(
   CV_ASSERT( t >= 1 );
   CV_ASSERT( n_Y_planes == weights->rows );
 
-  dY_dX = cvCreateMat( n_Y_planes*Y_plane_size, X->rows, CV_32FC1 );
-  dY_dW = cvCreateMat( dY_dX->rows, weights->cols*weights->rows, CV_32FC1 );
-  dE_dW = cvCreateMat( 1, dY_dW->cols, CV_32FC1 );
+  if (layer->enable_cache){
+    if (!layer->dY_dX){layer->dY_dX=cvCreateMat( n_Y_planes*Y_plane_size, X->rows, CV_32F );}
+    dY_dX = layer->dY_dX;
+  }else{
+    dY_dX = cvCreateMat( n_Y_planes*Y_plane_size, X->rows, CV_32F );
+  }
+  dY_dW = cvCreateMat( dY_dX->rows, weights->cols*weights->rows, CV_32F );
+  dE_dW = cvCreateMat( 1, dY_dW->cols, CV_32F );
 
   cvZero( dY_dX );
   cvZero( dY_dW );
@@ -324,13 +327,14 @@ void icvCNNConvolutionBackward(
     cvScaleAdd( &dE_dW_mat, cvRealScalar(eta), weights, weights );
   }
 
-  if (n_output_layers){cvReleaseMat(&dE_dY);}
+  if (n_output_layers){cvReleaseMat(&dE_dY);dE_dY=0;}
+  if (!layer->enable_cache){
+    if (dY_dX){cvReleaseMat( &dY_dX );dY_dX=0;}
+  }
+  if (dY_dW){cvReleaseMat( &dY_dW );dY_dW=0;}
+  if (dE_dW){cvReleaseMat( &dE_dW );dE_dW=0;}
 
   __END__;
-
-  cvReleaseMat( &dY_dX );
-  cvReleaseMat( &dY_dW );
-  cvReleaseMat( &dE_dW );
 }
 
 void icvCNNConvolutionRelease( CvCNNLayer** p_layer )
