@@ -57,7 +57,7 @@ ML_IMPL CvCNNLayer* cvCreateCNNConvolutionLayer(
 
   layer->K = K;
   layer->visualize = visualize;
-  layer->input_layers.push_back((CvCNNLayer*)input_layer);
+  if (input_layer){layer->input_layers.push_back((CvCNNLayer*)input_layer);}
   CV_CALL(layer->weights = cvCreateMat( n_output_planes, K*K+1, CV_32FC1 ));
   CV_CALL(layer->connect_mask = cvCreateMat( n_output_planes, n_input_planes, CV_8UC1));
 
