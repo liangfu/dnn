@@ -224,7 +224,7 @@ void icvCNNRecurrentForward( CvCNNLayer* _layer, const CvMat* X, CvMat * Y)
    loss function with respect to the planes components
    of the current layer. */
 void icvCNNRecurrentBackward( CvCNNLayer* _layer, int t,
-                                     const CvMat * X, const CvMat * dE_dY, CvMat * dE_dX )
+                                     const CvMat * X, const CvMat * _dE_dY, CvMat * dE_dX )
 {
   CV_FUNCNAME( "icvCNNRecurrentBackward" );
   if ( !icvIsCNNRecurrentNNLayer(_layer) ) { CV_ERROR( CV_StsBadArg, "Invalid layer" ); }
@@ -233,6 +233,27 @@ void icvCNNRecurrentBackward( CvCNNLayer* _layer, int t,
 
   CvCNNRecurrentLayer * layer = (CvCNNRecurrentLayer*)_layer;
   CvCNNRecurrentLayer * ref_layer = (CvCNNRecurrentLayer*)layer->ref_layer;
+  CvMat * dE_dY = (CvMat*)_dE_dY;
+  
+  // TODO: compute average from all output_layers
+  int n_output_layers = layer->output_layers.size();
+  if (n_output_layers){
+    const int n_Y_planes = layer->n_output_planes;
+    const int Yheight = layer->output_height;
+    const int Ywidth  = layer->output_width;
+    const int Y_plane_size   = Yheight*Ywidth;
+    const int batch_size = X->cols;
+    dE_dY = cvCreateMat(batch_size,Y_plane_size*n_Y_planes,CV_32F); cvZero(dE_dY);
+    for (int li=0;li<n_output_layers;li++){
+      CvCNNLayer * output_layer = layer->output_layers[li];
+      if (icvIsCNNFullConnectLayer(output_layer)){
+        cvAddWeighted(dE_dY,1.f,output_layer->dE_dX,1.f/float(n_output_layers),0.f,dE_dY);
+      }
+    }
+  }
+  
+  {CvScalar avg, sdv; cvAvgSdv(dE_dY,&avg,&sdv); CV_ASSERT(sdv.val[0]>1e-5);}
+
   CvMat * layer_Wxh = ref_layer?ref_layer->Wxh:layer->Wxh;
   CvMat * layer_Whh = ref_layer?ref_layer->Whh:layer->Whh;
   CvMat * layer_Why = ref_layer?ref_layer->Why:layer->Why;
@@ -258,7 +279,7 @@ void icvCNNRecurrentBackward( CvCNNLayer* _layer, int t,
   CvMat * WX = 0, * WH = 0, * H_prev = 0, * H_curr = 0, * WX_curr = 0, * WH_curr = 0;
   CvMat * dE_dY_curr = 0, * dH_curr = 0, * dH_next = 0, * dH_raw = 0, 
         * dWxh = 0, * dWhh = 0, * dWhy = 0;
-  
+
   CV_ASSERT( cvGetSize(layerH)==cvGetSize(layer_WX) );
   if ( !ref_layer ){ CV_ASSERT(layer->H && layer->Y && layer->WX && layer->WH); }
   if ( ref_layer ){
@@ -397,6 +418,7 @@ void icvCNNRecurrentBackward( CvCNNLayer* _layer, int t,
     }
   }
 
+  if (n_output_layers){cvReleaseMat(&dE_dY);dE_dY=0;}
   if (WX){cvReleaseMat(&WX);WX=0;}
   if (WH){cvReleaseMat(&WH);WH=0;}
   if (H_prev){cvReleaseMat(&H_prev);H_prev=0;}
