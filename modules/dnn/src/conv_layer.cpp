@@ -27,7 +27,8 @@
 
 /*************************************************************************/
 ML_IMPL CvCNNLayer* cvCreateCNNConvolutionLayer( 
-    const int dtype, const char * name, const int visualize, const CvCNNLayer * input_layer, 
+    const int dtype, const char * name, const CvCNNLayer * ref_layer,
+    const int visualize, const CvCNNLayer * input_layer, 
     int n_input_planes, int input_height, int input_width, int n_output_planes, int K,
     float init_learn_rate, int learn_rate_decrease_type,
     CvMat* connect_mask, CvMat* weights )
@@ -57,6 +58,7 @@ ML_IMPL CvCNNLayer* cvCreateCNNConvolutionLayer(
 
   layer->K = K;
   layer->visualize = visualize;
+  layer->ref_layer = (CvCNNLayer*)ref_layer;
   if (input_layer){layer->input_layers.push_back((CvCNNLayer*)input_layer);}
   CV_CALL(layer->weights = cvCreateMat( n_output_planes, K*K+1, CV_32FC1 ));
   CV_CALL(layer->connect_mask = cvCreateMat( n_output_planes, n_input_planes, CV_8UC1));
@@ -116,9 +118,12 @@ void icvCNNConvolutionForward( CvCNNLayer* _layer, const CvMat* X, CvMat* Y )
   __BEGIN__;
 
   CvCNNConvolutionLayer* layer = (CvCNNConvolutionLayer*) _layer;
-
+  CvCNNLayer * ref_layer = layer->ref_layer;
+  CvMat * weights = ref_layer?ref_layer->weights:layer->weights;
+  
   const int K = layer->K;
   const int n_weights_for_Yplane = K*K + 1;
+  CV_ASSERT(weights->cols==n_weights_for_Yplane);
 
   const int nXplanes = layer->n_input_planes;
   const int Xheight  = layer->input_height;
@@ -159,7 +164,6 @@ void icvCNNConvolutionForward( CvCNNLayer* _layer, const CvMat* X, CvMat* Y )
     cvScale(&img,&img,.5f/sdv.val[0]);
   }
   }
-  CV_ASSERT(layer->weights);
   
   // for ( no = 0; no < nYplanes; no++, Yplane += Ysize, w += n_weights_for_Yplane ){
 #pragma omp parallel for
@@ -167,7 +171,7 @@ void icvCNNConvolutionForward( CvCNNLayer* _layer, const CvMat* X, CvMat* Y )
     for ( int no = 0; no < nYplanes; no++ ){
     float * xptr = Xt->data.fl+Xsize*nXplanes*si;
     float * yptr = Yt->data.fl+Ysize*nYplanes*si+Ysize*no;
-    float * wptr = layer->weights->data.fl+n_weights_for_Yplane*no;
+    float * wptr = weights->data.fl+n_weights_for_Yplane*no;
     for ( int ni = 0; ni < nXplanes; ni++, xptr += Xsize ){
       for ( int yy = 0; yy < Xheight-K+1; yy++ ){
       for ( int xx = 0; xx < Xwidth-K+1; xx++ ){
@@ -220,6 +224,8 @@ void icvCNNConvolutionBackward(
 
   CvCNNConvolutionLayer * layer = (CvCNNConvolutionLayer*) _layer;
   int n_output_layers = layer->output_layers.size();
+  CvCNNLayer * ref_layer = layer->ref_layer;
+  CvMat * weights = ref_layer?ref_layer->weights:layer->weights;
   
   const int K = layer->K;
   const int KK = K*K;
@@ -248,10 +254,10 @@ void icvCNNConvolutionBackward(
   }
 
   CV_ASSERT( t >= 1 );
-  CV_ASSERT( n_Y_planes == layer->weights->rows );
+  CV_ASSERT( n_Y_planes == weights->rows );
 
   dY_dX = cvCreateMat( n_Y_planes*Y_plane_size, X->rows, CV_32FC1 );
-  dY_dW = cvCreateMat( dY_dX->rows, layer->weights->cols*layer->weights->rows, CV_32FC1 );
+  dY_dW = cvCreateMat( dY_dX->rows, weights->cols*weights->rows, CV_32FC1 );
   dE_dW = cvCreateMat( 1, dY_dW->cols, CV_32FC1 );
 
   cvZero( dY_dX );
@@ -266,7 +272,7 @@ void icvCNNConvolutionBackward(
     int noKK = no*(KK+1);
     int xloc = 0;
     float * xptr = Xt->data.fl+Xt->cols*si;
-    float * wptr = layer->weights->data.fl + noKK;
+    float * wptr = weights->data.fl + noKK;
     for ( int ni = 0; ni < n_X_planes; ni++, xptr += X_plane_size, xloc += X_plane_size ){
       for ( int yy = 0; yy < Xheight - K + 1; yy++ ){
       for ( int xx = 0; xx < Xwidth - K + 1; xx++ ){
@@ -309,13 +315,13 @@ void icvCNNConvolutionBackward(
     } else {
       eta = -layer->init_learn_rate/(float)t;
     }
-    cvReshape( dE_dW, &dE_dW_mat, 0, layer->weights->rows );
+    cvReshape( dE_dW, &dE_dW_mat, 0, weights->rows );
     if (!layer->dE_dW){
       ((CvCNNLayer*)layer)->dE_dW = cvCloneMat(&dE_dW_mat);
     }else{
       cvCopy(&dE_dW_mat,((CvCNNLayer*)layer)->dE_dW);
     }
-    cvScaleAdd( &dE_dW_mat, cvRealScalar(eta), layer->weights, layer->weights );
+    cvScaleAdd( &dE_dW_mat, cvRealScalar(eta), weights, weights );
   }
 
   if (n_output_layers){cvReleaseMat(&dE_dY);}
@@ -344,7 +350,7 @@ void icvCNNConvolutionRelease( CvCNNLayer** p_layer )
   if ( !icvIsCNNConvolutionLayer((CvCNNLayer*)layer) )
       CV_ERROR( CV_StsBadArg, "Invalid layer" );
 
-  cvReleaseMat( &layer->weights );
+  if (layer->weights){cvReleaseMat( &layer->weights );layer->weights=0;}
   cvReleaseMat( &layer->connect_mask );
   cvFree( p_layer );
 
