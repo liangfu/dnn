@@ -66,7 +66,7 @@ int main(int argc, char * argv[])
   for (int idx=start_index;; idx++){
     sprintf(filepath,path,idx);
     IplImage * img = cvLoadImage(filepath,1);
-    if (!img){break;}else{LOGI("File %s loaded.",filepath);}
+    if (!img){LOGW("File %s not found.",filepath);break;}else{LOGI("File %s loaded.",filepath);}
     mouse_info.img = img;
     strcpy(mouse_info.imgname,filepath);
 
@@ -104,7 +104,7 @@ int main(int argc, char * argv[])
 
 void on_mouse(int evt, int x, int y, int flags, void* param)
 {
-  static CvScalar colors[3] = {CV_RED, CV_GREEN, CV_BLUE};
+  static CvScalar colors[6] = {CV_RED, CV_GREEN, CV_BLUE, CV_YELLOW, CV_CYAN, CV_PURPLE};
   // if (evt>0){fprintf(stderr,"event: 0x%x\n",evt);}
   if (CV_EVENT_LBUTTONDOWN==evt){  // point
     int size = ((CvMouseInfo*)param)->centers.size();
@@ -124,7 +124,7 @@ void on_mouse(int evt, int x, int y, int flags, void* param)
     IplImage * disp = cvCloneImage(((CvMouseInfo*)param)->img);
     for (int ii=0;ii<((CvMouseInfo*)param)->centers.size();ii++){
       cvCircle(disp,cvPoint(((CvMouseInfo*)param)->centers[ii].x,
-                            ((CvMouseInfo*)param)->centers[ii].y),2,cvScalar(0,0,255),-1);
+                            ((CvMouseInfo*)param)->centers[ii].y),2,colors[ii%6],-1);
     }
     cvShowImage("Annotator",disp);
     cvReleaseImage(&disp);

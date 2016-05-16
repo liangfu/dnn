@@ -35,11 +35,15 @@
 
 #define CV_MAXSTRLEN 1024
 
-#define CV_RED   cvScalar(0,0,255)
-#define CV_GREEN cvScalar(0,255,0)
-#define CV_BLUE  cvScalar(255,0,0)
-#define CV_BLACK cvScalarAll(0)
-#define CV_WHITE cvScalarAll(255)
+#define CV_RED    cvScalar(0,0,255)
+#define CV_GREEN  cvScalar(0,255,0)
+#define CV_BLUE   cvScalar(255,0,0)
+#define CV_YELLOW cvScalar(0,255,255)
+#define CV_CYAN   cvScalar(255,255,0)
+#define CV_PURPLE cvScalar(255,0,255)
+#define CV_ORANGE cvScalar(0,128,255)
+#define CV_BLACK  cvScalarAll(0)
+#define CV_WHITE  cvScalarAll(255)
 
 #define CV_BGR2YUV CV_BGR2YCrCb
 

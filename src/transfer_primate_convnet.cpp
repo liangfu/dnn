@@ -122,12 +122,12 @@ CvMat * icvReadPrimateLabels(char * filename, const int max_samples)
     int x3 = cvReadInt((CvFileNode*)reader2.ptr,0); CV_NEXT_SEQ_ELEM( seq2->elem_size, reader2 );
     int y3 = cvReadInt((CvFileNode*)reader2.ptr,0);
     // fprintf(stderr,"%s: (%d,%d) (%d,%d) (%d,%d)\n", imgname, x1, y1, x2, y2, x3, y3);
-    CV_MAT_ELEM(*data,float,ii,0)=x1;
-    CV_MAT_ELEM(*data,float,ii,1)=y1;
-    CV_MAT_ELEM(*data,float,ii,2)=x2;
-    CV_MAT_ELEM(*data,float,ii,3)=y2;
-    CV_MAT_ELEM(*data,float,ii,4)=x3;
-    CV_MAT_ELEM(*data,float,ii,5)=y3;
+    CV_MAT_ELEM(*data,float,ii,0)=x1/240.f;
+    CV_MAT_ELEM(*data,float,ii,1)=y1/240.f;
+    CV_MAT_ELEM(*data,float,ii,2)=x2/240.f;
+    CV_MAT_ELEM(*data,float,ii,3)=y2/240.f;
+    CV_MAT_ELEM(*data,float,ii,4)=x3/240.f;
+    CV_MAT_ELEM(*data,float,ii,5)=y3/240.f;
     CV_NEXT_SEQ_ELEM( seq->elem_size, reader );
   }
   cvReleaseFileStorage(&fs);
