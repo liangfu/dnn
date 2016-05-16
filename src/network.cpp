@@ -16,6 +16,8 @@ CvNetwork::~CvNetwork(void)
 
 void CvNetwork::loadModel(string inFile)
 {
+  CV_FUNCNAME("CvNetwork::loadModel");
+  __BEGIN__;
   CvCNNLayer * layer = 0;
   CvFileStorage * fs = cvOpenFileStorage(inFile.c_str(),0,CV_STORAGE_READ);
   CvFileNode * root = cvGetRootFileNode( fs );
@@ -201,10 +203,15 @@ void CvNetwork::loadModel(string inFile)
       CvCNNLayer ** input_layers = new CvCNNLayer*[256];
       char * input_layer_name = strtok((char*)input_layer_names," ,");
       input_layers[0] = m_cnn->network->get_layer(m_cnn->network, input_layer_name);
+      int output_plane_count = input_layers[0]->n_output_planes;
       for (int ii=1; ii<256; ii++){
         input_layer_name = strtok(0," ,");
         if (!input_layer_name){break;}else{n_input_layers++;}
         input_layers[ii] = m_cnn->network->get_layer(m_cnn->network, input_layer_name);
+        output_plane_count += input_layers[ii]->n_output_planes;
+      }
+      if (output_plane_count!=n_output_planes){
+        CV_ERROR(CV_StsBadArg,"Invalid definition of `input_layers` in MultiTarget layer.");
       }
       layer = cvCreateCNNMultiTargetLayer( dtype, name, visualize, 
         n_input_layers, input_layers, n_output_planes, lr_init, decay_type );
@@ -222,6 +229,7 @@ void CvNetwork::loadModel(string inFile)
   }
 
   if (fs){cvReleaseFileStorage(&fs);fs=0;}
+  __END__;
 }
 
 void CvNetwork::loadWeights(string inFile)

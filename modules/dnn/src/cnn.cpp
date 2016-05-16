@@ -371,7 +371,18 @@ static void icvTrainCNNetwork( CvCNNetwork* network,const CvMat* images, const C
       fprintf(stderr, "%d/%d = %.0f%%,",n+1,max_iter,float(n*100.f)/float(max_iter));
       fprintf(stderr, "sumacc: %.1f%%[%.1f%%], sumloss: %f\n", sumacc/float(n),top1,sumloss/float(n));
 
-      if (icvIsCNNRecurrentNNLayer(last_layer)){
+      if (icvIsCNNFullConnectLayer(last_layer) || icvIsCNNMultiTargetLayer(last_layer)){
+        CvMat * etalon_reshaped = cvCreateMat(batch_size,last_layer->n_output_planes,CV_32F);
+        CvMat * Y_reshaped = cvCreateMat(batch_size,last_layer->n_output_planes,CV_32F);
+        cvCopy(etalon,etalon_reshaped); cvTranspose(X[n_layers],Y_reshaped);
+        CV_ASSERT(etalon_reshaped->rows*etalon_reshaped->cols==etalon->rows*etalon->cols);
+        CV_ASSERT(Y_reshaped->rows*Y_reshaped->cols==X[n_layers]->rows*X[n_layers]->cols);
+        fprintf(stderr,"response: \n");cvPrintf(stderr,"%.1f ", Y_reshaped);
+        fprintf(stderr,"expected: \n");cvPrintf(stderr,"%.1f ", etalon_reshaped);
+        fprintf(stderr,"----------------------------------------------\n");
+        cvReleaseMat(&etalon_reshaped); cvReleaseMat(&Y_reshaped);
+      }else if (icvIsCNNRecurrentNNLayer(last_layer)){
+        CV_ASSERT(batch_size==1);
         CvMat etalon_reshaped = cvMat(3,10,CV_32F,etalon->data.ptr);
         CvMat Y_reshaped = cvMat(3,10,CV_32F,X[n_layers]->data.ptr);
         CV_ASSERT(etalon_reshaped.rows*etalon_reshaped.cols==etalon->rows*etalon->cols);
