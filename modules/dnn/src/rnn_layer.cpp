@@ -236,7 +236,7 @@ void icvCNNRecurrentBackward( CvCNNLayer* _layer, int t,
   CvMat * dE_dY = (CvMat*)_dE_dY;
   
   // TODO: compute average from all output_layers
-  int n_output_layers = layer->output_layers.size();
+  int n_output_layers = ref_layer?ref_layer->output_layers.size():layer->output_layers.size();
   if (n_output_layers){
     const int n_Y_planes = layer->n_output_planes;
     const int Yheight = layer->output_height;
@@ -245,7 +245,7 @@ void icvCNNRecurrentBackward( CvCNNLayer* _layer, int t,
     const int batch_size = X->cols;
     dE_dY = cvCreateMat(batch_size,Y_plane_size*n_Y_planes,CV_32F); cvZero(dE_dY);
     for (int li=0;li<n_output_layers;li++){
-      CvCNNLayer * output_layer = layer->output_layers[li];
+      CvCNNLayer * output_layer = ref_layer?ref_layer->output_layers[li]:layer->output_layers[li];
       if (icvIsCNNFullConnectLayer(output_layer)){
         cvAddWeighted(dE_dY,1.f,output_layer->dE_dX,1.f/float(n_output_layers),0.f,dE_dY);
       }
