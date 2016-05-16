@@ -270,7 +270,7 @@ static void icvTrainCNNetwork( CvCNNetwork* network,const CvMat* images, const C
   const int img_height = first_layer->input_height;
   const int img_width  = first_layer->input_width;
   const int img_size   = first_layer->n_input_planes*img_width*img_height*seq_length;
-  const int n_images   = responses->cols; CV_ASSERT(n_images!=1);
+  const int n_images   = responses->rows; CV_ASSERT(n_images==images->rows);
   CvMat * X0_transpose = cvCreateMat( batch_size, img_size, CV_32FC1 );
   CvCNNLayer* layer;
   int n;
@@ -318,6 +318,7 @@ static void icvTrainCNNetwork( CvCNNetwork* network,const CvMat* images, const C
     }else{
       cvRandArr(&rng,worst_img_idx,CV_RAND_UNI,cvScalar(0),cvScalar(n_images-1));
     }
+    // cvPrintf(stderr,"%d, ",worst_img_idx);
 
     // 1) Compute the network output on the <X0_transpose>
     CV_ASSERT(CV_MAT_TYPE(X0_transpose->type)==CV_32F && CV_MAT_TYPE(images->type)==CV_32F);
@@ -351,12 +352,6 @@ static void icvTrainCNNetwork( CvCNNetwork* network,const CvMat* images, const C
       cvGetRow(etalon,&etalon_dst,k);
       cvCopy(&etalon_src, &etalon_dst);
     }
-    if (icvIsCNNRecurrentNNLayer(layer) && n==max_iter){
-      CvMat etalon_reshaped = cvMat(3,10,CV_32F,etalon->data.ptr);
-      CV_ASSERT(etalon_reshaped.rows*etalon_reshaped.cols==etalon->rows*etalon->cols);
-      fprintf(stderr,"expect: \n");cvPrintf(stderr,"%.0f ", &etalon_reshaped);
-      fprintf(stderr,"----------------------------------------------\n");
-    }
     cvSub( dE_dX[n_layers], etalon, dE_dX[n_layers] );
 
     // 3) Update weights by the gradient descent
@@ -375,6 +370,16 @@ static void icvTrainCNNetwork( CvCNNetwork* network,const CvMat* images, const C
     if (int(float(n*100)/float(max_iter))<int(float((n+1)*100)/float(max_iter))){
       fprintf(stderr, "%d/%d = %.0f%%,",n+1,max_iter,float(n*100.f)/float(max_iter));
       fprintf(stderr, "sumacc: %.1f%%[%.1f%%], sumloss: %f\n", sumacc/float(n),top1,sumloss/float(n));
+
+      if (icvIsCNNRecurrentNNLayer(last_layer)){
+        CvMat etalon_reshaped = cvMat(3,10,CV_32F,etalon->data.ptr);
+        CvMat Y_reshaped = cvMat(3,10,CV_32F,X[n_layers]->data.ptr);
+        CV_ASSERT(etalon_reshaped.rows*etalon_reshaped.cols==etalon->rows*etalon->cols);
+        CV_ASSERT(Y_reshaped.rows*Y_reshaped.cols==X[n_layers]->rows*X[n_layers]->cols);
+        fprintf(stderr,"response: \n");cvPrintf(stderr,"%.1f ", &Y_reshaped);
+        fprintf(stderr,"expected: \n");cvPrintf(stderr,"%.1f ", &etalon_reshaped);
+        fprintf(stderr,"----------------------------------------------\n");
+      }
     }
     cvReleaseMat(&etalon_transpose);
 #endif

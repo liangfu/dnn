@@ -2,7 +2,7 @@
 layers:
   - {type: InputData, name: input1, n_input_planes: 1, input_height: 240, input_width: 240, seq_length: 2}
   - {type: ImgCropping, name: crop1, visualize: 0, input_layer: input1, n_output_planes: 1, output_height: 240, output_width: 240, seq_length: 1, time_index: 0}
-  - {type: SubSampling, name: pool4, visualize: 0, ksize: 3, stride: 3}
+  - {type: SubSampling, name: pool4, visualize: 1, ksize: 3, stride: 3}
   - {type: Convolution, name: conv1, visualize: 0, n_output_planes: 6, ksize: 5}
   - {type: SubSampling, name: pool1, visualize: 0, ksize: 2, stride: 2}
   - {type: Convolution, name: conv2, visualize: 0, n_output_planes: 10, ksize: 5}
