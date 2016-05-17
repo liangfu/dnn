@@ -249,8 +249,6 @@ void icvCNNRecurrentBackward( CvCNNLayer* _layer, int t,
       }
     }
   }
-  
-  {CvScalar avg, sdv; cvAvgSdv(dE_dY,&avg,&sdv); CV_ASSERT(sdv.val[0]>1e-5);}
 
   CvMat * layer_Wxh = ref_layer?ref_layer->Wxh:layer->Wxh;
   CvMat * layer_Whh = ref_layer?ref_layer->Whh:layer->Whh;
@@ -367,6 +365,8 @@ void icvCNNRecurrentBackward( CvCNNLayer* _layer, int t,
   cvTranspose(&layer_dE_dY_reshaped,layer_dE_dY_transpose);
   cvGetCol(layer_dE_dY_transpose,&dE_dY_curr_hdr,layer->time_index); 
   cvCopy(&dE_dY_curr_hdr,dE_dY_curr);
+  
+  {CvScalar avg, sdv; cvAvgSdv(dE_dY_curr,&avg,&sdv); CV_ASSERT(sdv.val[0]>1e-5);}
     
   // compute (sig'(WX))*dE_dY
 #if 0
