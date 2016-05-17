@@ -239,9 +239,7 @@ void icvCNNRecurrentBackward( CvCNNLayer* _layer, int t,
   int n_output_layers = ref_layer?ref_layer->output_layers.size():layer->output_layers.size();
   if (n_output_layers){
     const int n_Y_planes = layer->n_output_planes;
-    const int Yheight = layer->output_height;
-    const int Ywidth  = layer->output_width;
-    const int Y_plane_size   = Yheight*Ywidth;
+    const int Y_plane_size   = layer->output_height*layer->output_width;
     const int batch_size = X->cols;
     dE_dY = cvCreateMat(batch_size,Y_plane_size*n_Y_planes,CV_32F); cvZero(dE_dY);
     for (int li=0;li<n_output_layers;li++){
