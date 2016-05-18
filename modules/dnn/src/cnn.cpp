@@ -265,13 +265,11 @@ static void icvTrainCNNetwork( CvCNNetwork* network,const CvMat* images, const C
 
   CvCNNLayer * first_layer = network->first_layer;
   CvCNNLayer * last_layer = cvGetCNNLastLayer(network);
-  const int seq_length = 
-    icvIsCNNInputDataLayer(first_layer)?((CvCNNInputDataLayer*)first_layer)->seq_length:1;
-  const int img_height = first_layer->input_height;
-  const int img_width  = first_layer->input_width;
-  const int img_size   = first_layer->n_input_planes*img_width*img_height*seq_length;
+  // const int seq_length = first_layer->seq_length;
+  const int img_size   =
+    first_layer->n_input_planes*first_layer->input_width*first_layer->input_height;
   const int n_images   = responses->rows; CV_ASSERT(n_images==images->rows);
-  CvMat * X0_transpose = cvCreateMat( batch_size, img_size, CV_32FC1 );
+  CvMat * X0_transpose = cvCreateMat( batch_size*first_layer->seq_length, img_size, CV_32FC1 );
   CvCNNLayer* layer;
   int n;
   CvRNG rng = cvRNG(-1);
@@ -282,25 +280,29 @@ static void icvTrainCNNetwork( CvCNNetwork* network,const CvMat* images, const C
   memset( dE_dX, 0, (n_layers+1)*sizeof(CvMat*) );
 
   // initialize input data
-  CV_CALL(X[0] = cvCreateMat( img_size, batch_size, CV_32FC1 ));
-  CV_CALL(dE_dX[0] = cvCreateMat( batch_size, X[0]->rows, CV_32FC1 ));
+  CV_CALL(X[0] = cvCreateMat( img_size, batch_size*first_layer->seq_length, CV_32F ));
+  CV_CALL(dE_dX[0] = cvCreateMat( batch_size*first_layer->seq_length, X[0]->rows, CV_32F ));
+  cvZero(X[0]); cvZero(dE_dX[0]); cvZero(X0_transpose);
   for ( k = 0, layer = first_layer; k < n_layers; k++, layer = layer->next_layer ){
     int n_outputs = // ICV_IS_CNN_RECURRENTNN_LAYER(layer)?layer->n_input_planes:
       layer->n_output_planes*layer->output_height*layer->output_width;
-    if (icvIsCNNInputDataLayer(layer)){
-      CvCNNInputDataLayer * id_layer = (CvCNNInputDataLayer*)layer;
-      if (seq_length>1 && img_size!=images->cols){
-        CV_ASSERT(img_size==images->cols*seq_length); // continuous sequence sampling
-        n_outputs = img_size;
-      }
-    }else if (icvIsCNNRecurrentNNLayer(layer)){
-      CvCNNRecurrentLayer * rnn_layer = (CvCNNRecurrentLayer*)layer;
-      if (rnn_layer->time_index==rnn_layer->seq_length-1){
-        n_outputs = rnn_layer->seq_length*rnn_layer->n_output_planes;
-      }
-    }
-    CV_CALL(X[k+1] = cvCreateMat( n_outputs, batch_size, CV_32FC1 ));  cvZero(X[k+1]);
-    CV_CALL(dE_dX[k+1] = cvCreateMat( batch_size, X[k+1]->rows, CV_32FC1 )); cvZero(dE_dX[k+1]);
+    int seq_length = layer->seq_length;
+    // if (icvIsCNNInputDataLayer(layer)){
+    //   CvCNNInputDataLayer * id_layer = (CvCNNInputDataLayer*)layer;
+    //   if (seq_length>1 && img_size!=images->cols){
+    //     CV_ASSERT(img_size==images->cols*seq_length); // continuous sequence sampling
+    //     n_outputs = img_size;
+    //   }
+    // }else 
+    // if (icvIsCNNRecurrentNNLayer(layer)){
+    //   CvCNNRecurrentLayer * rnn_layer = (CvCNNRecurrentLayer*)layer;
+    //   if (rnn_layer->time_index==rnn_layer->seq_length-1){
+    //     n_outputs = rnn_layer->seq_length*rnn_layer->n_output_planes;
+    //   }
+    // }
+    CV_CALL(X[k+1] = cvCreateMat( n_outputs, batch_size*seq_length, CV_32F )); 
+    CV_CALL(dE_dX[k+1] = cvCreateMat( batch_size*seq_length, X[k+1]->rows, CV_32F )); 
+    cvZero(X[k+1]); cvZero(dE_dX[k+1]);
   }
 
   for ( n = 1; n <= max_iter; n++ )
@@ -310,11 +312,11 @@ static void icvTrainCNNetwork( CvCNNetwork* network,const CvMat* images, const C
     int nclasses = X[n_layers]->rows;
     CvMat * worst_img_idx = cvCreateMat(batch_size,1,CV_32S);
     int * right_etal_idx = responses->data.i;
-    CvMat * etalon = cvCreateMat(batch_size,nclasses,CV_32F);
+    CvMat * etalon = cvCreateMat(batch_size*last_layer->seq_length,nclasses,CV_32F);
 
     // Use the random image
-    if (seq_length>1 && img_size!=images->cols){
-      cvRandArr(&rng,worst_img_idx,CV_RAND_UNI,cvScalar(0),cvScalar(n_images-(seq_length-1)-1));
+    if (first_layer->seq_length>1 && img_size!=images->cols){
+      cvRandArr(&rng,worst_img_idx,CV_RAND_UNI,cvScalar(0),cvScalar(n_images-first_layer->seq_length));
     }else{
       cvRandArr(&rng,worst_img_idx,CV_RAND_UNI,cvScalar(0),cvScalar(n_images-1));
     }
@@ -322,21 +324,14 @@ static void icvTrainCNNetwork( CvCNNetwork* network,const CvMat* images, const C
 
     // 1) Compute the network output on the <X0_transpose>
     CV_ASSERT(CV_MAT_TYPE(X0_transpose->type)==CV_32F && CV_MAT_TYPE(images->type)==CV_32F);
-    CV_ASSERT(img_size==X0_transpose->cols);
-    if (seq_length>1 && img_size!=images->cols){
-      CV_ASSERT(img_size==images->cols*seq_length); // continuous sequence sampling
-      for ( k = 0; k < batch_size; k++ ){
-        memcpy(X0_transpose->data.fl+img_size*k,
-               images->data.fl+img_size*worst_img_idx->data.i[k],sizeof(float)*img_size);
-      }
-    }else{
-      CV_ASSERT(img_size==images->cols);
-      for ( k = 0; k < batch_size; k++ ){
-        memcpy(X0_transpose->data.fl+img_size*k,
-               images->data.fl+img_size*worst_img_idx->data.i[k],sizeof(float)*img_size);
-      }
+    CV_ASSERT(img_size==X0_transpose->cols && img_size*first_layer->seq_length==images->cols);
+    for ( k = 0; k < batch_size; k++ ){
+      memcpy(X0_transpose->data.fl+images->cols*k,
+             images->data.fl+images->cols*worst_img_idx->data.i[k],
+             sizeof(float)*images->cols);
     }
     CV_CALL(cvTranspose( X0_transpose, X[0] ));
+    cvPrintf(stderr,"%.0f ", X0_transpose);
 
     // Perform prediction with current weight parameters
     for ( k = 0, layer = first_layer; k < n_layers - 1; k++, layer = layer->next_layer ){

@@ -91,8 +91,9 @@ static void icvCNNImgCroppingForward( CvCNNLayer * _layer, const CvMat* X, CvMat
   const int output_seqlen = layer->seq_length;
   const int output_height = layer->output_height;
   const int output_width = layer->output_width;
+  const int batch_size = X->cols/input_seqlen;
   CV_ASSERT(Y->rows==layer->n_output_planes*layer->output_height*layer->output_width);
-  CV_ASSERT(X->cols==Y->cols); // batch_size
+  CV_ASSERT(batch_size*input_seqlen==X->cols && batch_size*output_seqlen==Y->cols); // batch_size
   CvMat * input_data = input_layer->input_data;
   CV_ASSERT(CV_MAT_TYPE(input_data->type)==CV_32F);
   if (input_seqlen>output_seqlen){ // temporal sampling

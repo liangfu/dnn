@@ -85,9 +85,10 @@ void icvCNNInputDataForward( CvCNNLayer * _layer, const CvMat * X, CvMat * Y )
 }
 
 
-void icvCNNInputDataBackward( CvCNNLayer* layer, int t, 
-                                     const CvMat*, const CvMat* dE_dY, CvMat* dE_dX )
+void icvCNNInputDataBackward( CvCNNLayer * layer, int t, 
+                              const CvMat * X, const CvMat * dE_dY, CvMat * dE_dX )
 {
+  cvZero(dE_dX);
 }
 
 void icvCNNInputDataRelease( CvCNNLayer** p_layer ){}

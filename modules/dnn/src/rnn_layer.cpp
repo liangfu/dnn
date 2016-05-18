@@ -189,14 +189,16 @@ void icvCNNRecurrentForward( CvCNNLayer* _layer, const CvMat* X, CvMat * Y)
 #if 0
   cvCopy(&Y_curr_hdr,Y);
 #else
-  if (layer->time_index!=layer->seq_length-1) { cvCopy(&Y_curr_hdr,Y); }else{
-    int nr = ref_layer->Y->rows;
-    int nc = ref_layer->Y->cols;
-    CvMat * ref_layer_Y_transpose = cvCreateMat(nc,nr,CV_32F);
-    cvTranspose(ref_layer->Y,ref_layer_Y_transpose);
-    CvMat ref_layer_Y_reshaped = cvMat(nr*nc,1,CV_32F,ref_layer_Y_transpose->data.ptr);
-    cvCopy(&ref_layer_Y_reshaped,Y); 
-    cvReleaseMat(&ref_layer_Y_transpose);
+  // if (layer->time_index!=layer->seq_length-1) { cvCopy(&Y_curr_hdr,Y); }else
+  {
+    // int nr = (ref_layer?ref_layer:layer)->Y->rows;
+    // int nc = (ref_layer?ref_layer:layer)->Y->cols;
+    // CvMat * ref_layer_Y_transpose = cvCreateMat(nc,nr,CV_32F);
+    // cvTranspose((ref_layer?ref_layer:layer)->Y,ref_layer_Y_transpose);
+    // CvMat ref_layer_Y_reshaped = cvMat(nr*nc,1,CV_32F,ref_layer_Y_transpose->data.ptr);
+    // cvCopy(&ref_layer_Y_reshaped,Y); 
+    // cvReleaseMat(&ref_layer_Y_transpose);
+    cvCopy((ref_layer?ref_layer:layer)->Y,Y);
   }
 #endif
  
