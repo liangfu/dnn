@@ -25,9 +25,9 @@
 #ifndef __DNN_H__
 #define __DNN_H__
 
+#include "cvext_c.h"
 #include "layers.h"
 #include "precomp.hpp"
-#include "cvext_c.h"
 
 /*-------------- functions for input data layer -----------------------*/
 void icvCNNInputDataRelease( CvCNNLayer** p_layer );
