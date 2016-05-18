@@ -19,7 +19,7 @@ add_library(cvutil SHARED
 	src/cvsparsecoding.cpp
 	src/cvlda.cpp
 	src/cvstip.cpp
-	src/cvshapeprior_data.cpp
+	# src/cvshapeprior_data.cpp
 	src/cvfacecoder.cpp
 	src/cvext_common.cpp
 	src/cvparticlebase.cpp
@@ -43,7 +43,7 @@ add_library(cvutil SHARED
 	src/cvstageddetecthaar_data.cpp
 	src/cvhandvalid_data.cpp
 	src/cvlevelset.cpp
-	src/cvsvm4hog.cpp
+	# src/cvsvm4hog.cpp
 	)
 
 #---------------------------------------------------------------------

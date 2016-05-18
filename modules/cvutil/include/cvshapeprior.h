@@ -22,7 +22,11 @@ class CV_EXPORTS CvShapePriorData
   CvMat * pc;
   // CvMat * latent;
 protected:
-  void initialize();
+  void initialize(){
+#if 1
+    fprintf(stderr,"%s: %d: warning: this feature is disabled.\n",__FILE__,__LINE__); exit(-1);
+#endif
+  }
 public:
   CvShapePriorData():
       meanshape(0), mean(0), pc(0)// , latent(0)

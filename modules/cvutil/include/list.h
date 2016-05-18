@@ -128,15 +128,17 @@ void List<T>::erase(int idx)
 template<typename T>
 T List<T>::operator [] (int idx)
 {
+  Node<T> * ptr=root;
   if (idx>=0){
-    Node<T> * ptr=root;
     if (!ptr){fprintf(stderr,"%s: %d: %s: error: insufficient elements",__FILE__,__LINE__,__FUNCTION__);}
     int i=0;
     for (i=0;i<idx;i++,ptr=ptr->next){
       if (!ptr){fprintf(stderr,"%s: %d: %s: error: insufficient elements",__FILE__,__LINE__,__FUNCTION__);}
     }
-    return ptr->data;
-  }else{fprintf(stderr,"%s: %d: %s: error: invalid argument",__FILE__,__LINE__,__FUNCTION__);}
+  }else{
+    fprintf(stderr,"%s: %d: %s: error: invalid argument",__FILE__,__LINE__,__FUNCTION__);
+  }
+  return ptr->data;
 }
 
 #endif // __LIST_H__
