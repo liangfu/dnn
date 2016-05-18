@@ -183,7 +183,11 @@ int CvStagedDetectorHaar::detect(CvMat * img, CvRect roi[])
   // assert(m_features);
   int nr=img->rows,nc=img->cols;
   CvMat * imgIntegral=cvCreateMat(nr+1,nc+1,CV_32S);
+#if 0
   cvIntegral(img,imgIntegral);
+#else
+    fprintf(stderr,"%s:%d: this feature is disabled.\n",__FILE__,__LINE__);exit(-1);
+#endif
   int i,j,k,cc=0,maxcc=8000;
 
 #if 0
@@ -285,7 +289,11 @@ train(CvMat ** posimgs, int npos, CvMat ** negimgs, int nneg,
   for (i=0;i<2;i++){
   for (j=0;j<count[i];j++){
     imgIntegral[i][j]=cvCreateMat(tsize,tsize,CV_32S);
+#if 0
     cvIntegral(i==0?negimgs[j]:posimgs[j],imgIntegral[i][j]);
+#else
+    fprintf(stderr,"%s:%d: this feature is disabled.\n",__FILE__,__LINE__);exit(-1);
+#endif
   }
   }
 

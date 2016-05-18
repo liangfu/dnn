@@ -72,9 +72,12 @@ int CvStagedDetectorHOG::detect(CvMat * img, CvRect ROIs[])
 
   // calculate integral of separated magnitude images
   for (i=0;i<numangles;i++) {
+#if 0
     cvIntegral(magimgs[i],magints[i]);
+#else
+    fprintf(stderr,"%s:%d: this feature is disabled.\n",__FILE__,__LINE__);exit(-1);
+#endif
   }
-
   
   
   for (i=0;i<numangles;i++){

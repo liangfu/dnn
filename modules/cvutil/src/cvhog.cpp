@@ -177,7 +177,11 @@ int icvCalcHOG_optimized(CvMat * img, CvMatND * hog, int ncells, int ngrids)
 
   // calculate integral of separated magnitude images
   for (i=0;i<numangles;i++) {
+#if 0
     cvIntegral(magimgs[i],magints[i]);
+#else
+    fprintf(stderr,"%s:%d: this feature is disabled.\n",__FILE__,__LINE__);exit(-1);
+#endif
   }
 
   int xloc,yloc,m,n,j,k,xpos,ypos,bsize=ncells*ngrids,

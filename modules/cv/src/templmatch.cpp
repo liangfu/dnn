@@ -229,6 +229,7 @@ void crossCorr( const Mat& img, const Mat& _templ, Mat& corr,
 
 }
 
+#if 0
 /*****************************************************************************************/
 
 void cv::matchTemplate( InputArray _img, InputArray _templ, OutputArray _result, int method )
@@ -386,5 +387,7 @@ cvMatchTemplate( const CvArr* _img, const CvArr* _templ, CvArr* _result, int met
               result.type() == CV_32F );
     matchTemplate(img, templ, result, method);
 }
+
+#endif
 
 /* End of file. */

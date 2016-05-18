@@ -802,6 +802,7 @@ cvDistTransform( const void* srcarr, void* dstarr,
 
             if( labelType == CV_DIST_LABEL_CCOMP )
             {
+#if 0
                 CvSeq *contours = 0;
                 cv::Ptr<CvMemStorage> st = cvCreateMemStorage();
                 cv::Ptr<CvMat> src_copy = cvCreateMat( size.height+border*2, size.width+border*2, src->type );
@@ -815,6 +816,11 @@ cvDistTransform( const void* srcarr, void* dstarr,
                     CvScalar area_color = cvScalarAll(label);
                     cvDrawContours( labels, contours, area_color, area_color, -255, -1, 8 );
                 }
+#else
+                fprintf(stderr,"%s:%d: this feature `CV_DIST_LABEL_CCOMP` is disabled\n",
+                        __FILE__,__LINE__);
+                exit(-1);
+#endif
             }
             else
             {

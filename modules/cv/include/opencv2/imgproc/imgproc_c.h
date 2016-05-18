@@ -90,9 +90,9 @@ CVAPI(void) cvFilter2D( const CvArr* src, CvArr* dst, const CvMat* kernel,
                         CvPoint anchor CV_DEFAULT(cvPoint(-1,-1)));
 
 /* Finds integral image: SUM(X,Y) = sum(x<X,y<Y)I(x,y) */
-CVAPI(void) cvIntegral( const CvArr* image, CvArr* sum,
-                       CvArr* sqsum CV_DEFAULT(NULL),
-                       CvArr* tilted_sum CV_DEFAULT(NULL));
+// CVAPI(void) cvIntegral( const CvArr* image, CvArr* sum,
+//                        CvArr* sqsum CV_DEFAULT(NULL),
+//                        CvArr* tilted_sum CV_DEFAULT(NULL));
 
 /*
    Smoothes the input image with gaussian kernel and then down-samples it.
@@ -298,11 +298,11 @@ CVAPI(float)  cvCalcEMD2( const CvArr* signature1,
 
 /* Retrieves outer and optionally inner boundaries of white (non-zero) connected
    components in the black (zero) background */
-CVAPI(int)  cvFindContours( CvArr* image, CvMemStorage* storage, CvSeq** first_contour,
-                            int header_size CV_DEFAULT(sizeof(CvContour)),
-                            int mode CV_DEFAULT(CV_RETR_LIST),
-                            int method CV_DEFAULT(CV_CHAIN_APPROX_SIMPLE),
-                            CvPoint offset CV_DEFAULT(cvPoint(0,0)));
+// CVAPI(int)  cvFindContours( CvArr* image, CvMemStorage* storage, CvSeq** first_contour,
+//                             int header_size CV_DEFAULT(sizeof(CvContour)),
+//                             int mode CV_DEFAULT(CV_RETR_LIST),
+//                             int method CV_DEFAULT(CV_CHAIN_APPROX_SIMPLE),
+//                             CvPoint offset CV_DEFAULT(cvPoint(0,0)));
 
 /* Initializes contour retrieving process.
    Calls cvStartFindContours.
@@ -328,11 +328,11 @@ CVAPI(void)   cvSubstituteContour( CvContourScanner scanner, CvSeq* new_contour 
 CVAPI(CvSeq*)  cvEndFindContours( CvContourScanner* scanner );
 
 /* Approximates a single Freeman chain or a tree of chains to polygonal curves */
-CVAPI(CvSeq*) cvApproxChains( CvSeq* src_seq, CvMemStorage* storage,
-                            int method CV_DEFAULT(CV_CHAIN_APPROX_SIMPLE),
-                            double parameter CV_DEFAULT(0),
-                            int  minimal_perimeter CV_DEFAULT(0),
-                            int  recursive CV_DEFAULT(0));
+// CVAPI(CvSeq*) cvApproxChains( CvSeq* src_seq, CvMemStorage* storage,
+//                             int method CV_DEFAULT(CV_CHAIN_APPROX_SIMPLE),
+//                             double parameter CV_DEFAULT(0),
+//                             int  minimal_perimeter CV_DEFAULT(0),
+//                             int  recursive CV_DEFAULT(0));
 
 /* Initializes Freeman chain reader.
    The reader is used to iteratively get coordinates of all the chain points.
@@ -355,14 +355,14 @@ CVAPI(CvSeq*)  cvApproxPoly( const void* src_seq,
                              int recursive CV_DEFAULT(0));
 
 /* Calculates perimeter of a contour or length of a part of contour */
-CVAPI(double)  cvArcLength( const void* curve,
-                            CvSlice slice CV_DEFAULT(CV_WHOLE_SEQ),
-                            int is_closed CV_DEFAULT(-1));
+// CVAPI(double)  cvArcLength( const void* curve,
+//                             CvSlice slice CV_DEFAULT(CV_WHOLE_SEQ),
+//                             int is_closed CV_DEFAULT(-1));
 
-CV_INLINE double cvContourPerimeter( const void* contour )
-{
-    return cvArcLength( contour, CV_WHOLE_SEQ, 1 );
-}
+// CV_INLINE double cvContourPerimeter( const void* contour )
+// {
+//     return cvArcLength( contour, CV_WHOLE_SEQ, 1 );
+// }
 
 
 /* Calculates contour bounding rectangle (update=1) or
@@ -370,57 +370,57 @@ CV_INLINE double cvContourPerimeter( const void* contour )
 CVAPI(CvRect)  cvBoundingRect( CvArr* points, int update CV_DEFAULT(0) );
 
 /* Calculates area of a contour or contour segment */
-CVAPI(double)  cvContourArea( const CvArr* contour,
-                              CvSlice slice CV_DEFAULT(CV_WHOLE_SEQ),
-                              int oriented CV_DEFAULT(0));
+// CVAPI(double)  cvContourArea( const CvArr* contour,
+//                               CvSlice slice CV_DEFAULT(CV_WHOLE_SEQ),
+//                               int oriented CV_DEFAULT(0));
 
 /* Finds minimum area rotated rectangle bounding a set of points */
-CVAPI(CvBox2D)  cvMinAreaRect2( const CvArr* points,
-                                CvMemStorage* storage CV_DEFAULT(NULL));
+// CVAPI(CvBox2D)  cvMinAreaRect2( const CvArr* points,
+//                                 CvMemStorage* storage CV_DEFAULT(NULL));
 
 /* Finds minimum enclosing circle for a set of points */
-CVAPI(int)  cvMinEnclosingCircle( const CvArr* points,
-                                  CvPoint2D32f* center, float* radius );
+// CVAPI(int)  cvMinEnclosingCircle( const CvArr* points,
+//                                   CvPoint2D32f* center, float* radius );
 
 /* Compares two contours by matching their moments */
-CVAPI(double)  cvMatchShapes( const void* object1, const void* object2,
-                              int method, double parameter CV_DEFAULT(0));
+// CVAPI(double)  cvMatchShapes( const void* object1, const void* object2,
+//                               int method, double parameter CV_DEFAULT(0));
 
 /* Calculates exact convex hull of 2d point set */
-CVAPI(CvSeq*) cvConvexHull2( const CvArr* input,
-                             void* hull_storage CV_DEFAULT(NULL),
-                             int orientation CV_DEFAULT(CV_CLOCKWISE),
-                             int return_points CV_DEFAULT(0));
+// CVAPI(CvSeq*) cvConvexHull2( const CvArr* input,
+//                              void* hull_storage CV_DEFAULT(NULL),
+//                              int orientation CV_DEFAULT(CV_CLOCKWISE),
+//                              int return_points CV_DEFAULT(0));
 
 /* Checks whether the contour is convex or not (returns 1 if convex, 0 if not) */
-CVAPI(int)  cvCheckContourConvexity( const CvArr* contour );
+// CVAPI(int)  cvCheckContourConvexity( const CvArr* contour );
 
 
 /* Finds convexity defects for the contour */
-CVAPI(CvSeq*)  cvConvexityDefects( const CvArr* contour, const CvArr* convexhull,
-                                   CvMemStorage* storage CV_DEFAULT(NULL));
+// CVAPI(CvSeq*)  cvConvexityDefects( const CvArr* contour, const CvArr* convexhull,
+//                                    CvMemStorage* storage CV_DEFAULT(NULL));
 
 /* Fits ellipse into a set of 2d points */
-CVAPI(CvBox2D) cvFitEllipse2( const CvArr* points );
+// CVAPI(CvBox2D) cvFitEllipse2( const CvArr* points );
 
 /* Finds minimum rectangle containing two given rectangles */
-CVAPI(CvRect)  cvMaxRect( const CvRect* rect1, const CvRect* rect2 );
+// CVAPI(CvRect)  cvMaxRect( const CvRect* rect1, const CvRect* rect2 );
 
 /* Finds coordinates of the box vertices */
-CVAPI(void) cvBoxPoints( CvBox2D box, CvPoint2D32f pt[4] );
+// CVAPI(void) cvBoxPoints( CvBox2D box, CvPoint2D32f pt[4] );
 
 /* Initializes sequence header for a matrix (column or row vector) of points -
    a wrapper for cvMakeSeqHeaderForArray (it does not initialize bounding rectangle!!!) */
-CVAPI(CvSeq*) cvPointSeqFromMat( int seq_kind, const CvArr* mat,
-                                 CvContour* contour_header,
-                                 CvSeqBlock* block );
+// CVAPI(CvSeq*) cvPointSeqFromMat( int seq_kind, const CvArr* mat,
+//                                  CvContour* contour_header,
+//                                  CvSeqBlock* block );
 
 /* Checks whether the point is inside polygon, outside, on an edge (at a vertex).
    Returns positive, negative or zero value, correspondingly.
    Optionally, measures a signed distance between
    the point and the nearest polygon edge (measure_dist=1) */
-CVAPI(double) cvPointPolygonTest( const CvArr* contour,
-                                  CvPoint2D32f pt, int measure_dist );
+// CVAPI(double) cvPointPolygonTest( const CvArr* contour,
+//                                   CvPoint2D32f pt, int measure_dist );
 
 /****************************************************************************************\
 *                                  Histogram functions                                   *
