@@ -463,9 +463,13 @@ void CvActiveShapeModel::deform(CvMat * shape,
     for (int i = 0; i < npoints; i++){
       pts[i] = cvPoint2D32f(shape->data.db[i*2], shape->data.db[i*2+1]);
     }
+#if 0
     cvFindCornerSubPix(curr, pts, npoints,
                        cvSize(3,3), cvSize(-1,-1),
                        cvTermCriteria(1,100,0.1));
+#else
+    fprintf(stderr,"%s: %d: this feature is disabled.\n",__FILE__,__LINE__);exit(-1);
+#endif
     delete [] pts;
   }
 }

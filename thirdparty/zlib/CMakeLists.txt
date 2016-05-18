@@ -8,7 +8,7 @@ if (WIN32)
 	add_definitions(-DZLIB_DLL)
 endif()
 
-add_library(zlib SHARED
+add_library(zlib # SHARED
   src/crc32.h    
   src/gzguts.h   
   src/infback.c

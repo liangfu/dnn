@@ -41,7 +41,7 @@ add_library(cv SHARED
 	src/utils.cpp
 	# src/featureselect.cpp
 	# src/approx.cpp
-	# src/generalized_hough.cpp
+	src/generalized_hough.cpp
 	# src/matchcontours.cpp
 	# src/corner.cpp
 	# src/undistort.cpp

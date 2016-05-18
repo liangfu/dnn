@@ -23,7 +23,7 @@
  * \brief  
  */
 
-#include "ml.h"
+#include "dnn.h"
 #include "highgui.h"
 #include "cxcore.h"
 #include "cvext.h"
