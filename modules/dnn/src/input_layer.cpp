@@ -80,7 +80,7 @@ void icvCNNInputDataForward( CvCNNLayer * _layer, const CvMat * X, CvMat * Y )
       layer->input_data = cvCloneMat(X);
     }
   }
-  if (icvIsCNNConvolutionLayer(layer->next_layer)){cvCopy(X,Y);}
+  cvCopy(X,Y);
   __END__;
 }
 

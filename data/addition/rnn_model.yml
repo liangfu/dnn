@@ -1,10 +1,8 @@
 %YAML:1.0
 layers:
-  - {type: InputData, name: input1, n_input_planes: 2, input_height: 10, input_width: 1, seq_length: 3}
+  - {type: InputData, name: input1, n_input_planes: 1, input_height: 20, input_width: 1, seq_length: 2}
   - {type: ImgCropping, name: crop1, input_layer: input1, n_output_planes: 2, output_height: 10, output_width: 1, seq_length: 1, time_index: 0}
-  - {type: RecurrentNN, name: rnn1, n_input_planes: 20, n_hiddens: 120, n_output_planes: 10, seq_length: 3, time_index: 0, activation_type: tanh}
+  - {type: RecurrentNN, name: rnn1, n_input_planes: 20, n_hiddens: 60, n_output_planes: 10, seq_length: 2, time_index: 0, activation_type: tanh}
   - {predefined: crop1, time_index: 1}
   - {predefined: rnn1, time_index: 1}
-  - {predefined: crop1, time_index: 2}
-  - {predefined: rnn1, time_index: 2}
   

@@ -25,7 +25,6 @@
  
 #include "_dnn.h"
 
-/*************************************************************************/
 ML_IMPL CvCNNLayer* cvCreateCNNRecurrentLayer( 
     const int dtype, const char * name, const CvCNNLayer * ref_layer, 
     int n_inputs, int n_outputs, int n_hiddens, int seq_length, int time_index, 
@@ -96,6 +95,30 @@ ML_IMPL CvCNNLayer* cvCreateCNNRecurrentLayer(
   return (CvCNNLayer*)layer;
 }
 
+void icvCNNRecurrentRelease( CvCNNLayer** p_layer )
+{
+  CV_FUNCNAME("icvCNNRecurrentRelease");
+  __BEGIN__;
+
+  CvCNNRecurrentLayer* layer = 0;
+
+  if ( !p_layer ) { CV_ERROR( CV_StsNullPtr, "Null double pointer" ); }
+
+  layer = *(CvCNNRecurrentLayer**)p_layer;
+
+  if ( !layer ) { return; }
+  if ( !icvIsCNNRecurrentNNLayer((CvCNNLayer*)layer) ) { 
+    CV_ERROR( CV_StsBadArg, "Invalid layer" ); 
+  }
+
+  cvReleaseMat( &layer->Wxh ); layer->Wxh = 0;
+  cvReleaseMat( &layer->Whh ); layer->Whh = 0;
+  cvReleaseMat( &layer->Why ); layer->Why = 0;
+  if (layer->dE_dY){cvReleaseMat(&layer->dE_dY);layer->dE_dY=0;}
+  cvFree( p_layer );
+
+  __END__;
+}
 
 /****************************************************************************************/
 void icvCNNRecurrentForward( CvCNNLayer* _layer, const CvMat* X, CvMat * Y) 
@@ -283,7 +306,7 @@ void icvCNNRecurrentBackward( CvCNNLayer* _layer, int t,
   if ( ref_layer ){
     if ( layer->time_index==seq_length-1 ){  // assuming last layer
       if (!ref_layer->dE_dY){
-        CV_ASSERT(layer->time_index==seq_length-1 && dE_dY->cols==seq_length*n_outputs);
+        CV_ASSERT(dE_dY->cols==n_outputs);
         ref_layer->dE_dY = cvCloneMat(dE_dY); layer_dE_dY = ref_layer->dE_dY;
       }else{ cvCopy(dE_dY,ref_layer->dE_dY); }
       if (!ref_layer->dH){ 
@@ -307,22 +330,22 @@ void icvCNNRecurrentBackward( CvCNNLayer* _layer, int t,
     CV_ASSERT(dE_dY->cols==n_outputs && layer_dE_dY==layer->dE_dY && 
               layer_dH==layer->dH && layer_dWxh==layer->dWxh &&
               layer_dWhh==layer->dWhh && layer_dWhy==layer->dWhy); 
-    CV_ASSERT(layer_dH && layer_dWxh && layer_dWhh && layer_dWhy);
+    CV_ASSERT(layer_dE_dY && layer_dH && layer_dWxh && layer_dWhh && layer_dWhy);
+    {CvScalar avg, sdv; cvAvgSdv(layer_dE_dY,&avg,&sdv); CV_ASSERT(sdv.val[0]>1e-5);}
   }
   
   // memory allocation
-  CV_CALL(WX = cvCreateMat( n_hiddens, batch_size, CV_32F ));
-  CV_CALL(WH = cvCreateMat( n_hiddens, batch_size, CV_32F ));
-  CV_CALL(H_prev = cvCreateMat( n_hiddens * batch_size, 1, CV_32F ));
-  CV_CALL(H_curr = cvCreateMat( n_hiddens * batch_size, 1, CV_32F ));
-  CV_CALL(WX_curr = cvCreateMat( n_hiddens * batch_size, 1, CV_32F ));
-  CV_CALL(WH_curr = cvCreateMat( n_outputs * batch_size, 1, CV_32F ));
-  cvZero( WX ); cvZero( WH );
-  CV_CALL(dE_dY_curr = cvCreateMat( n_outputs * batch_size, 1, CV_32F ));
-  CV_CALL(dE_dY_afder = cvCreateMat( n_outputs * batch_size, 1, CV_32F ));
-  CV_CALL(dH_curr = cvCreateMat( n_hiddens * batch_size, 1, CV_32F ));
-  CV_CALL(dH_next = cvCreateMat( n_hiddens * batch_size, 1, CV_32F ));
-  CV_CALL(dH_raw  = cvCreateMat( n_hiddens * batch_size, 1, CV_32F ));
+  CV_CALL(WX = cvCreateMat( n_hiddens, batch_size, CV_32F )); cvZero( WX );
+  CV_CALL(WH = cvCreateMat( n_hiddens, batch_size, CV_32F )); cvZero( WH );
+  CV_CALL(H_prev = cvCreateMat( n_hiddens * batch_size, 1, CV_32F )); cvZero(H_prev);
+  CV_CALL(H_curr = cvCreateMat( n_hiddens * batch_size, 1, CV_32F )); cvZero(H_curr);
+  CV_CALL(WX_curr = cvCreateMat( n_hiddens * batch_size, 1, CV_32F )); cvZero(WX_curr);
+  CV_CALL(WH_curr = cvCreateMat( n_outputs * batch_size, 1, CV_32F )); cvZero(WH_curr);
+  CV_CALL(dE_dY_curr = cvCreateMat( n_outputs * batch_size, 1, CV_32F )); cvZero(dE_dY_curr);
+  CV_CALL(dE_dY_afder = cvCreateMat( n_outputs * batch_size, 1, CV_32F )); cvZero(dE_dY_afder);
+  CV_CALL(dH_curr = cvCreateMat( n_hiddens * batch_size, 1, CV_32F )); cvZero(dH_curr);
+  CV_CALL(dH_next = cvCreateMat( n_hiddens * batch_size, 1, CV_32F )); cvZero(dH_next);
+  CV_CALL(dH_raw  = cvCreateMat( n_hiddens * batch_size, 1, CV_32F )); cvZero(dH_raw);
   CV_CALL(dWxh = cvCreateMat( layer_Wxh->rows, layer_Wxh->cols, CV_32F )); cvZero(dWxh);
   CV_CALL(dWhh = cvCreateMat( layer_Whh->rows, layer_Whh->cols, CV_32F )); cvZero(dWhh);
   CV_CALL(dWhy = cvCreateMat( layer_Why->rows, layer_Why->cols, CV_32F )); cvZero(dWhy);
@@ -376,6 +399,7 @@ void icvCNNRecurrentBackward( CvCNNLayer* _layer, int t,
   cvMul(dE_dY_afder,dE_dY_curr,dE_dY_afder);
 #else
   cvCopy(dE_dY_curr,dE_dY_afder);    // softmax for classification
+  // cvSoftmaxDer(WH_curr,dE_dY_curr,dE_dY_afder);
 #endif
 
   // dWhy += dE_dY_afder * H_curr'
@@ -433,32 +457,6 @@ void icvCNNRecurrentBackward( CvCNNLayer* _layer, int t,
   if (dWxh){cvReleaseMat(&dWxh);dWxh=0;}
   if (dWhh){cvReleaseMat(&dWhh);dWhh=0;}
   if (dWhy){cvReleaseMat(&dWhy);dWhy=0;}
-
-  __END__;
-}
-
-
-/****************************************************************************************/
-void icvCNNRecurrentRelease( CvCNNLayer** p_layer )
-{
-  CV_FUNCNAME("icvCNNRecurrentRelease");
-  __BEGIN__;
-
-  CvCNNRecurrentLayer* layer = 0;
-
-  if ( !p_layer ) { CV_ERROR( CV_StsNullPtr, "Null double pointer" ); }
-
-  layer = *(CvCNNRecurrentLayer**)p_layer;
-
-  if ( !layer ) { return; }
-  if ( !icvIsCNNRecurrentNNLayer((CvCNNLayer*)layer) ) { 
-    CV_ERROR( CV_StsBadArg, "Invalid layer" ); 
-  }
-
-  cvReleaseMat( &layer->Wxh );
-  cvReleaseMat( &layer->Whh );
-  cvReleaseMat( &layer->Why );
-  cvFree( p_layer );
 
   __END__;
 }

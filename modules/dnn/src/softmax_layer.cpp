@@ -46,8 +46,13 @@ void cvSoftmaxDer(CvMat * X, CvMat * dE_dY, CvMat * dE_dY_afder) {
   CvMat * dE_dY_transpose = cvCreateMat(nr, nc, dtype);
   CvMat * sum = cvCreateMat(1, nc, dtype);
   CvMat * sum_repeat = cvCreateMat(nr, nc, dtype);
-  cvSoftmax(X, Y); cvTranspose(dE_dY,dE_dY_transpose);
-  cvMul(Y,dE_dY_transpose,dE_dY_afder);
+  cvSoftmax(X, Y);
+  if (dE_dY->rows==nc && dE_dY->cols==nr){
+    cvTranspose(dE_dY,dE_dY_transpose);
+    cvMul(Y,dE_dY_transpose,dE_dY_afder);
+  }else{
+    cvMul(Y,dE_dY,dE_dY_afder);
+  }
   cvReduce(dE_dY_afder,sum,-1,CV_REDUCE_SUM);
   cvRepeat(sum,sum_repeat);
   cvMul(Y,sum_repeat,sum_repeat);

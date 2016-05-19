@@ -284,22 +284,8 @@ static void icvTrainCNNetwork( CvCNNetwork* network,const CvMat* images, const C
   CV_CALL(dE_dX[0] = cvCreateMat( batch_size*first_layer->seq_length, X[0]->rows, CV_32F ));
   cvZero(X[0]); cvZero(dE_dX[0]); cvZero(X0_transpose);
   for ( k = 0, layer = first_layer; k < n_layers; k++, layer = layer->next_layer ){
-    int n_outputs = // ICV_IS_CNN_RECURRENTNN_LAYER(layer)?layer->n_input_planes:
-      layer->n_output_planes*layer->output_height*layer->output_width;
+    int n_outputs = layer->n_output_planes*layer->output_height*layer->output_width;
     int seq_length = layer->seq_length;
-    // if (icvIsCNNInputDataLayer(layer)){
-    //   CvCNNInputDataLayer * id_layer = (CvCNNInputDataLayer*)layer;
-    //   if (seq_length>1 && img_size!=images->cols){
-    //     CV_ASSERT(img_size==images->cols*seq_length); // continuous sequence sampling
-    //     n_outputs = img_size;
-    //   }
-    // }else 
-    // if (icvIsCNNRecurrentNNLayer(layer)){
-    //   CvCNNRecurrentLayer * rnn_layer = (CvCNNRecurrentLayer*)layer;
-    //   if (rnn_layer->time_index==rnn_layer->seq_length-1){
-    //     n_outputs = rnn_layer->seq_length*rnn_layer->n_output_planes;
-    //   }
-    // }
     CV_CALL(X[k+1] = cvCreateMat( n_outputs, batch_size*seq_length, CV_32F )); 
     CV_CALL(dE_dX[k+1] = cvCreateMat( batch_size*seq_length, X[k+1]->rows, CV_32F )); 
     cvZero(X[k+1]); cvZero(dE_dX[k+1]);
@@ -331,7 +317,6 @@ static void icvTrainCNNetwork( CvCNNetwork* network,const CvMat* images, const C
              sizeof(float)*images->cols);
     }
     CV_CALL(cvTranspose( X0_transpose, X[0] ));
-    cvPrintf(stderr,"%.0f ", X0_transpose);
 
     // Perform prediction with current weight parameters
     for ( k = 0, layer = first_layer; k < n_layers - 1; k++, layer = layer->next_layer ){
@@ -344,7 +329,7 @@ static void icvTrainCNNetwork( CvCNNetwork* network,const CvMat* images, const C
     cvTranspose( X[n_layers], dE_dX[n_layers] );
     for ( k = 0; k < batch_size; k++ ){
       cvGetRow(responses,&etalon_src,worst_img_idx->data.i[k]);
-      cvGetRow(etalon,&etalon_dst,k);
+      cvReshape(etalon,&etalon_dst,0,batch_size);
       cvCopy(&etalon_src, &etalon_dst);
     }
     cvSub( dE_dX[n_layers], etalon, dE_dX[n_layers] );
@@ -365,27 +350,12 @@ static void icvTrainCNNetwork( CvCNNetwork* network,const CvMat* images, const C
     if (int(float(n*100)/float(max_iter))<int(float((n+1)*100)/float(max_iter))){
       fprintf(stderr, "%d/%d = %.0f%%,",n+1,max_iter,float(n*100.f)/float(max_iter));
       fprintf(stderr, "sumacc: %.1f%%[%.1f%%], sumloss: %f\n", sumacc/float(n),top1,sumloss/float(n));
-
-      if (icvIsCNNFullConnectLayer(last_layer) || icvIsCNNMultiTargetLayer(last_layer)){
-        CvMat * etalon_reshaped = cvCreateMat(batch_size,last_layer->n_output_planes,CV_32F);
-        CvMat * Y_reshaped = cvCreateMat(batch_size,last_layer->n_output_planes,CV_32F);
-        cvCopy(etalon,etalon_reshaped); cvTranspose(X[n_layers],Y_reshaped);
-        CV_ASSERT(etalon_reshaped->rows*etalon_reshaped->cols==etalon->rows*etalon->cols);
-        CV_ASSERT(Y_reshaped->rows*Y_reshaped->cols==X[n_layers]->rows*X[n_layers]->cols);
-        fprintf(stderr,"response: \n");cvPrintf(stderr,"%.1f ", Y_reshaped);
-        fprintf(stderr,"expected: \n");cvPrintf(stderr,"%.1f ", etalon_reshaped);
-        fprintf(stderr,"----------------------------------------------\n");
-        cvReleaseMat(&etalon_reshaped); cvReleaseMat(&Y_reshaped);
-      }else if (icvIsCNNRecurrentNNLayer(last_layer)){
-        CV_ASSERT(batch_size==1);
-        CvMat etalon_reshaped = cvMat(3,10,CV_32F,etalon->data.ptr);
-        CvMat Y_reshaped = cvMat(3,10,CV_32F,X[n_layers]->data.ptr);
-        CV_ASSERT(etalon_reshaped.rows*etalon_reshaped.cols==etalon->rows*etalon->cols);
-        CV_ASSERT(Y_reshaped.rows*Y_reshaped.cols==X[n_layers]->rows*X[n_layers]->cols);
-        fprintf(stderr,"response: \n");cvPrintf(stderr,"%.1f ", &Y_reshaped);
-        fprintf(stderr,"expected: \n");cvPrintf(stderr,"%.1f ", &etalon_reshaped);
-        fprintf(stderr,"----------------------------------------------\n");
-      }
+      CvMat * Xn_transpose = cvCreateMat(batch_size*last_layer->seq_length,last_layer->n_output_planes,CV_32F);
+      cvTranspose(X[n_layers],Xn_transpose);
+      {fprintf(stderr,"input:\n");cvPrintf(stderr,"%.0f ", X0_transpose);}
+      {fprintf(stderr,"output:\n");cvPrintf(stderr,"%.1f ", Xn_transpose);}
+      {fprintf(stderr,"expect:\n");cvPrintf(stderr,"%.1f ", etalon);}
+      cvReleaseMat(&Xn_transpose);
     }
     cvReleaseMat(&etalon_transpose);
 #endif

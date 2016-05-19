@@ -33,7 +33,7 @@ int main(int argc, char * argv[])
   const char * expected_filename_xml = cnn->solver()->expected_filename();
   const int n_train_samples = parser.get<int>("trainsize");
   const int n_test_samples = parser.get<int>("testsize");
-  const int ndigits = 3;
+  const int ndigits = 2;
 
   CvRNG rng = cvRNG(-1);
   CvMat * trainingInt = cvCreateMat(n_train_samples,2,CV_32S);
@@ -45,8 +45,8 @@ int main(int argc, char * argv[])
   CvMat * testing  = cvCreateMat(n_test_samples, 2*ndigits*10,CV_32F);
   CvMat * expected = cvCreateMat(n_test_samples, 1*ndigits*10,CV_32F);
 
-  cvRandArr(&rng,trainingInt,CV_RAND_UNI,cvScalar(10),cvScalar(pow(10.f,ndigits)*.5f));
-  cvRandArr(&rng,testingInt, CV_RAND_UNI,cvScalar(10),cvScalar(pow(10.f,ndigits)*.5f));
+  cvRandArr(&rng,trainingInt,CV_RAND_UNI,cvScalar(1),cvScalar(pow(10.f,ndigits)*.5f));
+  cvRandArr(&rng,testingInt, CV_RAND_UNI,cvScalar(1),cvScalar(pow(10.f,ndigits)*.5f));
 
   CvMat firstcol,secondcol;
   cvGetCol(trainingInt,&firstcol,0);
@@ -78,25 +78,30 @@ void icvConvertIntToDecimal(const int ndigits, CvMat * src, CvMat * dst)
   assert(CV_MAT_TYPE(dst->type)==CV_32F);
   CvMat * values = cvCreateMat(ndigits,10,CV_32F);
   int stepsize = ndigits*10*sizeof(float);
-  for (int ii=0;ii<nsamples;ii++){
-#if 0 // debug
+  for (int sidx=0;sidx<nsamples;sidx++){
+#define VERBOSE 0
+#if VERBOSE // debug
     fprintf(stderr,"number: ");
-    for (int jj=0;jj<nnumbers;jj++){
-      fprintf(stderr,"%d ",CV_MAT_ELEM(*src,int,ii,jj));
+    for (int nidx=0;nidx<nnumbers;nidx++){
+      fprintf(stderr,"%d ",CV_MAT_ELEM(*src,int,sidx,nidx));
     }
 #endif
-    for (int jj=0;jj<nnumbers;jj++){
-      cvZero(values);
-      int number = CV_MAT_ELEM(*src,int,ii,jj);
-      for (int kk=0;kk<ndigits;kk++){
-        int pos = cvFloor((number%int(pow(10.f,kk+1)))/pow(10.f,kk));
-        CV_MAT_ELEM(*values,float,kk,pos)=1;
+    for (int nidx=0;nidx<nnumbers;nidx++){
+      int number = CV_MAT_ELEM(*src,int,sidx,nidx);
+      for (int didx=0;didx<ndigits;didx++){
+        int pos = cvFloor((number%int(pow(10.f,didx+1)))/pow(10.f,didx));
+        int offset = didx*nnumbers*10+nidx*10;
+        CV_MAT_ELEM(*dst,float,sidx,offset+pos)=1;
       }
-      memcpy(dst->data.ptr+stepsize*(nnumbers*ii+jj),values->data.ptr,stepsize);
     }
-#if 0 // debug
+#if VERBOSE // debug
     fprintf(stderr,"\noutput:\n");
-    cvPrintf(stderr,"%.0f ",dst,cvRect(0,ii,dst->cols,1));
+    CvMat sample_hdr, sample_reshaped_hdr;
+    cvGetRow(dst,&sample_hdr,sidx);
+    cvReshape(&sample_hdr,&sample_reshaped_hdr,0,ndigits);
+    CvMat * sample_reshaped = cvCloneMat(&sample_reshaped_hdr);
+    cvPrintf(stderr,"%.0f ",sample_reshaped);
+    cvReleaseMat(&sample_reshaped);
 #endif
   }
   cvReleaseMat(&values);
