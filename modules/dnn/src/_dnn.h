@@ -29,6 +29,8 @@
 #include "layers.h"
 #include "precomp.hpp"
 
+// void cvCopyEx(CvMat * src, CvMat * dst);
+
 /*-------------- functions for input data layer -----------------------*/
 void icvCNNInputDataRelease( CvCNNLayer** p_layer );
 void icvCNNInputDataForward( CvCNNLayer* layer, const CvMat* X, CvMat* Y );

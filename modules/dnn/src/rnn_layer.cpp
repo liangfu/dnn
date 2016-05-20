@@ -194,20 +194,27 @@ void icvCNNRecurrentForward( CvCNNLayer* _layer, const CvMat* X, CvMat * Y)
   // activation for hidden states, relu and tahn is preferred
   cvTanh( H_curr, H_curr ); 
 
-  CV_ASSERT(batch_size==1);
+  // CV_ASSERT(batch_size==1);
   cvGetCol(layerH,&H_curr_hdr,layer->time_index); cvCopy(H_curr,&H_curr_hdr);
-  cvGetCol(layerY,&Y_curr_hdr,layer->time_index); 
+  cvGetCol(layerY,&Y_curr_hdr,layer->time_index);
+  CvMat * Y_curr = cvCloneMat(&Y_curr_hdr), Y_curr_reshape_hdr;
+  cvReshape(Y_curr,&Y_curr_reshape_hdr,0,n_outputs);
+  CV_ASSERT(Y_curr_reshape_hdr.rows==n_outputs && Y_curr_reshape_hdr.cols==batch_size);
 
   // Y = sigmoid(Why * H + by)
-  CV_CALL(cvGEMM( &Why_submat, &H_curr_reshaped, 1, ybias, 1, &Y_curr_hdr ));
-  CV_CALL(cvCopy(&Y_curr_hdr,&WH_curr_reshaped)); CV_ASSERT(cvCountNonZero(&WH_curr_reshaped)>1);
+  // CV_CALL(cvGEMM( &Why_submat, &H_curr_reshaped, 1, ybias, 1, &Y_curr_hdr ));
+  CV_CALL(cvGEMM( &Why_submat, &H_curr_reshaped, 1, ybias, 1, &Y_curr_reshape_hdr ));
+  CV_CALL(cvCopy(&Y_curr_reshape_hdr,&WH_curr_reshaped)); CV_ASSERT(cvCountNonZero(&WH_curr_reshaped)>1);
   CV_CALL(cvCopy(WH_curr,&WH_curr_hdr));          // copy to layer->WH
 #if 0
   CV_CALL(cvSigmoid( &Y_curr_hdr, &Y_curr_hdr )); // output activation - logistic regression
 #else
-  cvExp(&Y_curr_hdr,&Y_curr_hdr); double Ysum = cvSum(&Y_curr_hdr).val[0];
-  cvScale(&Y_curr_hdr,&Y_curr_hdr,1.f/Ysum);      // softmax - for classification
+  cvSoftmax(&Y_curr_reshape_hdr,&Y_curr_reshape_hdr);
+  // cvExp(&Y_curr_reshape_hdr,&Y_curr_reshape_hdr);
+  // double Ysum = cvSum(&Y_curr_reshape_hdr).val[0];
+  // cvScale(&Y_curr_hdr,&Y_curr_hdr,1.f/Ysum);      // softmax - for classification
 #endif
+  cvCopy(Y_curr,&Y_curr_hdr);
 
 #if 0
   cvCopy(&Y_curr_hdr,Y);
@@ -221,9 +228,20 @@ void icvCNNRecurrentForward( CvCNNLayer* _layer, const CvMat* X, CvMat * Y)
     // CvMat ref_layer_Y_reshaped = cvMat(nr*nc,1,CV_32F,ref_layer_Y_transpose->data.ptr);
     // cvCopy(&ref_layer_Y_reshaped,Y); 
     // cvReleaseMat(&ref_layer_Y_transpose);
-    cvCopy((ref_layer?ref_layer:layer)->Y,Y);
+    CvMat layerY_transpose_reshape_hdr;
+    CvMat * layerY_transpose = cvCreateMat(layerY->cols,layerY->rows,CV_32F); 
+    CvMat * Y_transpose = cvCreateMat(Y->cols,Y->rows,CV_32F);
+    cvZero(layerY_transpose); cvZero(Y_transpose);
+    cvTranspose(layerY,layerY_transpose);
+    CV_ASSERT(Y->rows==n_outputs && Y->cols==batch_size*seq_length);
+    cvReshape(layerY_transpose,&layerY_transpose_reshape_hdr,0,Y->cols);
+    cvCopy(&layerY_transpose_reshape_hdr,Y_transpose);
+    cvTranspose(Y_transpose,Y);
+    cvReleaseMat(&layerY_transpose);
+    cvReleaseMat(&Y_transpose);
   }
 #endif
+  if (Y_curr){cvReleaseMat(&Y_curr);Y_curr=0;}
  
   if (WX){cvReleaseMat(&WX);WX=0;}
   if (WH){cvReleaseMat(&WH);WH=0;}

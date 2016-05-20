@@ -329,8 +329,13 @@ static void icvTrainCNNetwork( CvCNNetwork* network,const CvMat* images, const C
     cvTranspose( X[n_layers], dE_dX[n_layers] );
     for ( k = 0; k < batch_size; k++ ){
       cvGetRow(responses,&etalon_src,worst_img_idx->data.i[k]);
-      cvReshape(etalon,&etalon_dst,0,batch_size);
+      CvMat etalon_reshaped_hdr;
+      cvReshape(etalon,&etalon_reshaped_hdr,0,batch_size);
+      CvMat * etalon_reshaped = cvCloneMat(&etalon_reshaped_hdr);
+      cvGetRow(etalon_reshaped,&etalon_dst,k);
       cvCopy(&etalon_src, &etalon_dst);
+      cvCopy(etalon_reshaped,&etalon_reshaped_hdr);
+      cvReleaseMat(&etalon_reshaped);
     }
     cvSub( dE_dX[n_layers], etalon, dE_dX[n_layers] );
 

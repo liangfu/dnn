@@ -18,6 +18,7 @@ add_library(dnn SHARED
 	src/sigmoid_layer.cpp
 	src/softmax_layer.cpp
 	src/subsample_layer.cpp
+	src/utils.cpp
 	)
 
 add_executable(test_dnn
