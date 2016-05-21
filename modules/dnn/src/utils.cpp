@@ -32,4 +32,43 @@ double cvSdv(CvMat * src)
   return sdv.val[0];
 }
 
+void cvDebugGEMM(const char * src1name, const char * src2name, const char * src3name, const char * dstname,
+                 CvMat * src1, CvMat * src2, float alpha, CvMat * src3, float beta, CvMat * dst, int tABC)
+{
+  if (((tABC)&CV_GEMM_A_T)==0 && ((tABC)&CV_GEMM_B_T)==0 &&          
+      ((tABC)&CV_GEMM_C_T)==0){                                      
+    if ((src1)->cols!=(src2)->rows){                                 
+      fprintf(stderr,"Warning: %s(%dx%d), %s(%dx%d), %s(%dx%d)\n",   
+              src1name,(src1)->rows,(src1)->cols,                       
+              src2name,(src2)->rows,(src2)->cols,                       
+              dstname,(dst)->rows,(dst)->cols);                         
+    }                                                                
+  }else if (((tABC)&CV_GEMM_A_T)>0 && ((tABC)&CV_GEMM_B_T)==0 &&     
+            ((tABC)&CV_GEMM_C_T)==0){                                
+    if ((src1)->rows!=(src2)->rows){                                 
+      fprintf(stderr,"Warning: %s(%dx%d), %s(%dx%d), %s(%dx%d)\n",   
+              src1name,(src1)->rows,(src1)->cols,                       
+              src2name,(src2)->rows,(src2)->cols,                       
+              dstname,(dst)->rows,(dst)->cols);                         
+    }                                                                
+  }else if (((tABC)&CV_GEMM_A_T)==0 && ((tABC)&CV_GEMM_B_T)>0 &&     
+            ((tABC)&CV_GEMM_C_T)==0){                                
+    if ((src1)->cols!=(src2)->cols){                                 
+      fprintf(stderr,"Warning: %s(%dx%d), %s(%dx%d), %s(%dx%d)\n",   
+              src1name,(src1)->rows,(src1)->cols,                       
+              src2name,(src2)->rows,(src2)->cols,                       
+              dstname,(dst)->rows,(dst)->cols);                         
+    }                                                                
+  }else if (((tABC)&CV_GEMM_A_T)>0 && ((tABC)&CV_GEMM_B_T)>0 &&      
+            ((tABC)&CV_GEMM_C_T)==0){                                
+    if ((src1)->cols!=(src2)->rows){                                 
+      fprintf(stderr,"Warning: %s(%dx%d), %s(%dx%d), %s(%dx%d)\n",   
+              src1name,(src1)->rows,(src1)->cols,                       
+              src2name,(src2)->rows,(src2)->cols,                       
+              dstname,(dst)->rows,(dst)->cols);                         
+    }                                                                
+  }                                                                  
+  cvGEMM((src1),(src2),(alpha),(src3),(beta),(dst),(tABC));          
+}
+
 

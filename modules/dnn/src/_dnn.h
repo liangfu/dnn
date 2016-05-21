@@ -33,43 +33,11 @@
 double cvSdv(CvMat * src);
 
 #define CV_GEMM(src1,src2,alpha,src3,beta,dst,tABC)                     \
-  do {                                                                  \
-    if (((tABC)&CV_GEMM_A_T)==0 && ((tABC)&CV_GEMM_B_T)==0 &&           \
-        ((tABC)&CV_GEMM_C_T)==0){                                       \
-      if ((src1)->cols!=(src2)->rows){                                  \
-        fprintf(stderr,"Warning: %s(%dx%d), %s(%dx%d), %s(%dx%d)\n",    \
-                #src1,(src1)->rows,(src1)->cols,                        \
-                #src2,(src2)->rows,(src2)->cols,                        \
-                #dst,(dst)->rows,(dst)->cols);                          \
-      }                                                                 \
-    }else if (((tABC)&CV_GEMM_A_T)>0 && ((tABC)&CV_GEMM_B_T)==0 &&      \
-              ((tABC)&CV_GEMM_C_T)==0){                                 \
-      if ((src1)->rows!=(src2)->rows){                                  \
-        fprintf(stderr,"Warning: %s(%dx%d), %s(%dx%d), %s(%dx%d)\n",    \
-                #src1,(src1)->rows,(src1)->cols,                        \
-                #src2,(src2)->rows,(src2)->cols,                        \
-                #dst,(dst)->rows,(dst)->cols);                          \
-      }                                                                 \
-    }else if (((tABC)&CV_GEMM_A_T)==0 && ((tABC)&CV_GEMM_B_T)>0 &&      \
-              ((tABC)&CV_GEMM_C_T)==0){                                 \
-      if ((src1)->cols!=(src2)->cols){                                  \
-        fprintf(stderr,"Warning: %s(%dx%d), %s(%dx%d), %s(%dx%d)\n",    \
-                #src1,(src1)->rows,(src1)->cols,                        \
-                #src2,(src2)->rows,(src2)->cols,                        \
-                #dst,(dst)->rows,(dst)->cols);                          \
-      }                                                                 \
-    }else if (((tABC)&CV_GEMM_A_T)>0 && ((tABC)&CV_GEMM_B_T)>0 &&       \
-              ((tABC)&CV_GEMM_C_T)==0){                                 \
-      if ((src1)->cols!=(src2)->rows){                                  \
-        fprintf(stderr,"Warning: %s(%dx%d), %s(%dx%d), %s(%dx%d)\n",    \
-                #src1,(src1)->rows,(src1)->cols,                        \
-                #src2,(src2)->rows,(src2)->cols,                        \
-                #dst,(dst)->rows,(dst)->cols);                          \
-      }                                                                 \
-    }                                                                   \
-    cvGEMM((src1),(src2),(alpha),(src3),(beta),(dst),(tABC));           \
-  } while(false)
+  cvDebugGEMM(#src1,#src2,#src3,#dst,(src1),(src2),(alpha),(src3),(beta),(dst),(tABC));
 
+void cvDebugGEMM(const char * src1name, const char * src2name, const char * src3name, const char * dstname,
+                 CvMat * src1, CvMat * src2, float alpha, CvMat * src3, float beta, CvMat * dst, int tABC);
+    
 /*-------------- functions for input data layer -----------------------*/
 void icvCNNInputDataRelease( CvCNNLayer** p_layer );
 void icvCNNInputDataForward( CvCNNLayer* layer, const CvMat* X, CvMat* Y );
