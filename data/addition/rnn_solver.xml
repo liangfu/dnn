@@ -12,7 +12,7 @@
 	<lr_init>0.75</lr_init>
 	<decay_type>invsqrt</decay_type>
 	<maxiter>500000</maxiter>
-	<batch_size>2</batch_size>
+	<batch_size>3</batch_size>
 	<validate_ratio>0.1</validate_ratio>
 </network>
 </opencv_storage>

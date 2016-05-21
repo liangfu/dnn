@@ -142,6 +142,7 @@ void icvCNNRecurrentForward( CvCNNLayer* _layer, const CvMat* X, CvMat * Y)
 
   // memory allocation
   if (!ref_layer){
+    CV_ASSERT(!layer->H && !layer->Y && !layer->WX && !layer->WH);
     layer->H = cvCreateMat( n_hiddens * batch_size, seq_length, CV_32F ); cvZero(layer->H);
     layer->Y = cvCreateMat( n_outputs * batch_size, seq_length, CV_32F ); cvZero(layer->Y);
     layer->WX = cvCreateMat( n_hiddens * batch_size, seq_length, CV_32F ); cvZero(layer->WX);
@@ -355,15 +356,15 @@ void icvCNNRecurrentBackward( CvCNNLayer* _layer, int t,
   // memory allocation
   CV_CALL(WX = cvCreateMat( n_hiddens, batch_size, CV_32F )); cvZero( WX );
   CV_CALL(WH = cvCreateMat( n_hiddens, batch_size, CV_32F )); cvZero( WH );
-  CV_CALL(H_prev = cvCreateMat( n_hiddens * batch_size, 1, CV_32F )); cvZero(H_prev);
-  CV_CALL(H_curr = cvCreateMat( n_hiddens * batch_size, 1, CV_32F )); cvZero(H_curr);
-  CV_CALL(WX_curr = cvCreateMat( n_hiddens * batch_size, 1, CV_32F )); cvZero(WX_curr);
-  CV_CALL(WH_curr = cvCreateMat( n_outputs * batch_size, 1, CV_32F )); cvZero(WH_curr);
-  CV_CALL(dE_dY_curr = cvCreateMat( n_outputs * batch_size, 1, CV_32F )); cvZero(dE_dY_curr);
-  CV_CALL(dE_dY_afder = cvCreateMat( n_outputs * batch_size, 1, CV_32F )); cvZero(dE_dY_afder);
-  CV_CALL(dH_curr = cvCreateMat( n_hiddens * batch_size, 1, CV_32F )); cvZero(dH_curr);
-  CV_CALL(dH_next = cvCreateMat( n_hiddens * batch_size, 1, CV_32F )); cvZero(dH_next);
-  CV_CALL(dH_raw  = cvCreateMat( n_hiddens * batch_size, 1, CV_32F )); cvZero(dH_raw);
+  CV_CALL(H_prev = cvCreateMat( n_hiddens, batch_size, CV_32F )); cvZero(H_prev);
+  CV_CALL(H_curr = cvCreateMat( n_hiddens, batch_size, CV_32F )); cvZero(H_curr);
+  CV_CALL(WX_curr = cvCreateMat( n_hiddens, batch_size, CV_32F )); cvZero(WX_curr);
+  CV_CALL(WH_curr = cvCreateMat( n_outputs, batch_size, CV_32F )); cvZero(WH_curr);
+  CV_CALL(dE_dY_curr = cvCreateMat( n_outputs, batch_size, CV_32F )); cvZero(dE_dY_curr);
+  CV_CALL(dE_dY_afder = cvCreateMat( n_outputs, batch_size, CV_32F )); cvZero(dE_dY_afder);
+  CV_CALL(dH_curr = cvCreateMat( n_hiddens, batch_size, CV_32F )); cvZero(dH_curr);
+  CV_CALL(dH_next = cvCreateMat( n_hiddens, batch_size, CV_32F )); cvZero(dH_next);
+  CV_CALL(dH_raw  = cvCreateMat( n_hiddens, batch_size, CV_32F )); cvZero(dH_raw);
   CV_CALL(dWxh = cvCreateMat( layer_Wxh->rows, layer_Wxh->cols, CV_32F )); cvZero(dWxh);
   CV_CALL(dWhh = cvCreateMat( layer_Whh->rows, layer_Whh->cols, CV_32F )); cvZero(dWhh);
   CV_CALL(dWhy = cvCreateMat( layer_Why->rows, layer_Why->cols, CV_32F )); cvZero(dWhy);
@@ -401,8 +402,8 @@ void icvCNNRecurrentBackward( CvCNNLayer* _layer, int t,
   cvGetCol(layer_WH,&WH_curr_hdr,layer->time_index); cvCopy(&WH_curr_hdr,WH_curr); 
   cvGetCol(layer_dH,&dH_curr_hdr,layer->time_index); // output variable
   CV_ASSERT(cvCountNonZero(WH_curr)>1);
-  CV_ASSERT(layer_dE_dY->rows*layer_dE_dY->cols==seq_length*n_outputs &&
-            CV_MAT_TYPE(layer_dE_dY->type)==CV_32F);
+  CV_ASSERT(layer_dE_dY->rows*layer_dE_dY->cols==seq_length*n_outputs*batch_size);
+  CV_ASSERT(CV_MAT_TYPE(layer_dE_dY->type)==CV_32F);
   CvMat layer_dE_dY_reshaped = cvMat(seq_length,n_outputs,CV_32F,layer_dE_dY->data.ptr);
   CvMat * layer_dE_dY_transpose = cvCreateMat(n_outputs,seq_length,CV_32F);
   cvTranspose(&layer_dE_dY_reshaped,layer_dE_dY_transpose);
