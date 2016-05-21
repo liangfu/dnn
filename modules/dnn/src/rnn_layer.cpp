@@ -405,7 +405,7 @@ void icvCNNRecurrentBackward( CvCNNLayer* _layer, int t,
   for (int bidx=0;bidx<batch_size;bidx++){
     CvMat layer_dE_dY_submat, dE_dY_curr_submat;
     cvGetRow(layer_dE_dY,&layer_dE_dY_submat,seq_length*bidx+time_index);
-    cvGetCols(dE_dY_curr,&dE_dY_curr_submat,n_outputs*bidx,n_outputs*(bidx+1));
+    cvGetRow(dE_dY_curr,&dE_dY_curr_submat,bidx);
     cvCopy(&layer_dE_dY_submat, &dE_dY_curr_submat);
   }
   CV_ASSERT(cvSdv(dE_dY_curr)>1e-5);
@@ -431,8 +431,13 @@ void icvCNNRecurrentBackward( CvCNNLayer* _layer, int t,
   CV_GEMM(dE_dY_afder,H_curr,1.f,0,1.f,&dWhy_submat,CV_GEMM_A_T);
   cvAdd(&layer_dWhy_submat,&dWhy_submat,&layer_dWhy_submat);
   // dby += dy
-  CV_ASSERT(cvGetSize(&layer_dybiascol)==cvGetSize(dE_dY_afder));
-  cvAdd(&layer_dybiascol,dE_dY_afder,&layer_dybiascol);
+  // CV_ASSERT(cvGetSize(&layer_dybiascol)==cvGetSize(dE_dY_afder));
+  // cvAdd(&layer_dybiascol,dE_dY_afder,&layer_dybiascol);
+  CvMat * dE_dY_afder_transpose = cvCreateMat(dE_dY_afder->cols,dE_dY_afder->rows,CV_32F);
+  cvTranspose(dE_dY_afder,dE_dY_afder_transpose);
+  cvAdd(layer_dybias,dE_dY_afder_transpose,layer_dybias);
+  cvReduce(layer_dybias,&layer_dybiascol,CV_REDUCE_AVG); // ::TODO:: average ybias update ???
+  cvReleaseMat(&dE_dY_afder_transpose);
 
   // dH_curr = Why * dy + dH_next
   cvGEMM(&Why_submat,dE_dY_afder,1.f,dH_next,1.f,dH_curr,CV_GEMM_A_T);
