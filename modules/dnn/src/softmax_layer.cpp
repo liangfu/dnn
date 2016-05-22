@@ -27,15 +27,19 @@
  
 //! assuming column vectors (a column is a sample)
 void cvSoftmax(CvMat * src, CvMat * dst){
+  CV_FUNCNAME("cvSoftmaxDer");
+  __BEGIN__;
   cvExp(src,dst);
   const int dtype = CV_MAT_TYPE(src->type);
   CvMat * sum = cvCreateMat(1,src->cols,dtype);
   CvMat * sum_repeat = cvCreateMat(src->rows,src->cols,dtype);
   cvReduce(dst,sum,-1,CV_REDUCE_SUM);
+  CV_ASSERT(cvCountNAN(sum)<1);
   cvRepeat(sum,sum_repeat);
   cvDiv(dst,sum_repeat,dst);
   cvReleaseMat(&sum);
   cvReleaseMat(&sum_repeat);
+  __END__;
 }
 
 void cvSoftmaxDer(CvMat * X, CvMat * dE_dY, CvMat * dE_dY_afder) {

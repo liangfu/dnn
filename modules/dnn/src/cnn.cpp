@@ -326,6 +326,7 @@ static void icvTrainCNNetwork( CvCNNetwork* network,const CvMat* images, const C
 
     // 2) Compute the gradient
     CvMat etalon_src, etalon_dst;
+    CV_ASSERT(cvCountNAN(X[n_layers])<1);
     cvTranspose( X[n_layers], dE_dX[n_layers] );
     for ( k = 0; k < batch_size; k++ ){
       cvGetRow(responses,&etalon_src,worst_img_idx->data.i[k]);
