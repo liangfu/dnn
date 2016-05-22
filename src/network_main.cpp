@@ -39,6 +39,8 @@ int main(int argc, char * argv[])
   char solver_filename[1<<10]={0,};
   if (parser.get<string>("solver").length()>0){
     strcpy(solver_filename,parser.get<string>("solver").c_str());
+  }else{
+    LOGE("solver filename is empty."); exit(-1);
   }
 
   CvNetwork * cnn = new CvNetwork();
