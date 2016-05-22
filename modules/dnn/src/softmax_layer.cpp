@@ -27,9 +27,11 @@
  
 //! assuming column vectors (a column is a sample)
 void cvSoftmax(CvMat * src, CvMat * dst){
-  CV_FUNCNAME("cvSoftmaxDer");
+  CV_FUNCNAME("cvSoftmax");
   __BEGIN__;
+  CV_ASSERT(cvCountNAN(src)<1);
   cvExp(src,dst);
+  CV_ASSERT(cvCountNAN(dst)<1);
   const int dtype = CV_MAT_TYPE(src->type);
   CvMat * sum = cvCreateMat(1,src->cols,dtype);
   CvMat * sum_repeat = cvCreateMat(src->rows,src->cols,dtype);

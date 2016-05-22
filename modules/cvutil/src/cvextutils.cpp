@@ -20,6 +20,8 @@ int cvCountNAN(CvMat * src)
       if (cvIsNaN(src->data.fl[ii])||cvIsInf(src->data.fl[ii])){sum++;} 
     }else if (CV_MAT_TYPE(src->type)==CV_64F){
       if (cvIsNaN(src->data.db[ii])||cvIsInf(src->data.db[ii])){sum++;}
+    }else{
+      LOGW("invalid data type."); exit(-1);
     }
   }
   return sum;
