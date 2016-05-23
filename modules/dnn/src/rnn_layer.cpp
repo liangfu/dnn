@@ -218,7 +218,7 @@ void icvCNNRecurrentForward( CvCNNLayer* _layer, const CvMat* X, CvMat * Y)
   cvGEMM( &Why_submat, &H_curr_reshaped, 1, ybias, 1, &Y_curr_reshape_hdr, CV_GEMM_B_T );
   cvTranspose(&Y_curr_reshape_hdr,&WH_curr_reshaped); 
   CV_ASSERT(cvCountNonZero(&WH_curr_reshaped)>1);
-  CV_ASSERT(cvCountNAN(Y_curr)<1);
+  CV_ASSERT(cvCountNAN(Y_curr)<1); //  && cvSdv(Y_curr)<10.f
   CV_CALL(cvCopy(WH_curr,&WH_curr_hdr));          // copy to layer->WH
 
   // apply activation to output
@@ -478,10 +478,12 @@ void icvCNNRecurrentBackward( CvCNNLayer* _layer, int t,
   // dWxh += dH_raw * X_curr'
   CV_ASSERT(dH_raw->rows==batch_size && X->cols==batch_size);
   cvGEMM(dH_raw,X,1.f,0,1.f,dWxh,CV_GEMM_A_T+CV_GEMM_B_T);
+  cvScale(dWxh,dWxh,1./batch_size); // batch normalize
   cvAdd(layer_dWxh,dWxh,layer_dWxh);
   // dWhh += dH_raw * H_prev'
   CV_ASSERT(dH_raw->rows==batch_size && H_prev->rows==batch_size);
   CV_GEMM(dH_raw,H_prev,1.f,0,1.f,&dWhh_submat,CV_GEMM_A_T);
+  cvScale(&dWhh_submat,&dWhh_submat,1./batch_size); // batch normalize
   cvAdd(&layer_dWhh_submat,&dWhh_submat,&layer_dWhh_submat);
   // CV_ASSERT(cvSdv(&layer_dWhh_submat)>1e-5f);
 
