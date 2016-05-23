@@ -63,6 +63,7 @@ ML_IMPL CvCNNLayer* cvCreateCNNRecurrentLayer(
 
   int n_hiddens = layer->n_hiddens;
   if (!ref_layer){
+    CV_ASSERT(layer->time_index==0);
     CV_CALL(layer->Wxh = cvCreateMat( n_hiddens, n_inputs , CV_32F ));
     CV_CALL(layer->Whh = cvCreateMat( n_hiddens, n_hiddens+1, CV_32F ));
     CV_CALL(layer->Why = cvCreateMat( n_outputs, n_hiddens+1, CV_32F ));
@@ -81,6 +82,8 @@ ML_IMPL CvCNNLayer* cvCreateCNNRecurrentLayer(
       for (int ii=0;ii<n_hiddens;ii++){ CV_MAT_ELEM(*layer->Whh,float,ii,n_hiddens)=0; }
       for (int ii=0;ii<n_outputs;ii++){ CV_MAT_ELEM(*layer->Why,float,ii,n_hiddens)=0; }
     }
+  }else{
+    CV_ASSERT(layer->time_index>0);
   }
 
   __END__;
@@ -158,13 +161,12 @@ void icvCNNRecurrentForward( CvCNNLayer* _layer, const CvMat* X, CvMat * Y)
   CvMat * layerWX = ref_layer?ref_layer->WX:layer->WX;
   CvMat * layerWH = ref_layer?ref_layer->WH:layer->WH;
   CV_ASSERT(cvGetSize(layerH)==cvGetSize(layerWX));
-  CV_CALL(WX = cvCreateMat( batch_size, n_hiddens, CV_32F ));
-  CV_CALL(WH = cvCreateMat( batch_size, n_hiddens, CV_32F ));
-  CV_CALL(H_prev = cvCreateMat( 1, n_hiddens * batch_size, CV_32F ));
-  CV_CALL(H_curr = cvCreateMat( 1, n_hiddens * batch_size, CV_32F ));
-  CV_CALL(WX_curr = cvCreateMat( 1, n_hiddens * batch_size, CV_32F ));
-  CV_CALL(WH_curr = cvCreateMat( 1, n_outputs * batch_size, CV_32F ));
-  cvZero( WX ); cvZero( WH );
+  CV_CALL(WX = cvCreateMat( batch_size, n_hiddens, CV_32F )); cvZero( WX );
+  CV_CALL(WH = cvCreateMat( batch_size, n_hiddens, CV_32F )); cvZero( WH );
+  CV_CALL(H_prev = cvCreateMat( 1, n_hiddens * batch_size, CV_32F )); cvZero(H_prev);
+  CV_CALL(H_curr = cvCreateMat( 1, n_hiddens * batch_size, CV_32F )); cvZero(H_curr);
+  CV_CALL(WX_curr = cvCreateMat( 1, n_hiddens * batch_size, CV_32F )); cvZero( WX_curr );
+  CV_CALL(WH_curr = cvCreateMat( 1, n_outputs * batch_size, CV_32F )); cvZero( WH_curr );
   
   // bias on last column vector
   CV_CALL(cvGetCols( Whh, &Whh_submat, 0, Whh->cols-1));
@@ -178,7 +180,10 @@ void icvCNNRecurrentForward( CvCNNLayer* _layer, const CvMat* X, CvMat * Y)
 
   // hidden states
   CvMat H_prev_hdr, H_curr_hdr, WX_curr_hdr, WH_curr_hdr, Y_curr_hdr;
-  if (layer->time_index==0){ cvZero(H_prev); }else{
+  if (layer->time_index==0){ 
+    // cvZero(H_prev); // LOGW("previous state should be reused.");
+    cvGetRow(layerH,&H_prev_hdr,layer->seq_length-1); cvCopy(&H_prev_hdr,H_prev);
+  }else{
     cvGetRow(layerH,&H_prev_hdr,layer->time_index-1); cvCopy(&H_prev_hdr,H_prev);
   }
   cvGetRow(layerWX,&WX_curr_hdr,layer->time_index); cvCopy(&WX_curr_hdr,WX_curr);
@@ -188,9 +193,9 @@ void icvCNNRecurrentForward( CvCNNLayer* _layer, const CvMat* X, CvMat * Y)
   CvMat WX_curr_reshaped = cvMat(batch_size, n_hiddens, CV_32F, WX_curr->data.ptr);
   CvMat WH_curr_reshaped = cvMat(batch_size, n_outputs, CV_32F, WH_curr->data.ptr);
 
-  // H_t1 = Wxh * X_t0 + ( Whh * H_t0 + bh )
+  // H_curr = Wxh * X_curr + ( Whh * H_prev + bh )
+  // WARNING: Whh_submat is square matrix !!! 
   CV_CALL(cvGEMM( X, Wxh, 1, 0, 1, WX, CV_GEMM_A_T+CV_GEMM_B_T ));
-  // warning: Whh_submat is square matrix !!! should we transpose it ???
   CV_CALL(cvGEMM( &H_prev_reshaped, &Whh_submat, 1, hbias, 1, WH, CV_GEMM_C_T ));  
   cvAdd(WX,WH,&H_curr_reshaped);
   cvCopy(&H_curr_reshaped,&WX_curr_reshaped);
@@ -206,7 +211,7 @@ void icvCNNRecurrentForward( CvCNNLayer* _layer, const CvMat* X, CvMat * Y)
   CV_ASSERT(Y_curr_reshape_hdr.rows==n_outputs && Y_curr_reshape_hdr.cols==batch_size);
   CV_ASSERT(cvCountNAN(Y_curr)<1);
 
-  // Y = sigmoid(Why * H + by)
+  // Y = activate(Why * H + by)
   cvGEMM( &Why_submat, &H_curr_reshaped, 1, ybias, 1, &Y_curr_reshape_hdr, CV_GEMM_B_T );
   cvTranspose(&Y_curr_reshape_hdr,&WH_curr_reshaped); 
   CV_ASSERT(cvCountNonZero(&WH_curr_reshaped)>1);
@@ -338,7 +343,7 @@ void icvCNNRecurrentBackward( CvCNNLayer* _layer, int t,
     }else{ 
       CV_ASSERT(dE_dY->cols==n_outputs && layer_dE_dY==ref_layer->dE_dY && 
                 layer_dH==ref_layer->dH && layer_dWxh==ref_layer->dWxh && 
-                layer_dWhh==ref_layer->dWhh   && layer_dWhy==ref_layer->dWhy);
+                layer_dWhh==ref_layer->dWhh && layer_dWhy==ref_layer->dWhy);
       CV_ASSERT(layer_dH && layer_dWxh && layer_dWhh && layer_dWhy);
     }
   }else{
@@ -388,11 +393,19 @@ void icvCNNRecurrentBackward( CvCNNLayer* _layer, int t,
   // hidden states
   CvMat H_prev_hdr, H_curr_hdr, dH_curr_hdr, dH_next_hdr;
   CvMat WX_curr_hdr, WH_curr_hdr, dE_dY_curr_hdr;
-  CvMat dH_next_reshape_hdr, H_curr_reshape_hdr, WX_curr_reshape_hdr, WH_curr_reshape_hdr;
+  CvMat dH_next_reshape_hdr, H_prev_reshape_hdr, H_curr_reshape_hdr, WX_curr_reshape_hdr, WH_curr_reshape_hdr;
   if (layer->time_index==seq_length-1){ cvZero(dH_next); }else{
     cvGetRow(layer_dH,&dH_next_hdr,layer->time_index+1); 
     cvReshape(dH_next,&dH_next_reshape_hdr,0,1); 
     cvCopy(&dH_next_hdr,&dH_next_reshape_hdr);
+  }
+  if (layer->time_index==0){
+    // cvZero(H_prev); // LOGW("this should be properly handled.");
+    cvGetRow(layerH,&H_prev_hdr,layer->seq_length-1); 
+    cvReshape(&H_prev_hdr,&H_prev_reshape_hdr,0,batch_size); cvCopy(&H_prev_reshape_hdr,H_prev);
+  }else{
+    cvGetRow(layerH,&H_prev_hdr,layer->time_index-1); 
+    cvReshape(&H_prev_hdr,&H_prev_reshape_hdr,0,batch_size); cvCopy(&H_prev_reshape_hdr,H_prev);
   }
   cvGetRow(layerH,&H_curr_hdr,layer->time_index); 
   cvReshape(&H_curr_hdr,&H_curr_reshape_hdr,0,batch_size); cvCopy(&H_curr_reshape_hdr,H_curr);
@@ -428,36 +441,31 @@ void icvCNNRecurrentBackward( CvCNNLayer* _layer, int t,
     CV_ERROR(CV_StsBadArg,"invalid output activation type for RNN layer, `softmax` is prefered.");
   }
 
-  // for (int bidx=0; bidx<batch_size; bidx++){
-  // CvMat dE_dY_afder_submat, H_curr_submat;
-  // cvGetRows(dE_dY_afder,&dE_dY_afder_submat,n_outputs*bidx,n_outputs*(bidx+1));
-  // cvGetRows(H_curr,&H_curr_submat,n_hiddens*bidx,n_hiddens*(bidx+1));
-
   // dWhy += dE_dY_afder * H_curr'
   CV_GEMM(dE_dY_afder,H_curr,1.f,0,1.f,&dWhy_submat,CV_GEMM_A_T);
+  CV_ASSERT(cvSdv(H_curr)<.3f);
+  if (time_index==seq_length-1){CV_ASSERT(cvSdv(&layer_dWhy_submat)<1e-5f);}
+  else{CV_ASSERT(cvSdv(&layer_dWhy_submat)>1e-5f);}
   cvAdd(&layer_dWhy_submat,&dWhy_submat,&layer_dWhy_submat);
   
   // dby += dy
-  // CV_ASSERT(cvGetSize(&layer_dybiascol)==cvGetSize(dE_dY_afder));
-  // cvAdd(&layer_dybiascol,dE_dY_afder,&layer_dybiascol);
   CvMat * dE_dY_afder_transpose = cvCreateMat(dE_dY_afder->cols,dE_dY_afder->rows,CV_32F);
-  // cvTranspose(dE_dY_afder,dE_dY_afder_transpose);
-  // cvAdd(layer_dybias,dE_dY_afder_transpose,layer_dybias);
-  // cvReduce(layer_dybias,&layer_dybiascol,-1,CV_REDUCE_AVG); // ::TODO:: average dybias update ???
+  cvTranspose(dE_dY_afder,dE_dY_afder_transpose);
+  cvAdd(layer_dybias,dE_dY_afder_transpose,layer_dybias);
+  cvReduce(layer_dybias,&layer_dybiascol,-1,CV_REDUCE_AVG); // ::TODO:: average dybias update ???
   cvZero(layer_dybias);
   cvReleaseMat(&dE_dY_afder_transpose);
 
   // dH_curr = Why * dy + dH_next
   CV_GEMM(dE_dY_afder,&layer_Why_submat,1.f,dH_next,1.f,dH_curr,0);
-  // dH_raw = tanh'(H_curr) * dH
+  // dH_raw = tanh'(H_curr) * dH = (1-H_curr.*H_curr)*dH
   cvPow(H_curr,dH_raw,2.f); cvSubRS(dH_raw,cvScalar(1.f),dH_raw);
   cvMul(dH_raw, dH_curr, dH_raw);
   // dhbias += dH_raw
-  // cvAdd(&dhbiascol,dH_raw,&dhbiascol);
   CvMat * dH_raw_transpose = cvCreateMat(dH_raw->cols,dH_raw->rows,CV_32F);
-  // cvTranspose(dH_raw,dH_raw_transpose);
-  // cvAdd(layer_dhbias,dH_raw_transpose,layer_dhbias);
-  // cvReduce(layer_dhbias,&layer_dhbiascol,-1,CV_REDUCE_AVG); // ::TODO:: average dhbias update ???
+  cvTranspose(dH_raw,dH_raw_transpose);
+  cvAdd(layer_dhbias,dH_raw_transpose,layer_dhbias);
+  cvReduce(layer_dhbias,&layer_dhbiascol,-1,CV_REDUCE_AVG); // ::TODO:: average dhbias update ???
   cvZero(layer_dhbias);
   cvReleaseMat(&dH_raw_transpose);
 
@@ -469,14 +477,15 @@ void icvCNNRecurrentBackward( CvCNNLayer* _layer, int t,
   CV_ASSERT(dH_raw->rows==batch_size && H_prev->rows==batch_size);
   CV_GEMM(dH_raw,H_prev,1.f,0,1.f,&dWhh_submat,CV_GEMM_A_T);
   cvAdd(&layer_dWhh_submat,&dWhh_submat,&layer_dWhh_submat);
+  CV_ASSERT(cvSdv(&layer_dWhh_submat)>1e-5f);
 
   // gradient of hidden states, reserve it to continue backward pass to previous layers
   // dH_curr = Whh' * dH_raw, while (A'*B)=(B'*A)'
   CV_ASSERT(cvCountNAN(&dWhh_submat)<1 && cvCountNAN(dH_raw)<1);
   CV_ASSERT(dH_raw->cols==n_hiddens && layer_Whh_submat.rows==n_hiddens);
   cvGEMM(dH_raw,&layer_Whh_submat,1.f,0,1.f,dH_curr,0);
-  CvMat dH_curr_reshape; cvReshape(dH_curr,&dH_curr_reshape,0,1);
-  cvCopy(&dH_curr_reshape,&dH_curr_hdr); CV_ASSERT(cvCountNAN(&dH_curr_hdr)<1);
+  CvMat dH_curr_reshape_hdr; cvReshape(dH_curr,&dH_curr_reshape_hdr,0,1);
+  cvCopy(&dH_curr_reshape_hdr,&dH_curr_hdr); CV_ASSERT(cvCountNAN(&dH_curr_hdr)<1);
 
   // 2) update weights
   if (layer->time_index==0){
@@ -487,6 +496,7 @@ void icvCNNRecurrentBackward( CvCNNLayer* _layer, int t,
     for (int ii=0;ii<5;ii++){ 
       CV_ASSERT(cvCountNAN(dW[ii])<1 && cvCountNAN(W[ii])<1);
       cvMaxS(dW[ii],-5,dW[ii]); cvMinS(dW[ii],5,dW[ii]); 
+      if (ii<3){CV_ASSERT(cvSdv(dW[ii])>1e-5f && cvSdv(dW[ii])<.1f);}
       cvScaleAdd( dW[ii], cvScalar(eta), W[ii], W[ii] );
       if (ii<3){CV_ASSERT(cvSdv(W[ii])>1e-5f && cvSdv(W[ii])<1.f);}
     }

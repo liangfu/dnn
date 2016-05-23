@@ -144,15 +144,15 @@ CV_INLINE void cvDoNothing() { }
 #elif defined(__linux__)
 #define LOGE(fmt,...)                                   \
   do {                                                  \
-    fprintf(stderr,"ERROR: " fmt "\n",##__VA_ARGS__);   \
+    fprintf(stderr,"%s: %d: error: " fmt "\n",__FILE__,__LINE__,##__VA_ARGS__); \
   }while(0)
 #define LOGW(fmt,...)                                   \
   do {                                                  \
-    fprintf(stderr,"WARNING: " fmt "\n",##__VA_ARGS__); \
+    fprintf(stderr,"%s: %d: warning: " fmt "\n",__FILE__,__LINE__,##__VA_ARGS__); \
   }while(0)
 #define LOGI(fmt,...)                                   \
   do {                                                  \
-    fprintf(stderr,"INFO: " fmt "\n",##__VA_ARGS__);    \
+    fprintf(stderr,"%s: %d: info: " fmt "\n",__FILE__,__LINE__,##__VA_ARGS__);    \
   }while(0)
 #else 
 #endif
