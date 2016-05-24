@@ -9,10 +9,10 @@
 <network>
 	<model_filename>data/mnist/twodigit_model.yml</model_filename>
 	<weights_filename>data/mnist/twodigit_weights.xml</weights_filename>
-	<lr_init>0.05</lr_init>
+	<lr_init>0.25</lr_init>
 	<decay_type>invsqrt</decay_type>
 	<maxiter>2000</maxiter>
-	<batch_size>1</batch_size>
+	<batch_size>3</batch_size>
 	<validate_ratio>0.1</validate_ratio>
 </network>
 </opencv_storage>

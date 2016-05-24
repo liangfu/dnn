@@ -140,22 +140,28 @@ add_executable(network src/network_main.cpp src/network.cpp)
 target_link_libraries(network cxcore cvutil cv highgui dnn ${FFMPEG_LIBRARIES} ${OPENMP_LIBRARIES})
 
 add_executable(transfer_mnist_lenet src/transfer_mnist_lenet.cpp  src/network.cpp)
-target_link_libraries(transfer_mnist_lenet cxcore cvutil cv highgui dnn ${FFMPEG_LIBRARIES} ${OPENMP_LIBRARIES})
+target_link_libraries(transfer_mnist_lenet cxcore cvutil cv highgui dnn 
+  ${FFMPEG_LIBRARIES} ${OPENMP_LIBRARIES})
 
 add_executable(transfer_mnist_twodigit src/transfer_mnist_twodigit.cpp  src/network.cpp)
-target_link_libraries(transfer_mnist_twodigit cxcore cvutil cv highgui dnn ${FFMPEG_LIBRARIES} ${OPENMP_LIBRARIES})
+target_link_libraries(transfer_mnist_twodigit cxcore cvutil cv highgui dnn 
+  ${FFMPEG_LIBRARIES} ${OPENMP_LIBRARIES})
 
 add_executable(transfer_mnist_addition src/transfer_mnist_addition.cpp  src/network.cpp)
-target_link_libraries(transfer_mnist_addition cxcore cvutil cv highgui dnn ${FFMPEG_LIBRARIES} ${OPENMP_LIBRARIES})
+target_link_libraries(transfer_mnist_addition cxcore cvutil cv highgui dnn 
+  ${FFMPEG_LIBRARIES} ${OPENMP_LIBRARIES})
 
 add_executable(transfer_addition src/transfer_addition.cpp  src/network.cpp)
-target_link_libraries(transfer_addition cxcore cvutil cv highgui dnn ${FFMPEG_LIBRARIES} ${OPENMP_LIBRARIES})
+target_link_libraries(transfer_addition cxcore cvutil cv highgui dnn 
+  ${FFMPEG_LIBRARIES} ${OPENMP_LIBRARIES})
 
 add_executable(transfer_svhn_dram src/transfer_svhn_dram.cpp  src/network.cpp)
-target_link_libraries(transfer_svhn_dram cxcore cvutil cv highgui dnn ${FFMPEG_LIBRARIES} ${OPENMP_LIBRARIES})
+target_link_libraries(transfer_svhn_dram cxcore cvutil cv highgui dnn 
+  ${FFMPEG_LIBRARIES} ${OPENMP_LIBRARIES})
 
 add_executable(transfer_primate_convnet src/transfer_primate_convnet.cpp  src/network.cpp)
-target_link_libraries(transfer_primate_convnet cxcore cvutil cv highgui dnn ${FFMPEG_LIBRARIES} ${OPENMP_LIBRARIES})
+target_link_libraries(transfer_primate_convnet cxcore cvutil cv highgui dnn 
+  ${FFMPEG_LIBRARIES} ${OPENMP_LIBRARIES})
 
 
 

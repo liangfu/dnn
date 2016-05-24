@@ -56,6 +56,7 @@ ML_IMPL CvCNNLayer* cvCreateCNNSubSamplingLayer(
 
     layer->sub_samp_scale  = sub_samp_scale;
     layer->visualize = visualize;
+    layer->seq_length = 1;
     layer->mask = 0;
 
     CV_CALL(layer->sumX =

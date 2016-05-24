@@ -9,10 +9,10 @@
 <network>
 	<model_filename>data/mnist/lenet_model.yml</model_filename>
 	<weights_filename>data/mnist/lenet_weights.xml</weights_filename>
-	<lr_init>0.05</lr_init>
+	<lr_init>0.25</lr_init>
 	<decay_type>invsqrt</decay_type>
-	<maxiter>500</maxiter>
-	<batch_size>2</batch_size>
+	<maxiter>5000</maxiter>
+	<batch_size>4</batch_size>
 	<validate_ratio>0.1</validate_ratio>
 </network>
 </opencv_storage>

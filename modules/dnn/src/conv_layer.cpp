@@ -58,6 +58,7 @@ ML_IMPL CvCNNLayer* cvCreateCNNConvolutionLayer(
 
   layer->enable_cache = 1;
   layer->K = K;
+  layer->seq_length = 1;
   layer->visualize = visualize;
   layer->ref_layer = (CvCNNLayer*)ref_layer;
   if (input_layer){layer->input_layers.push_back((CvCNNLayer*)input_layer);}

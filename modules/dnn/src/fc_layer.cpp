@@ -52,6 +52,7 @@ CvCNNLayer * cvCreateCNNFullConnectLayer(
 
   layer->WX = 0;
   layer->dE_dW = 0;
+  layer->seq_length = 1;
 
   strcpy(layer->activation_type,activation_type);//CV_CNN_HYPERBOLIC;
   layer->visualize = visualize;
@@ -236,7 +237,11 @@ void icvCNNFullConnectBackward(CvCNNLayer * _layer, int t,
     cvTranspose(Xsrc,Xsrc_transpose);
     X = cvCreateMat(n_inputs,batch_size,dtype);
     CV_ASSERT(n_inputs*seq_length*batch_size==Xsrc->rows*Xsrc->cols);
+#if 0
     cvGetRow(Xsrc_transpose,&X_submat,time_index);
+#else
+    cvGetRows(Xsrc_transpose,&X_submat,batch_size*time_index,batch_size*(time_index+1));
+#endif
     cvTranspose(&X_submat,X); 
     cvReleaseMat(&Xsrc_transpose);
     // initialize dE_dX in layer member variable

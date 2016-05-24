@@ -49,6 +49,7 @@ CvCNNLayer * cvCreateCNNMultiTargetLayer(
       n_outputs, output_height, output_width, init_learn_rate, update_rule,
       icvCNNMultiTargetRelease, icvCNNMultiTargetForward, icvCNNMultiTargetBackward ));
 
+  layer->seq_length = 1;
   layer->visualize = visualize;
   // layer->n_input_layers = n_input_layers;
   // layer->input_layers = new CvCNNLayer*[n_input_layers];
