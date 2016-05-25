@@ -1022,7 +1022,20 @@ static void icvCNNetworkRead( CvCNNetwork * network, CvFileStorage * fs )
   CvCNNLayer * layer = network->first_layer;
   CvFileNode * root = cvGetRootFileNode( fs );
   for (int ii=0;ii<n_layers;ii++,layer=layer->next_layer){
-    layer->weights = (CvMat*)cvReadByName(fs,root,layer->name);
+    if (icvIsCNNRecurrentNNLayer(layer)){
+      CvCNNRecurrentLayer * rnnlayer = (CvCNNRecurrentLayer*)layer;
+      char xhstr[1024],hhstr[1024],hystr[1024];
+      sprintf(xhstr,"%s_Wxh",rnnlayer->name);
+      sprintf(hhstr,"%s_Whh",rnnlayer->name);
+      sprintf(hystr,"%s_Why",rnnlayer->name);
+      if (!rnnlayer->Wxh){
+        rnnlayer->Wxh=(CvMat*)cvReadByName(fs,root,xhstr);
+        rnnlayer->Whh=(CvMat*)cvReadByName(fs,root,hhstr);
+        rnnlayer->Why=(CvMat*)cvReadByName(fs,root,hystr);
+      }
+    }else{
+      layer->weights = (CvMat*)cvReadByName(fs,root,layer->name);
+    }
   }
   __END__;
 }

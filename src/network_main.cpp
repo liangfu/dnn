@@ -77,7 +77,7 @@ int main(int argc, char * argv[])
     cnn->saveWeights(cnn->solver()->weights_filename());
   }else{
     cnn->loadWeights(cnn->solver()->weights_filename());
-    int nsamples = MIN(1000,testing->rows);
+    int nsamples = testing->rows;//MIN(1000,testing->rows);
     float top1 = cnn->evaluate(testing,expected,nsamples);
     fprintf(stderr,"top-1: %.1f%%\n",top1);
   }
