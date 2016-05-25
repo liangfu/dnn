@@ -57,7 +57,7 @@
 \*************************************************************************/
 
 /*------------ functions for the CNN classifier --------------------*/
-static float icvCNNModelPredict(
+static void icvCNNModelPredict(
         const CvCNNStatModel* cnn_model,
         const CvMat* image,
         CvMat* probs CV_DEFAULT(0) );
@@ -76,8 +76,8 @@ static void icvTrainCNNetwork( CvCNNetwork* network,
 static void icvCNNetworkAddLayer( CvCNNetwork* network, CvCNNLayer* layer );
 static CvCNNLayer* icvCNNetworkGetLayer( CvCNNetwork* network, const char * name );
 static void icvCNNetworkRelease( CvCNNetwork** network );
-static CvCNNetwork * icvCNNetworkRead( CvFileStorage * fs );
-static void icvCNNetworkWrite( CvCNNetwork * struct_ptr, CvFileStorage * fs );
+static void icvCNNetworkRead( CvCNNetwork * network, CvFileStorage * fs );
+static void icvCNNetworkWrite( CvCNNetwork * network, CvFileStorage * fs );
 /* In all layer functions we denote input by X and output by Y, where
    X and Y are column-vectors, so that
    length(X)==<n_input_planes>*<input_height>*<input_width>,
@@ -413,7 +413,7 @@ static float icvEvalAccuracy(CvCNNLayer * last_layer, CvMat * result, CvMat * ex
 }
 
 /*************************************************************************/
-static float icvCNNModelPredict( const CvCNNStatModel* model, const CvMat* _image, CvMat* probs )
+static void icvCNNModelPredict( const CvCNNStatModel* model, const CvMat* _image, CvMat* result )
 {
   CvMat** X       = 0;
   float* img_data = 0;
@@ -429,14 +429,14 @@ static float icvCNNModelPredict( const CvCNNStatModel* model, const CvMat* _imag
   int img_height, img_width, img_size;
   int nclasses, i;
   float loss, min_loss = FLT_MAX;
-  float* probs_data;
+  float* result_data;
   CvMat etalon, X0_transpose;
   int nsamples;
   int n_inputs, seq_length;
 
   if ( model==0 ) { CV_ERROR( CV_StsBadArg, "Invalid model" ); }
 
-  nclasses = cnn_model->cls_labels->cols;
+  nclasses = result->rows;// cnn_model->cls_labels->cols;
   n_layers = cnn_model->network->n_layers;
   first_layer = cnn_model->network->first_layer;
   n_inputs = first_layer->n_input_planes;
@@ -447,15 +447,11 @@ static float icvCNNModelPredict( const CvCNNStatModel* model, const CvMat* _imag
   img_size = img_height*img_width*n_inputs*seq_length;
   nsamples = _image->rows;
   
-#if 0
-  cvPreparePredictData( _image, img_size, 0, nclasses, probs, &img_data );
-#else
-  CV_ASSERT(nsamples==probs->cols);
+  CV_ASSERT(nsamples==result->cols);
   CV_ASSERT(_image->cols==img_size && nsamples==_image->rows);
   if (!img_data){img_data = (float*)cvAlloc(img_size*nsamples*sizeof(float));}
   CvMat imghdr = cvMat(_image->rows,_image->cols,CV_32F,img_data);
   cvCopy(_image,&imghdr);
-#endif
 
   // normalize image value range
   if (icvIsCNNConvolutionLayer(cnn_model->network->first_layer->next_layer)){
@@ -477,27 +473,17 @@ static float icvCNNModelPredict( const CvCNNStatModel* model, const CvMat* _imag
 
   X0_transpose = cvMat( nsamples, img_size, CV_32FC1, img_data );
   cvTranspose( &X0_transpose, X[0] );
-  for ( k = 0, layer = first_layer; k < n_layers; k++, layer = layer->next_layer ) 
-#if 1
-  {CV_CALL(layer->forward( layer, X[k], X[k+1] ));}
-#else
-  { // if (k==4){cvScale(X[k],X[k],1./255.);}
+  for ( k = 0, layer = first_layer; k < n_layers; k++, layer = layer->next_layer ) {
     CV_CALL(layer->forward( layer, X[k], X[k+1] ));
-    icvVisualizeCNNLayer(layer, X[k+1]);
-  }fprintf(stderr,"\n");
-#endif
+  }
 
-  cvCopy(X[n_layers],probs);
+  cvCopy(X[n_layers], result);
 
   __END__;
 
-  for ( k = 0; k <= n_layers; k++ )
-    cvReleaseMat( &X[k] );
+  for ( k = 0; k <= n_layers; k++ ) { cvReleaseMat( &X[k] ); }
   cvFree( &X );
-  if ( img_data != _image->data.fl )
-    cvFree( &img_data );
-
-  return ((float) ((CvCNNStatModel*)model)->cls_labels->data.i[best_etal_idx]);
+  if ( img_data != _image->data.fl ) { cvFree( &img_data ); }
 }
 
 /****************************************************************************************/
@@ -594,6 +580,8 @@ ML_IMPL CvCNNetwork* cvCreateCNNetwork( CvCNNLayer* first_layer )
     network->release   = icvCNNetworkRelease;
     network->add_layer = icvCNNetworkAddLayer;
     network->get_layer = icvCNNetworkGetLayer;
+    network->get_last_layer = cvGetCNNLastLayer;
+    network->eval      = icvEvalAccuracy;
     network->read      = icvCNNetworkRead;
     network->write     = icvCNNetworkWrite;
 
@@ -1026,85 +1014,44 @@ static void icvWriteCNNLayer( CvFileStorage* fs, CvCNNLayer* layer )
 }
 
 /****************************************************************************************/
-static CvCNNetwork * icvCNNetworkRead( CvFileStorage * fs )
+static void icvCNNetworkRead( CvCNNetwork * network, CvFileStorage * fs )
 {
-  CvCNNetwork * cnn = 0;
-  CvCNNLayer * layer = 0;
-
   CV_FUNCNAME("icvReadCNNModel");
   __BEGIN__;
-
-//  CvFileNode* node;
-//  CvSeq* seq;
-//  CvSeqReader reader;
-//  int i;
-//
-//  CV_CALL(cnn = (CvCNNStatModel*)cvCreateCNNStatModel(
-//    CV_STAT_MODEL_MAGIC_VAL|CV_CNN_MAGIC_VAL, sizeof(CvCNNStatModel)));
-//
-//  CV_CALL(cnn->etalons = (CvMat*)cvReadByName( fs, root_node, "etalons" ));
-//  CV_CALL(cnn->cls_labels = (CvMat*)cvReadByName( fs, root_node, "cls_labels" ));
-//
-//  if ( !cnn->etalons || !cnn->cls_labels ) {
-//    CV_ERROR( CV_StsParseError, "No <etalons> or <cls_labels> in CNN model" );
-//  }
-//
-//  CV_CALL( node = cvGetFileNodeByName( fs, root_node, "network" ));
-//  seq = node->data.seq;
-//  if ( !CV_NODE_IS_SEQ(node->tag) ) { CV_ERROR( CV_StsBadArg, "" ); }
-//
-//  CV_CALL( cvStartReadSeq( seq, &reader, 0 ));
-//  CV_CALL(layer = icvReadCNNLayer( fs, (CvFileNode*)reader.ptr ));
-//  CV_CALL(cnn->network = cvCreateCNNetwork( layer ));
-//
-//  for ( i = 1; i < seq->total; i++ ) {
-//    CV_NEXT_SEQ_ELEM( seq->elem_size, reader );
-//    CV_CALL(layer = icvReadCNNLayer( fs, (CvFileNode*)reader.ptr ));
-//    CV_CALL(cnn->network->add_layer( cnn->network, layer ));
-//  }
-//
+  const int n_layers = network->n_layers;
+  CvCNNLayer * layer = network->first_layer;
+  CvFileNode * root = cvGetRootFileNode( fs );
+  for (int ii=0;ii<n_layers;ii++,layer=layer->next_layer){
+    layer->weights = (CvMat*)cvReadByName(fs,root,layer->name);
+  }
   __END__;
-
-  // if ( cvGetErrStatus() < 0 ) {
-  //   if ( cnn ) { cnn->release( (CvCNNStatModel**)&cnn ); }
-  //   if ( layer ) { layer->release( &layer ); }
-  // }
-  return cnn;
 }
 
 /****************************************************************************************/
 // static void icvWriteCNNModel( CvFileStorage* fs, const char* name, 
 //                               const void* struct_ptr, CvAttrList attr)
-static void icvCNNetworkWrite( CvCNNetwork * struct_ptr, CvFileStorage * fs )
-
+static void icvCNNetworkWrite( CvCNNetwork * network, CvFileStorage * fs )
 {
   CV_FUNCNAME ("icvWriteCNNetwork");
   __BEGIN__;
-//
-//  CvCNNStatModel* cnn = (CvCNNStatModel*)struct_ptr;
-//  int n_layers, i;
-//  CvCNNLayer* layer;
-//
-//  if ( !CV_IS_CNN(cnn) ) { CV_ERROR( CV_StsBadArg, "Invalid pointer" ); }
-//
-//  n_layers = cnn->network->n_layers;
-//
-//  CV_CALL( cvStartWriteStruct( fs, name, CV_NODE_MAP, CV_TYPE_NAME_ML_CNN ));
-//
-//  CV_CALL(cvWrite( fs, "etalons", cnn->etalons ));
-//  CV_CALL(cvWrite( fs, "cls_labels", cnn->cls_labels ));
-//
-//  CV_CALL( cvStartWriteStruct( fs, "network", CV_NODE_SEQ ));
-//
-//  layer = cnn->network->first_layer;
-//  for ( i = 0; i < n_layers && layer; i++, layer = layer->next_layer ) {
-//    CV_CALL(icvWriteCNNLayer( fs, layer ));
-//  }
-//  if ( i < n_layers || layer ) { CV_ERROR( CV_StsBadArg, "Invalid network" ); }
-//
-//  CV_CALL( cvEndWriteStruct( fs )); //"network"
-//  CV_CALL( cvEndWriteStruct( fs )); //"opencv-ml-cnn"
-//
+  const int n_layers = network->n_layers;
+  CvCNNLayer * layer = (CvCNNLayer*)network->first_layer;
+  for (int ii=0;ii<n_layers;ii++,layer=layer->next_layer){
+    if (icvIsCNNRecurrentNNLayer(layer)){
+      CvCNNRecurrentLayer * rnnlayer = (CvCNNRecurrentLayer*)layer;
+      char xhstr[1024],hhstr[1024],hystr[1024];
+      sprintf(xhstr,"%s_Wxh",rnnlayer->name);
+      sprintf(hhstr,"%s_Whh",rnnlayer->name);
+      sprintf(hystr,"%s_Why",rnnlayer->name);
+      if (rnnlayer->Wxh){
+        cvWrite(fs,xhstr,rnnlayer->Wxh);
+        cvWrite(fs,hhstr,rnnlayer->Whh);
+        cvWrite(fs,hystr,rnnlayer->Why);
+      }else{CV_ASSERT(!rnnlayer->Wxh && !rnnlayer->Whh && !rnnlayer->Why);}
+    }else{
+      if (layer->weights){cvWrite(fs,layer->name,layer->weights);}
+    }
+  }
   __END__;
 }
 

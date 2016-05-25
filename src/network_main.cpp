@@ -77,9 +77,9 @@ int main(int argc, char * argv[])
     cnn->saveWeights(cnn->solver()->weights_filename());
   }else{
     cnn->loadWeights(cnn->solver()->weights_filename());
-    int nsamples = MIN(5000,testing->rows);
+    int nsamples = MIN(1000,testing->rows);
     float top1 = cnn->evaluate(testing,expected,nsamples);
-    fprintf(stderr,"top-1: %.1f%%\n",float(top1*100.f)/float(nsamples));
+    fprintf(stderr,"top-1: %.1f%%\n",top1);
   }
 
   CV_TIMER_SHOW();

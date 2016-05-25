@@ -92,7 +92,9 @@ typedef struct CvCNNetwork CvCNNetwork;
 
 typedef void (CV_CDECL *CvCNNetworkAddLayer)(CvCNNetwork* network, CvCNNLayer* layer);
 typedef CvCNNLayer* (CV_CDECL *CvCNNetworkGetLayer)(CvCNNetwork* network, const char * name);
+typedef CvCNNLayer* (CV_CDECL *CvCNNetworkGetLastLayer)(CvCNNetwork* network);
 typedef void (CV_CDECL *CvCNNetworkRelease)(CvCNNetwork** network);
+typedef float (CV_CDECL *CvCNNetworkEvaluate)(CvCNNLayer * last_layer, CvMat * result, CvMat * expected);
 
 // #define CV_STAT_MODEL_PARAM_FIELDS() int flags
 
@@ -102,8 +104,8 @@ typedef struct CvStatModelParams
   int flags;
 } CvStatModelParams;
 
-typedef CvCNNetwork * (CV_CDECL *CvCNNetworkRead)( CvFileStorage * fs);
-typedef void (CV_CDECL *CvCNNetworkWrite)( CvCNNetwork *, CvFileStorage * fs);
+typedef void (CV_CDECL *CvCNNetworkRead)( CvCNNetwork * network, CvFileStorage * fs);
+typedef void (CV_CDECL *CvCNNetworkWrite)( CvCNNetwork * network, CvFileStorage * fs);
 
 typedef struct CvCNNetwork
 {
@@ -111,9 +113,11 @@ typedef struct CvCNNetwork
   CvCNNLayer * first_layer;
   CvCNNetworkAddLayer add_layer;
   CvCNNetworkGetLayer get_layer;
+  CvCNNetworkGetLastLayer get_last_layer;
   CvCNNetworkRead read;                           
   CvCNNetworkWrite write;                           
   CvCNNetworkRelease release;
+  CvCNNetworkEvaluate eval;
 }CvCNNetwork;
 
 //add by lxts on jun-22-2008
@@ -137,7 +141,7 @@ typedef struct CvCNNStatModelParams
 // this macro is added by lxts on jun/22/2008
 struct CvCNNStatModel;
 
-typedef float (CV_CDECL *CvCNNStatModelPredict) (const CvCNNStatModel *,const CvMat *,CvMat *);
+typedef void (CV_CDECL *CvCNNStatModelPredict) (const CvCNNStatModel *,const CvMat *,CvMat *);
 typedef void (CV_CDECL *CvCNNStatModelUpdate)(
         CvCNNStatModel* _cnn_model, const CvMat* _train_data, int tflag,
         const CvMat* _responses, const CvStatModelParams* _params,
@@ -151,7 +155,7 @@ typedef struct CvCNNStatModel
   CvCNNStatModelPredict predict;                         
   CvCNNStatModelUpdate update;                           
   CvCNNStatModelRelease release;
-  CvCNNetwork* network;
+  CvCNNetwork * network;
   // etalons are allocated as rows, the i-th etalon has label cls_labeles[i]
   CvMat* etalons;
   // classes labels

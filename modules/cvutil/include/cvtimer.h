@@ -69,6 +69,22 @@ class CvTimer
 #endif
 };
 
+// warning: this function is not thread safe
+static char * time2str(float elapsed)
+{
+  static char res[80];
+  int h = int(elapsed/3600.f)%24;                               
+  int m = int(elapsed/60.f)%60;                                 
+  int s = int(elapsed)%60;                                      
+  float ms = float(elapsed-h*3600-m*60-s)*1000.f;
+  if (h>0){sprintf(res,"%d hour %d min %d sec",h,m,s);}
+  else if (m>0){sprintf(res,"%d min %d sec %.0f ms",m,s,ms);}
+  else if (s>0){sprintf(res,"%d sec %.0f ms",s,ms);}
+  else if (ms>0){sprintf(res,"%.2f ms",ms);}
+  else{sprintf(res,"0 ms");}
+  return res;
+}
+
 #define CV_TIMER_START()                        \
   static CvTimer timer;                         \
   timer.start()
@@ -77,9 +93,12 @@ class CvTimer
   timer.restart()
 
 #if 1
-#  define CV_TIMER_SHOW()                                         \
-  fprintf(stderr, "%s: ", __FUNCTION__);                          \
-  fprintf(stderr, "elapsed: %fms\n", timer.elapsed()*1000.0f)
+#  define CV_TIMER_SHOW()                                           \
+  do {                                                              \
+  fprintf(stderr, "%s: ", __FUNCTION__);                            \
+  float seconds = timer.elapsed();                                  \
+  fprintf(stderr,"elapsed: %s\n",time2str(seconds));                \ 
+  }while(false)
 #else
 #  define CV_TIMER_SHOW() {}
 #endif
