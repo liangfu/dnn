@@ -433,6 +433,7 @@ static void icvCNNModelPredict( const CvCNNStatModel* model, const CvMat* _image
   CvMat etalon, X0_transpose;
   int nsamples;
   int n_inputs, seq_length;
+  int batch_size = result->cols;
 
   if ( model==0 ) { CV_ERROR( CV_StsBadArg, "Invalid model" ); }
 
@@ -465,10 +466,13 @@ static void icvCNNModelPredict( const CvCNNStatModel* model, const CvMat* _image
   CV_CALL(X = (CvMat**)cvAlloc( (n_layers+1)*sizeof(CvMat*) ));
   memset( X, 0, (n_layers+1)*sizeof(CvMat*) );
 
-  CV_CALL(X[0] = cvCreateMat( img_size,nsamples,CV_32FC1 ));
+  // initialize input data
+  CV_CALL(X[0] = cvCreateMat( img_size, batch_size*first_layer->seq_length, CV_32F ));
+  cvZero(X[0]); // cvZero(X0_transpose);
   for ( k = 0, layer = first_layer; k < n_layers; k++, layer = layer->next_layer ){
-    CV_CALL(X[k+1] = cvCreateMat( layer->n_output_planes*layer->output_height*
-                                  layer->output_width, nsamples, CV_32FC1 ));
+    int n_outputs = layer->n_output_planes*layer->output_height*layer->output_width;
+    CV_CALL(X[k+1] = cvCreateMat( n_outputs, batch_size*layer->seq_length, CV_32F )); 
+    cvZero(X[k+1]);
   }
 
   X0_transpose = cvMat( nsamples, img_size, CV_32FC1, img_data );
