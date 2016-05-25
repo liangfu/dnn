@@ -99,7 +99,7 @@ void CvNetwork::loadModel(string inFile)
           this_layer->input_layers.size()>0?this_layer->input_layers[0]:0, 
           this_layer->n_input_planes, this_layer->input_height, this_layer->input_width,
           this_layer->n_output_planes, this_layer->K,
-          this_layer->init_learn_rate, this_layer->decay_type, NULL, NULL );
+          this_layer->init_learn_rate, this_layer->decay_type, this_layer->activation_type, NULL, NULL );
       }else if (icvIsCNNSubSamplingLayer(predefined_layer)){
         CvCNNSubSamplingLayer * this_layer = (CvCNNSubSamplingLayer*)predefined_layer;
         layer = cvCreateCNNSubSamplingLayer( 
@@ -124,7 +124,7 @@ void CvNetwork::loadModel(string inFile)
       int ksize = cvReadIntByName(fs,node,"ksize");
       layer = cvCreateCNNConvolutionLayer( dtype, name, 0, visualize, input_layer, 
         n_input_planes, input_height, input_width, n_output_planes, ksize,
-        lr_init, decay_type, NULL, NULL );
+        lr_init, decay_type, activation_type, NULL, NULL );
       if (input_layer){input_layer->output_layers.push_back(layer);}
       n_input_planes = n_output_planes;
       input_height = input_height-ksize+1;

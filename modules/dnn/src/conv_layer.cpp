@@ -30,7 +30,7 @@ ML_IMPL CvCNNLayer* cvCreateCNNConvolutionLayer(
     const int dtype, const char * name, const CvCNNLayer * ref_layer,
     const int visualize, const CvCNNLayer * input_layer, 
     int n_input_planes, int input_height, int input_width, int n_output_planes, int K,
-    float init_learn_rate, int learn_rate_decrease_type,
+    float init_learn_rate, int update_rule, const char * activation_type,
     CvMat* connect_mask, CvMat* weights )
 
 {
@@ -53,9 +53,10 @@ ML_IMPL CvCNNLayer* cvCreateCNNConvolutionLayer(
     ICV_CNN_CONVOLUTION_LAYER, dtype, name, sizeof(CvCNNConvolutionLayer), 
     n_input_planes, input_height, input_width,
     n_output_planes, output_height, output_width,
-    init_learn_rate, learn_rate_decrease_type,
+    init_learn_rate, update_rule, 
     icvCNNConvolutionRelease, icvCNNConvolutionForward, icvCNNConvolutionBackward ));
 
+  strcpy(layer->activation_type,activation_type);
   layer->enable_cache = 1;
   layer->K = K;
   layer->seq_length = 1;
@@ -191,8 +192,15 @@ void icvCNNConvolutionForward( CvCNNLayer* _layer, const CvMat* X, CvMat* Y )
   } // si
 
   cvScale(Yt,Yt,1.f/float(K*K));
+  cvTranspose(Yt,Y);
+  if (!layer->WX){layer->WX=cvCloneMat(Y);}else{cvCopy(Y,layer->WX);}
+
+  if (!strcmp(layer->activation_type,"none")){ // do nothing
+  }else if (!strcmp(layer->activation_type,"tanh")){ CV_CALL(cvTanh( Y, Y ));
+  }else if (!strcmp(layer->activation_type,"sigmoid")){ CV_CALL(cvSigmoid( Y, Y ));
+  }else if (!strcmp(layer->activation_type,"relu")){ CV_CALL(cvReLU( Y, Y ));
+  }else{CV_ERROR(CV_StsBadArg,"Unknown activation type");}
   
-  cvTranspose(Yt,Y); 
   cvReleaseMat(&Xt);
   cvReleaseMat(&Yt);
   
@@ -251,6 +259,8 @@ void icvCNNConvolutionBackward(
       }
     } // average loss from all task
   }
+  CvMat * dE_dY_T = cvCreateMat(dE_dY->cols, dE_dY->rows, CV_32F); cvZero(dE_dY_T);
+  CvMat * dE_dY_afder = cvCreateMat(dE_dY->cols, dE_dY->rows, CV_32F); cvZero(dE_dY_afder);
 
   CV_ASSERT( t >= 1 );
   CV_ASSERT( n_Y_planes == weights->rows );
@@ -263,7 +273,6 @@ void icvCNNConvolutionBackward(
   }
   dY_dW = cvCreateMat( dY_dX->rows, weights->cols*weights->rows, CV_32F );
   dE_dW = cvCreateMat( 1, dY_dW->cols, CV_32F );
-
   cvZero( dY_dX );
   cvZero( dY_dW );
 
@@ -299,14 +308,31 @@ void icvCNNConvolutionBackward(
   cvReleaseMat(&Xt);
   cvScale(dY_dW,dY_dW,1.f/float(batch_size));
 
+  // dE_dY_afder = (tanh'(WX))*dE_dY
+  if (!strcmp(layer->activation_type,"none")){
+    cvTranspose(dE_dY,dE_dY_afder);
+  }else if (!strcmp(layer->activation_type,"tanh")){ 
+    cvTanhDer(layer->WX,dE_dY_afder);
+    cvTranspose(dE_dY,dE_dY_T);
+    cvMul(dE_dY_afder,dE_dY_T,dE_dY_afder);
+  }else if (!strcmp(layer->activation_type,"sigmoid")){ 
+    cvSigmoidDer(layer->WX,dE_dY_afder);
+    cvTranspose(dE_dY,dE_dY_T);
+    cvMul(dE_dY_afder,dE_dY_T,dE_dY_afder);
+  }else if (!strcmp(layer->activation_type,"relu")){ 
+    cvReLUDer(layer->WX,dE_dY_afder);
+    cvTranspose(dE_dY,dE_dY_T);
+    cvMul(dE_dY_afder,dE_dY_T,dE_dY_afder);
+  }else{CV_ASSERT(false);}
+
   // dE_dW = sum( dE_dY * dY_dW )
   CvMat * dE_dW_ = cvCreateMat( batch_size, dY_dW->cols, CV_32FC1 );
-  CV_CALL(cvMatMul( dE_dY, dY_dW, dE_dW_ )); 
+  CV_CALL(cvGEMM( dE_dY_afder, dY_dW, 1.f,0,1.f,dE_dW_,CV_GEMM_A_T )); 
   cvReduce(dE_dW_,dE_dW,-1,CV_REDUCE_AVG);
   cvReleaseMat(&dE_dW_);
 
   // dE_dX = dE_dY * dY_dX
-  CV_CALL(cvMatMul( dE_dY, dY_dX, dE_dX ));
+  CV_CALL(cvGEMM( dE_dY_afder, dY_dX, 1.f,0,1.f,dE_dX,CV_GEMM_A_T ));
 
   // update weights
   {
@@ -329,9 +355,8 @@ void icvCNNConvolutionBackward(
   }
 
   if (n_output_layers){cvReleaseMat(&dE_dY);dE_dY=0;}
-  if (!layer->enable_cache){
-    if (dY_dX){cvReleaseMat( &dY_dX );dY_dX=0;}
-  }
+  if (!layer->enable_cache){ if (dY_dX){cvReleaseMat( &dY_dX );dY_dX=0;} }
+  if (dE_dY_afder){cvReleaseMat( &dE_dY_afder );dE_dY_afder=0;}
   if (dY_dW){cvReleaseMat( &dY_dW );dY_dW=0;}
   if (dE_dW){cvReleaseMat( &dE_dW );dE_dW=0;}
 

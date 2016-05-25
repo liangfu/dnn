@@ -125,7 +125,7 @@ TEST(ML_ConvolutionLayer, gradcheck){
   const int batch_size = 2;
   const int imsize_out = imsize-ksize+1;
   CvCNNLayer * layer = 
-    cvCreateCNNConvolutionLayer(CV_32F,"conv1",0,0,0,n_inputs,imsize,imsize,n_outputs,ksize,.01,1,0,0);
+    cvCreateCNNConvolutionLayer(CV_32F,"conv1",0,0,0,n_inputs,imsize,imsize,n_outputs,ksize,.01,1,"tanh",0,0);
   CvMat * X = cvCreateMat(imsize*imsize*n_inputs,batch_size,CV_32F);
   CvMat * Y = cvCreateMat(imsize_out*imsize_out*n_outputs,batch_size,CV_32F);
   CvMat * target = cvCreateMat(imsize_out*imsize_out*n_outputs,batch_size,CV_32F);

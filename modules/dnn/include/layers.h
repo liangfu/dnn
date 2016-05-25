@@ -62,6 +62,9 @@ typedef void (CV_CDECL *CvCNNLayerRelease)(CvCNNLayer** layer);
     /* sequence length, for attention model: n_glimpses*n_targets */    \
     int seq_length;                                                     \
                                                                         \
+    /* activation function type for hidden layer activation, */         \
+    /* either sigmoid,tanh,softmax or relu */                           \
+    char activation_type[20];                                           \
     /* Learning rate at the first iteration */                          \
     float init_learn_rate;                                              \
     /* Dynamics of learning rate decreasing */                          \
@@ -204,44 +207,42 @@ int icvIsCNNInputDataLayer( CvCNNLayer * layer ) {
 
 typedef struct CvCNNConvolutionLayer
 {
-    CV_CNN_LAYER_FIELDS();
-    // Kernel size (height and width) for convolution.
-    int K;
-    CvMat * WX;//for simard method
-    // (x1+x2+x3+x4), where x1,...x4 are some elements of X
-    // - is the vector used in computing of the activation function in backward
-    CvMat * sumX;//for simard method
-    // connections matrix, (i,j)-th element is 1 iff there is a connection between
-    // i-th plane of the current layer and j-th plane of the previous layer;
-    // (i,j)-th element is equal to 0 otherwise
-    CvMat * connect_mask;
-    // value of the learning rate for updating weights at the first iteration
+  CV_CNN_LAYER_FIELDS();
+  // Kernel size (height and width) for convolution.
+  int K;
+  // for simard method
+  CvMat * WX; 
+  // (x1+x2+x3+x4), where x1,...x4 are some elements of X
+  // - is the vector used in computing of the activation function in backward
+  CvMat * sumX;//for simard method
+  // connections matrix, (i,j)-th element is 1 iff there is a connection between
+  // i-th plane of the current layer and j-th plane of the previous layer;
+  // (i,j)-th element is equal to 0 otherwise
+  CvMat * connect_mask;
+  // value of the learning rate for updating weights at the first iteration
 }CvCNNConvolutionLayer;
 
 typedef struct CvCNNSubSamplingLayer
 {
-    CV_CNN_LAYER_FIELDS();
-    // ratio between the heights (or widths - ratios are supposed to be equal)
-    // of the input and output planes
-    int sub_samp_scale;
-    CvMat * WX;
-    // (x1+x2+x3+x4), where x1,...x4 are some elements of X
-    // - is the vector used in computing of the activation function in backward
-    CvMat * sumX;
-    // location where max pooling values are taken from
-    CvMat * mask;
+  CV_CNN_LAYER_FIELDS();
+  // ratio between the heights (or widths - ratios are supposed to be equal)
+  // of the input and output planes
+  int sub_samp_scale;
+  CvMat * WX;
+  // (x1+x2+x3+x4), where x1,...x4 are some elements of X
+  // - is the vector used in computing of the activation function in backward
+  CvMat * sumX;
+  // location where max pooling values are taken from
+  CvMat * mask;
 }CvCNNSubSamplingLayer;
 
-// Structure of the last layer.
+// structure of the last layer.
 typedef struct CvCNNFullConnectLayer
 {
   CV_CNN_LAYER_FIELDS();
   // WX = (W*X) - is the vector used in computing of the 
   // activation function and it's derivative by the formulae
   CvMat * WX;
-  // activation function type,
-  // either CV_CNN_LOGISTIC,CV_CNN_HYPERBOLIC,CV_CNN_RELU or CV_CNN_NONE
-  char activation_type[20];
 }CvCNNFullConnectLayer;
 
 typedef struct CvCNNImgCroppingLayer
@@ -264,9 +265,6 @@ typedef struct CvCNNRecurrentLayer
   CvMat * Whh;
   // weight matrix with bias for generating output data, default size: (n_outputs, n_hiddens+1)
   CvMat * Why;
-  // activation function type for hidden layer activation, 
-  // either CV_CNN_LOGISTIC, CV_CNN_HYPERBOLIC, CV_CNN_RELU or CV_CNN_NONE
-  char activation_type[20];
   // -------------------------------------------------------
   // VARIABLES REQUIRED FOR COMPUTING FORWARD & BACKWARD PASS
   // -------------------------------------------------------
@@ -321,19 +319,19 @@ CVAPI(CvCNNLayer*) cvCreateCNNConvolutionLayer(
     const int dtype, const char * name, const CvCNNLayer * ref_layer,
     const int visualize, const CvCNNLayer * input_layer, 
     int n_input_planes, int input_height, int input_width, int n_output_planes, int K,
-    float init_learn_rate, int learn_rate_decrease_type,
+    float init_learn_rate, int update_rule, const char * activation_type,
     CvMat* connect_mask, CvMat* weights );
 
 CVAPI(CvCNNLayer*) cvCreateCNNSubSamplingLayer( 
     const int dtype, const char * name, const int visualize,
     int n_input_planes, int input_height, int input_width,
     int sub_samp_scale, 
-    float init_learn_rate, int learn_rate_decrease_type, CvMat* weights );
+    float init_learn_rate, int update_rule, CvMat* weights );
 
 CVAPI(CvCNNLayer*) cvCreateCNNFullConnectLayer( 
     const int dtype, const char * name, const int visualize,
     const CvCNNLayer * input_layer, int n_inputs, int n_outputs, 
-    float init_learn_rate, int learn_rate_decrease_type, const char * activation_type,
+    float init_learn_rate, int update_rule, const char * activation_type,
     CvMat * weights );
 
 CVAPI(CvCNNLayer*) cvCreateCNNImgCroppingLayer( 
