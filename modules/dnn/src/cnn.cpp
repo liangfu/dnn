@@ -424,9 +424,9 @@ static void icvCNNModelPredict( const CvCNNStatModel* model, const CvMat* _image
   CV_FUNCNAME("icvCNNModelPredict");
   __BEGIN__;
 
-  CvCNNStatModel* cnn_model = (CvCNNStatModel*)model;
-  CvCNNLayer* first_layer=0, *layer = 0;
-  int img_height, img_width, img_size;
+  CvCNNStatModel * cnn_model = (CvCNNStatModel*)model;
+  CvCNNLayer * layer = 0;
+  // int img_height, img_width, img_size;
   int nclasses, i;
   float loss, min_loss = FLT_MAX;
   float* result_data;
@@ -434,33 +434,31 @@ static void icvCNNModelPredict( const CvCNNStatModel* model, const CvMat* _image
   int nsamples;
   int n_inputs, seq_length;
   int batch_size = result->cols;
+  CV_ASSERT(batch_size==_image->rows);
+  const CvCNNLayer * first_layer = cnn_model->network->first_layer;
+  const CvCNNLayer * last_layer = cnn_model->network->get_last_layer(cnn_model->network);
+  const int img_size   =
+    first_layer->n_input_planes*first_layer->input_width*first_layer->input_height;
 
   if ( model==0 ) { CV_ERROR( CV_StsBadArg, "Invalid model" ); }
 
-  nclasses = result->rows;// cnn_model->cls_labels->cols;
+  nclasses = result->rows;
   n_layers = cnn_model->network->n_layers;
-  first_layer = cnn_model->network->first_layer;
   n_inputs = first_layer->n_input_planes;
-  seq_length = icvIsCNNInputDataLayer(first_layer)?
-    ((CvCNNInputDataLayer*)first_layer)->seq_length:1;
-  img_height = first_layer->input_height;
-  img_width = first_layer->input_width;
-  img_size = img_height*img_width*n_inputs*seq_length;
+  seq_length = first_layer->seq_length;
   nsamples = _image->rows;
   
   CV_ASSERT(nsamples==result->cols);
-  CV_ASSERT(_image->cols==img_size && nsamples==_image->rows);
-  if (!img_data){img_data = (float*)cvAlloc(img_size*nsamples*sizeof(float));}
-  CvMat imghdr = cvMat(_image->rows,_image->cols,CV_32F,img_data);
-  cvCopy(_image,&imghdr);
+  // CV_ASSERT(_image->cols==img_size && nsamples==_image->rows);
+  CvMat * samples = cvCloneMat(_image);
 
   // normalize image value range
   if (icvIsCNNConvolutionLayer(cnn_model->network->first_layer->next_layer)){
     double minval, maxval;
-    cvMinMaxLoc(&imghdr,&minval,&maxval,0,0);
-    cvAddS(&imghdr,cvScalar(-minval),&imghdr);
-    cvScale(&imghdr,&imghdr,10./((maxval-minval)*.5f));
-    cvAddS(&imghdr,cvScalar(-1.f),&imghdr);
+    cvMinMaxLoc(samples,&minval,&maxval,0,0);
+    cvAddS(samples,cvScalar(-minval),samples);
+    cvScale(samples,samples,10./((maxval-minval)*.5f));
+    cvAddS(samples,cvScalar(-1.f),samples);
   }
 
   CV_CALL(X = (CvMat**)cvAlloc( (n_layers+1)*sizeof(CvMat*) ));
@@ -468,26 +466,40 @@ static void icvCNNModelPredict( const CvCNNStatModel* model, const CvMat* _image
 
   // initialize input data
   CV_CALL(X[0] = cvCreateMat( img_size, batch_size*first_layer->seq_length, CV_32F ));
+  // CvMat * X0_transpose = cvCreateMat( img_size, batch_size*first_layer->seq_length, CV_32F );
   cvZero(X[0]); // cvZero(X0_transpose);
-  for ( k = 0, layer = first_layer; k < n_layers; k++, layer = layer->next_layer ){
+  for ( k = 0, layer = (CvCNNLayer*)first_layer; k < n_layers; k++, layer = layer->next_layer ){
     int n_outputs = layer->n_output_planes*layer->output_height*layer->output_width;
     CV_CALL(X[k+1] = cvCreateMat( n_outputs, batch_size*layer->seq_length, CV_32F )); 
     cvZero(X[k+1]);
   }
 
-  X0_transpose = cvMat( nsamples, img_size, CV_32FC1, img_data );
-  cvTranspose( &X0_transpose, X[0] );
-  for ( k = 0, layer = first_layer; k < n_layers; k++, layer = layer->next_layer ) {
+  CvMat samples_reshape_hdr;
+  cvReshape(samples,&samples_reshape_hdr,0,batch_size*first_layer->seq_length);
+  cvTranspose( &samples_reshape_hdr, X[0] );
+  for ( k = 0, layer = (CvCNNLayer*)first_layer; k < n_layers; k++, layer = layer->next_layer ) {
     CV_CALL(layer->forward( layer, X[k], X[k+1] ));
   }
 
-  cvCopy(X[n_layers], result);
+  if (icvIsCNNRecurrentNNLayer((CvCNNLayer*)last_layer)){
+    CvMat * Xn_transpose = cvCreateMat(X[n_layers]->cols,X[n_layers]->rows,CV_32F);
+    CvMat * result_transpose = cvCreateMat(result->cols,result->rows,CV_32F);
+    cvTranspose(X[n_layers],Xn_transpose);
+    CvMat Xn_reshape_hdr;
+    cvReshape(Xn_transpose,&Xn_reshape_hdr,0,batch_size);
+    cvCopy(&Xn_reshape_hdr, result_transpose);
+    cvTranspose(result_transpose,result);
+    cvReleaseMat(&Xn_transpose);
+    cvReleaseMat(&result_transpose);
+  }else{
+    cvCopy(X[n_layers], result);
+  }
+  cvReleaseMat(&samples);
 
   __END__;
 
   for ( k = 0; k <= n_layers; k++ ) { cvReleaseMat( &X[k] ); }
   cvFree( &X );
-  if ( img_data != _image->data.fl ) { cvFree( &img_data ); }
 }
 
 /****************************************************************************************/
