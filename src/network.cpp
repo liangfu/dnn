@@ -301,13 +301,14 @@ float CvNetwork::evaluate(CvMat * testing, CvMat * expected, int nsamples)
   float top1 = m_cnn->network->eval(last_layer, result, expected_transpose);
   static double sumloss = trloss;
   static double sumacc  = top1;
+  if (nsamples<=5)
   {
     fprintf(stderr, "sumacc: %.1f%%[%.1f%%], sumloss: %f\n", sumacc,top1,sumloss);
-    // CvMat * Xn_transpose = cvCreateMat(nsamples,last_layer->n_output_planes,CV_32F);
-    // cvTranspose(result,Xn_transpose);
-    // {fprintf(stderr,"output:\n");cvPrintf(stderr,"%.1f ", Xn_transpose);}
-    // {fprintf(stderr,"expect:\n");cvPrintf(stderr,"%.1f ", &expected_submat_hdr);}
-    // cvReleaseMat(&Xn_transpose);
+    CvMat * Xn_transpose = cvCreateMat(nsamples,last_layer->seq_length*last_layer->n_output_planes,CV_32F);
+    cvTranspose(result,Xn_transpose);
+    {fprintf(stderr,"output:\n");cvPrintf(stderr,"%.1f ", Xn_transpose);}
+    {fprintf(stderr,"expect:\n");cvPrintf(stderr,"%.1f ", &expected_submat_hdr);}
+    cvReleaseMat(&Xn_transpose);
   }
 
   cvReleaseMat(&result);

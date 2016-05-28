@@ -11,7 +11,7 @@
 	<weights_filename>data/addition/rnn_weights.xml</weights_filename>
 	<lr_init>0.75</lr_init>
 	<decay_type>invsqrt</decay_type>
-	<maxiter>50000</maxiter>
+	<maxiter>5000</maxiter>
 	<batch_size>1</batch_size>
 	<validate_ratio>0.1</validate_ratio>
 </network>
