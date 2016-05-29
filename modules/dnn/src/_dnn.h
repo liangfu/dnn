@@ -32,6 +32,8 @@
 // void cvCopyEx(CvMat * src, CvMat * dst);
 double cvSdv(CvMat * src);
 
+CvMat * cvCloneTransposed(CvMat * src);
+
 #define CV_GEMM(src1,src2,alpha,src3,beta,dst,tABC)                     \
   cvDebugGEMM(#src1,#src2,#src3,#dst,(src1),(src2),(alpha),(src3),(beta),(dst),(tABC));
 

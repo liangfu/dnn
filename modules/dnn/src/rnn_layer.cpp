@@ -196,8 +196,8 @@ void icvCNNRecurrentForward( CvCNNLayer* _layer, const CvMat* X, CvMat * Y)
   CvMat WX_curr_reshaped = cvMat(batch_size, n_hiddens, CV_32F, WX_curr->data.ptr);
   CvMat WH_curr_reshaped = cvMat(batch_size, n_outputs, CV_32F, WH_curr->data.ptr);
   
-  {CvMat * X_transpose = cvCreateMat(X->cols,X->rows,CV_32F);cvTranspose(X,X_transpose);
-  cvPrintf(stderr,"%.0f ",X_transpose);cvReleaseMat(&X_transpose);}
+  // {CvMat * X_transpose = cvCreateMat(X->cols,X->rows,CV_32F);cvTranspose(X,X_transpose);
+  // cvPrintf(stderr,"%.0f ",X_transpose);cvReleaseMat(&X_transpose);}
   
   // H_curr = Wxh * X_curr + ( Whh * H_prev + bh )
   // WARNING: Whh_submat is square matrix !!! 
@@ -212,14 +212,13 @@ void icvCNNRecurrentForward( CvCNNLayer* _layer, const CvMat* X, CvMat * Y)
   // get H, Y for current time_index, output Y_curr_hdr, H_curr_hdr
   cvGetRow(layerH,&H_curr_hdr,layer->time_index); cvCopy(H_curr,&H_curr_hdr);
   cvGetRow(layerY,&Y_curr_hdr,layer->time_index);
-  CvMat * Y_curr = cvCloneMat(&Y_curr_hdr), Y_curr_reshape_hdr;
-  cvReshape(Y_curr,&Y_curr_reshape_hdr,0,n_outputs);
-  CV_ASSERT(Y_curr_reshape_hdr.rows==n_outputs && Y_curr_reshape_hdr.cols==batch_size);
-  CV_ASSERT(cvCountNAN(Y_curr)<1);
+  CvMat * Y_curr = cvCreateMat(n_outputs,batch_size,CV_32F); cvZero(Y_curr);
+  CvMat Y_curr_reshape_hdr; cvReshape(&Y_curr_hdr,&Y_curr_reshape_hdr,0,batch_size);
+  CV_ASSERT(cvCountNAN(&Y_curr_hdr)<1);
 
   // Y = activate(Why * H + by)
-  cvGEMM( &Why_submat, &H_curr_reshaped, 1, ybias, 1, &Y_curr_reshape_hdr, CV_GEMM_B_T );
-  cvTranspose(&Y_curr_reshape_hdr,&WH_curr_reshaped); 
+  cvGEMM( &Why_submat, &H_curr_reshaped, 1, ybias, 1, Y_curr, CV_GEMM_B_T );
+  cvTranspose(Y_curr,&WH_curr_reshaped); 
   CV_ASSERT(cvCountNonZero(&WH_curr_reshaped)>1);
   CV_ASSERT(cvCountNAN(Y_curr)<1); //  && cvSdv(Y_curr)<10.f
   CV_CALL(cvCopy(WH_curr,&WH_curr_hdr));          // copy to layer->WH
@@ -228,12 +227,15 @@ void icvCNNRecurrentForward( CvCNNLayer* _layer, const CvMat* X, CvMat * Y)
   if (!strcmp(layer->activation_type,"sigmoid")){
     CV_CALL(cvSigmoid( &Y_curr_hdr, &Y_curr_hdr )); // output activation - logistic regression
   }else if (!strcmp(layer->activation_type,"softmax")){
-    CV_ASSERT(Y_curr_reshape_hdr.rows==n_outputs && Y_curr_reshape_hdr.cols==batch_size);
-    cvSoftmax(&Y_curr_reshape_hdr,&Y_curr_reshape_hdr);
+    CV_ASSERT(Y_curr->rows==n_outputs && Y_curr->cols==batch_size);
+    cvSoftmax(Y_curr,Y_curr);
   }else{
     CV_ERROR(CV_StsBadArg,"invalid output activation type for RNN layer, `softmax` is prefered.");
   }
-  cvCopy(Y_curr,&Y_curr_hdr);
+  // cvTranspose(Y_curr,&Y_curr_reshape_hdr);
+  CvMat * Y_curr_transpose = cvCloneTransposed(Y_curr), Y_curr_reshape_hdr2;
+  cvReshape(Y_curr_transpose,&Y_curr_reshape_hdr2,0,1);
+  cvCopy(&Y_curr_reshape_hdr2,&Y_curr_hdr);
   CV_ASSERT(cvCountNAN(Y_curr)<1);
   if (Y_curr){cvReleaseMat(&Y_curr);Y_curr=0;}
 

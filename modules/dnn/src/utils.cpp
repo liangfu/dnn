@@ -71,4 +71,9 @@ void cvDebugGEMM(const char * src1name, const char * src2name, const char * src3
   cvGEMM((src1),(src2),(alpha),(src3),(beta),(dst),(tABC));          
 }
 
-
+CvMat * cvCloneTransposed(CvMat * src)
+{
+  CvMat * dst = cvCreateMat(src->cols,src->rows,CV_MAT_TYPE(src->type));
+  cvTranspose(src,dst);
+  return dst;
+}

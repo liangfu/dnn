@@ -77,7 +77,7 @@ int main(int argc, char * argv[])
     cnn->saveWeights(cnn->solver()->weights_filename());
   }else{
     cnn->loadWeights(cnn->solver()->weights_filename());
-    cnn->evaluate(testing,expected,1);//testing->rows);
+    cnn->evaluate(testing,expected,testing->rows);
   }
 
   CV_TIMER_SHOW();
