@@ -238,6 +238,7 @@ void icvCNNRecurrentForward( CvCNNLayer* _layer, const CvMat* X, CvMat * Y)
   cvCopy(&Y_curr_reshape_hdr2,&Y_curr_hdr);
   CV_ASSERT(cvCountNAN(Y_curr)<1);
   if (Y_curr){cvReleaseMat(&Y_curr);Y_curr=0;}
+  if (Y_curr_transpose){cvReleaseMat(&Y_curr_transpose);Y_curr_transpose=0;}
 
   // copy layer->Y to output variable Y
 #if 0
