@@ -146,12 +146,12 @@ void icvCNNRecurrentForward( CvCNNLayer* _layer, const CvMat* X, CvMat * Y)
   // memory allocation
   if (!ref_layer){
     if (!layer->H && !layer->Y && !layer->WX && !layer->WH){
-      layer->H = cvCreateMat( seq_length, n_hiddens * batch_size, CV_32F ); cvZero(layer->H);
+      layer->H = cvCreateMat( seq_length, n_hiddens * batch_size, CV_32F ); 
       layer->Y = cvCreateMat( seq_length, n_outputs * batch_size, CV_32F ); 
       layer->WX = cvCreateMat( seq_length, n_hiddens * batch_size, CV_32F );
       layer->WH = cvCreateMat( seq_length, n_outputs * batch_size, CV_32F );
     }
-    cvZero(layer->Y);cvZero(layer->WX);cvZero(layer->WH);
+    cvZero(layer->H);cvZero(layer->Y);cvZero(layer->WX);cvZero(layer->WH);
   }
   CvMat * Wxh = ref_layer?ref_layer->Wxh:layer->Wxh;
   CvMat * Whh = ref_layer?ref_layer->Whh:layer->Whh;
