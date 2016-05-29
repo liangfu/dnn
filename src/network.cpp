@@ -284,35 +284,41 @@ void CvNetwork::train(CvMat *trainingData, CvMat *responseMat)
 
 float CvNetwork::evaluate(CvMat * testing, CvMat * expected, int nsamples)
 {
+  CV_FUNCNAME("CvNetwork::evaluate");
+  float top1=0;
+  __BEGIN__;
   CvMat samples = cvMat(nsamples, testing->cols, CV_32F, testing->data.fl+nsamples*testing->cols);
-  CvMat * result = cvCreateMat(expected->cols, nsamples, CV_32F);
   CvCNNLayer * last_layer = m_cnn->network->get_last_layer(m_cnn->network);
+  CvMat * result = cvCreateMat(last_layer->n_output_planes, nsamples*last_layer->seq_length, CV_32F);
+  CV_ASSERT(expected->cols==last_layer->n_output_planes*last_layer->seq_length);
 
   // testing data
   cvGetRows(testing,&samples,0,nsamples);
   m_cnn->predict(m_cnn,&samples,result);
 
   // 4) compute loss & accuracy, print progress
-  CvMat * expected_transpose = cvCreateMat(expected->cols,nsamples,CV_32F);
-  CvMat expected_submat_hdr;
+  CvMat * expected_transpose = cvCreateMat(last_layer->n_output_planes,nsamples*last_layer->seq_length,CV_32F);
+  CvMat expected_submat_hdr,expected_submat_reshape_hdr;
+  CV_ASSERT(expected->cols==last_layer->n_output_planes*last_layer->seq_length);
   cvGetRows(expected,&expected_submat_hdr,0,nsamples);
-  cvTranspose(&expected_submat_hdr,expected_transpose);
+  cvReshape(&expected_submat_hdr,&expected_submat_reshape_hdr,0,nsamples*last_layer->seq_length);
+  cvTranspose(&expected_submat_reshape_hdr,expected_transpose);
   float trloss = cvNorm(result, expected_transpose)/float(nsamples);
-  float top1 = m_cnn->network->eval(last_layer, result, expected_transpose);
+  top1 = m_cnn->network->eval(last_layer, result, expected_transpose);
   static double sumloss = trloss;
   static double sumacc  = top1;
   fprintf(stderr, "sumacc: %.1f%%[%.1f%%], sumloss: %f\n", sumacc,top1,sumloss);
-  if (nsamples<=5)
-  {
-    CvMat * Xn_transpose = cvCreateMat(nsamples,last_layer->seq_length*last_layer->n_output_planes,CV_32F);
+  if (nsamples<=5){ // if there isn' too many samples to print
+    CvMat * Xn_transpose = cvCreateMat(last_layer->seq_length*nsamples,last_layer->n_output_planes,CV_32F);
     cvTranspose(result,Xn_transpose);
     {fprintf(stderr,"output:\n");cvPrintf(stderr,"%.1f ", Xn_transpose);}
-    {fprintf(stderr,"expect:\n");cvPrintf(stderr,"%.1f ", &expected_submat_hdr);}
+    {fprintf(stderr,"expect:\n");cvPrintf(stderr,"%.1f ", &expected_submat_reshape_hdr);}
     cvReleaseMat(&Xn_transpose);
   }
 
   cvReleaseMat(&result);
   cvReleaseMat(&expected_transpose);
+  __END__;
   return top1;
 }
 

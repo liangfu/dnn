@@ -195,7 +195,10 @@ void icvCNNRecurrentForward( CvCNNLayer* _layer, const CvMat* X, CvMat * Y)
   CvMat H_curr_reshaped = cvMat(batch_size, n_hiddens, CV_32F, H_curr->data.ptr);
   CvMat WX_curr_reshaped = cvMat(batch_size, n_hiddens, CV_32F, WX_curr->data.ptr);
   CvMat WH_curr_reshaped = cvMat(batch_size, n_outputs, CV_32F, WH_curr->data.ptr);
-
+  
+  {CvMat * X_transpose = cvCreateMat(X->cols,X->rows,CV_32F);cvTranspose(X,X_transpose);
+  cvPrintf(stderr,"%.0f ",X_transpose);cvReleaseMat(&X_transpose);}
+  
   // H_curr = Wxh * X_curr + ( Whh * H_prev + bh )
   // WARNING: Whh_submat is square matrix !!! 
   CV_CALL(cvGEMM( X, Wxh, 1, 0, 1, WX, CV_GEMM_A_T+CV_GEMM_B_T ));
@@ -232,6 +235,7 @@ void icvCNNRecurrentForward( CvCNNLayer* _layer, const CvMat* X, CvMat * Y)
   }
   cvCopy(Y_curr,&Y_curr_hdr);
   CV_ASSERT(cvCountNAN(Y_curr)<1);
+  if (Y_curr){cvReleaseMat(&Y_curr);Y_curr=0;}
 
   // copy layer->Y to output variable Y
 #if 0
@@ -247,7 +251,6 @@ void icvCNNRecurrentForward( CvCNNLayer* _layer, const CvMat* X, CvMat * Y)
   }
 #endif
     
-  if (Y_curr){cvReleaseMat(&Y_curr);Y_curr=0;}
   if (WX){cvReleaseMat(&WX);WX=0;}
   if (WH){cvReleaseMat(&WH);WH=0;}
   if (H_prev){cvReleaseMat(&H_prev);H_prev=0;}

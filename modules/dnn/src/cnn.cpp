@@ -413,7 +413,7 @@ static float icvEvalAccuracy(CvCNNLayer * last_layer, CvMat * result, CvMat * ex
 }
 
 /*************************************************************************/
-static void icvCNNModelPredict( const CvCNNStatModel* model, const CvMat* _image, CvMat* result )
+static void icvCNNModelPredict( const CvCNNStatModel* model, const CvMat* testdata, CvMat* result )
 {
   CvMat** X       = 0;
   float* img_data = 0;
@@ -433,8 +433,7 @@ static void icvCNNModelPredict( const CvCNNStatModel* model, const CvMat* _image
   CvMat etalon, X0_transpose;
   int nsamples;
   int n_inputs, seq_length;
-  int batch_size = result->cols;
-  CV_ASSERT(batch_size==_image->rows);
+  int batch_size = testdata->rows;
   const CvCNNLayer * first_layer = cnn_model->network->first_layer;
   const CvCNNLayer * last_layer = cnn_model->network->get_last_layer(cnn_model->network);
   const int img_size   =
@@ -446,11 +445,11 @@ static void icvCNNModelPredict( const CvCNNStatModel* model, const CvMat* _image
   n_layers = cnn_model->network->n_layers;
   n_inputs = first_layer->n_input_planes;
   seq_length = first_layer->seq_length;
-  nsamples = _image->rows;
+  // nsamples = testdata->rows;
   
-  CV_ASSERT(nsamples==result->cols);
-  // CV_ASSERT(_image->cols==img_size && nsamples==_image->rows);
-  CvMat * samples = cvCloneMat(_image);
+  // CV_ASSERT(nsamples==result->cols);
+  // CV_ASSERT(testdata->cols==img_size && nsamples==testdata->rows);
+  CvMat * samples = cvCloneMat(testdata);
 
   // normalize image value range
   if (icvIsCNNConvolutionLayer(cnn_model->network->first_layer->next_layer)){
@@ -481,19 +480,19 @@ static void icvCNNModelPredict( const CvCNNStatModel* model, const CvMat* _image
     CV_CALL(layer->forward( layer, X[k], X[k+1] ));
   }
 
-  if (icvIsCNNRecurrentNNLayer((CvCNNLayer*)last_layer)){
-    CvMat * Xn_transpose = cvCreateMat(X[n_layers]->cols,X[n_layers]->rows,CV_32F);
-    CvMat * result_transpose = cvCreateMat(result->cols,result->rows,CV_32F);
-    cvTranspose(X[n_layers],Xn_transpose);
-    CvMat Xn_reshape_hdr;
-    cvReshape(Xn_transpose,&Xn_reshape_hdr,0,batch_size);
-    cvCopy(&Xn_reshape_hdr, result_transpose);
-    cvTranspose(result_transpose,result);
-    cvReleaseMat(&Xn_transpose);
-    cvReleaseMat(&result_transpose);
-  }else{
-    cvCopy(X[n_layers], result);
-  }
+  // if (icvIsCNNRecurrentNNLayer((CvCNNLayer*)last_layer)){
+  //   CvMat * Xn_transpose = cvCreateMat(X[n_layers]->cols,X[n_layers]->rows,CV_32F);
+  //   CvMat * result_transpose = cvCreateMat(result->cols,result->rows,CV_32F);
+  //   cvTranspose(X[n_layers],Xn_transpose);
+  //   CvMat Xn_reshape_hdr;
+  //   cvReshape(Xn_transpose,&Xn_reshape_hdr,0,batch_size);
+  //   cvCopy(&Xn_reshape_hdr, result_transpose);
+  //   cvTranspose(result_transpose,result);
+  //   cvReleaseMat(&Xn_transpose);
+  //   cvReleaseMat(&result_transpose);
+  // }else{
+  cvCopy(X[n_layers], result);
+  // }
   cvReleaseMat(&samples);
 
   __END__;
@@ -1039,18 +1038,16 @@ static void icvCNNetworkRead( CvCNNetwork * network, CvFileStorage * fs )
   CvFileNode * root = cvGetRootFileNode( fs );
   for (int ii=0;ii<n_layers;ii++,layer=layer->next_layer){
     if (icvIsCNNRecurrentNNLayer(layer)){
-      CvCNNRecurrentLayer * rnnlayer = (CvCNNRecurrentLayer*)layer;
+      CvCNNRecurrentLayer * rnnlayer = (CvCNNRecurrentLayer*)(layer->ref_layer?layer->ref_layer:layer);
       char xhstr[1024],hhstr[1024],hystr[1024];
       sprintf(xhstr,"%s_Wxh",rnnlayer->name);
       sprintf(hhstr,"%s_Whh",rnnlayer->name);
       sprintf(hystr,"%s_Why",rnnlayer->name);
-      if (!rnnlayer->Wxh){
-        rnnlayer->Wxh=(CvMat*)cvReadByName(fs,root,xhstr);
-        rnnlayer->Whh=(CvMat*)cvReadByName(fs,root,hhstr);
-        rnnlayer->Why=(CvMat*)cvReadByName(fs,root,hystr);
-      }
+      cvCopy((CvMat*)cvReadByName(fs,root,xhstr),rnnlayer->Wxh);
+      cvCopy((CvMat*)cvReadByName(fs,root,hhstr),rnnlayer->Whh);
+      cvCopy((CvMat*)cvReadByName(fs,root,hystr),rnnlayer->Why);
     }else{
-      layer->weights = (CvMat*)cvReadByName(fs,root,layer->name);
+      cvCopy((CvMat*)cvReadByName(fs,root,layer->name),layer->weights);
     }
   }
   __END__;
