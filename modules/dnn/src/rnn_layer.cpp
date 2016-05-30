@@ -138,10 +138,10 @@ void icvCNNRecurrentForward( CvCNNLayer* _layer, const CvMat* X, CvMat * Y)
   int n_inputs = layer->n_input_planes;//Y->rows;
   int n_outputs = layer->n_output_planes;//Y->rows;
   int n_hiddens = layer->n_hiddens;
-  int batch_size = X->cols;
+  int batch_size = X->rows;
   CvMat * WX = 0, * WH = 0, * H_prev = 0, * H_curr = 0, * WX_curr, * WH_curr;
 
-  CV_ASSERT(X->cols == batch_size && X->rows == layer->n_input_planes);
+  CV_ASSERT(X->rows == batch_size && X->cols == layer->n_input_planes);
 
   // memory allocation
   if (!ref_layer){
@@ -201,7 +201,7 @@ void icvCNNRecurrentForward( CvCNNLayer* _layer, const CvMat* X, CvMat * Y)
   
   // H_curr = Wxh * X_curr + ( Whh * H_prev + bh )
   // WARNING: Whh_submat is square matrix !!! 
-  CV_CALL(cvGEMM( X, Wxh, 1, 0, 1, WX, CV_GEMM_A_T+CV_GEMM_B_T ));
+  CV_CALL(cvGEMM( X, Wxh, 1, 0, 1, WX, CV_GEMM_B_T ));
   CV_CALL(cvGEMM( &H_prev_reshaped, &Whh_submat, 1, hbias, 1, WH, CV_GEMM_B_T+CV_GEMM_C_T ));  
   cvAdd(WX,WH,&H_curr_reshaped);
   cvCopy(&H_curr_reshaped,&WX_curr_reshaped);

@@ -87,13 +87,13 @@ static void icvCNNImgCroppingForward( CvCNNLayer * _layer, const CvMat* X, CvMat
   const int input_seqlen = input_layer->seq_length;
   const int input_height = layer->input_height;
   const int input_width = layer->input_width;
-  const int n_outputs = Y->rows;
+  const int n_outputs = Y->cols;
   const int output_seqlen = layer->seq_length;
   const int output_height = layer->output_height;
   const int output_width = layer->output_width;
-  const int batch_size = X->cols/input_seqlen;
-  CV_ASSERT(Y->rows==layer->n_output_planes*layer->output_height*layer->output_width);
-  CV_ASSERT(batch_size*input_seqlen==X->cols && batch_size*output_seqlen==Y->cols); // batch_size
+  const int batch_size = X->rows/input_seqlen;
+  CV_ASSERT(Y->cols==layer->n_output_planes*layer->output_height*layer->output_width);
+  CV_ASSERT(batch_size*input_seqlen==X->rows && batch_size*output_seqlen==Y->rows); // batch_size
   CvMat * input_data = input_layer->input_data;
   CV_ASSERT(CV_MAT_TYPE(input_data->type)==CV_32F);
   if (input_seqlen>output_seqlen){ // temporal sampling
@@ -106,8 +106,10 @@ static void icvCNNImgCroppingForward( CvCNNLayer * _layer, const CvMat* X, CvMat
 #else
     CvMat Y_submat_hdr;
     for (int bidx=0;bidx<batch_size;bidx++){
-      cvGetCol(input_data,&input_data_submat,bidx*input_seqlen+time_index);
-      cvGetCol(Y,&Y_submat_hdr,bidx);
+      // cvGetCol(input_data,&input_data_submat,bidx*input_seqlen+time_index);
+      // cvGetCol(Y,&Y_submat_hdr,bidx);
+      cvGetRow(input_data,&input_data_submat,bidx*input_seqlen+time_index);
+      cvGetRow(Y,&Y_submat_hdr,bidx);
       cvCopy(&input_data_submat,&Y_submat_hdr);
     }
 #endif
