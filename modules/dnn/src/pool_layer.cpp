@@ -103,11 +103,11 @@ void icvCNNSubSamplingForward( CvCNNLayer* _layer, const CvMat* X, CvMat* Y )
   __BEGIN__;
 
   CvCNNSubSamplingLayer * layer = (CvCNNSubSamplingLayer*) _layer;
-  CvMat * Xt = 0;
-  CvMat * Yt = 0;
+  // CvMat * Xt = 0;
+  // CvMat * Yt = 0;
 
   const int stride_size = layer->sub_samp_scale;
-  const int nsamples = X->cols; // batch size for training
+  // const int nsamples = X->rows; // batch size for training
   const int nplanes = layer->n_input_planes;
   const int Xheight = layer->input_height;
   const int Xwidth  = layer->input_width ;
@@ -115,18 +115,17 @@ void icvCNNSubSamplingForward( CvCNNLayer* _layer, const CvMat* X, CvMat* Y )
   const int Yheight = layer->output_height;
   const int Ywidth  = layer->output_width;
   const int Ysize   = Ywidth*Yheight;
-  const int batch_size = X->cols;
+  const int batch_size = X->rows;
 
   int xx, yy, ni, kx, ky;
   float* sumX_data = 0, *w = 0;
   CvMat sumX_sub_col, WX_sub_col;
 
-  CV_ASSERT(X->rows == nplanes*Xsize && X->cols == nsamples);
-  CV_ASSERT(Y->cols == nsamples);
-  CV_ASSERT((layer->WX->cols == 1) &&
-            (layer->WX->rows == nplanes*Ysize));
+  CV_ASSERT(X->cols == nplanes*Xsize && X->rows == batch_size);
+  CV_ASSERT(Y->rows == batch_size);
+  CV_ASSERT((layer->WX->cols == 1) && (layer->WX->rows == nplanes*Ysize));
 
-  CV_CALL(layer->mask = cvCreateMat(Ysize*nplanes, batch_size, CV_32S));
+  CV_CALL(layer->mask = cvCreateMat(batch_size, Ysize*nplanes, CV_32S));
   
   // update inner variable used in back-propagation
   cvZero( layer->sumX );
@@ -139,11 +138,11 @@ void icvCNNSubSamplingForward( CvCNNLayer* _layer, const CvMat* X, CvMat* Y )
   CV_ASSERT(Y->rows==layer->mask->rows && Y->cols==layer->mask->cols);
   CV_ASSERT(CV_MAT_TYPE(layer->mask->type)==CV_32S);
 
-  Xt = cvCreateMat(X->cols,X->rows,CV_32F); cvTranspose(X,Xt);
-  Yt = cvCreateMat(Y->cols,Y->rows,CV_32F); cvTranspose(Y,Yt);
-  for ( int si = 0; si < nsamples; si++ ){
-  float * xptr = Xt->data.fl+Xsize*nplanes*si;
-  float * yptr = Yt->data.fl+Ysize*nplanes*si;
+  // Xt = cvCreateMat(X->cols,X->rows,CV_32F); cvTranspose(X,Xt);
+  // Yt = cvCreateMat(Y->cols,Y->rows,CV_32F); cvTranspose(Y,Yt);
+  for ( int si = 0; si < batch_size; si++ ){
+  float * xptr = X->data.fl+Xsize*nplanes*si;
+  float * yptr = Y->data.fl+Ysize*nplanes*si;
   for ( ni = 0; ni < nplanes; ni++ ){
     for ( yy = 0; yy < Yheight; yy++ ){
     for ( xx = 0; xx < Ywidth; xx++ ){
@@ -166,9 +165,9 @@ void icvCNNSubSamplingForward( CvCNNLayer* _layer, const CvMat* X, CvMat* Y )
     } // yy
   } // ni
   } // si
-  cvTranspose(Yt,Y);
-  cvReleaseMat(&Xt);
-  cvReleaseMat(&Yt);
+  // cvTranspose(Yt,Y);
+  // cvReleaseMat(&Xt);
+  // cvReleaseMat(&Yt);
   if (layer->Y){cvCopy(Y,layer->Y);}else{layer->Y=cvCloneMat(Y);}
   if (layer->visualize){icvVisualizeCNNLayer((CvCNNLayer*)layer,Y);}
 
@@ -210,13 +209,13 @@ void icvCNNSubSamplingBackward(
   int nsamples = X->cols;
   int stride_size = layer->sub_samp_scale;
 
-  CvMat * maskT = cvCreateMat(dE_dY->rows,dE_dY->cols,CV_32S);
-  cvTranspose(layer->mask,maskT);
+  // CvMat * maskT = cvCreateMat(dE_dY->rows,dE_dY->cols,CV_32S);
+  // cvTranspose(layer->mask,maskT);
   cvZero(dE_dX);
   for ( int si = 0; si < nsamples; si++ ){
   float * dxptr = dE_dX->data.fl+dE_dX->cols*si;
   float * dyptr = dE_dY->data.fl+dE_dY->cols*si;
-  int * mptr = maskT->data.i;
+  int * mptr = layer->mask->data.i;
   for ( int ni = 0; ni < nplanes; ni++ ){
     for ( int yy = 0; yy < Yheight; yy++ ){
     for ( int xx = 0; xx < Ywidth; xx++ ){
@@ -231,7 +230,7 @@ void icvCNNSubSamplingBackward(
     }
   }
   }
-  cvReleaseMat(&maskT);
+  // cvReleaseMat(&maskT);
   
   if (layer->mask){cvReleaseMat(&layer->mask);layer->mask=0;}
   __END__;

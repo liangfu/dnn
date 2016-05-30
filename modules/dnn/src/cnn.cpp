@@ -815,7 +815,7 @@ void icvVisualizeCNNLayer(CvCNNLayer * layer, const CvMat * Y)
   int hh = layer->output_height;
   int ww = layer->output_width;
   int nplanes = layer->n_output_planes;
-  int nsamples = Y->cols;
+  int nsamples = Y->rows;
   CvMat * imgY = cvCreateMat(hh*nsamples,ww*nplanes,CV_32F);
   float * imgYptr = imgY->data.fl;
   float * Yptr = Y->data.fl;
@@ -826,7 +826,7 @@ void icvVisualizeCNNLayer(CvCNNLayer * layer, const CvMat * Y)
   for (int pi=0;pi<nplanes;pi++){
     for (int yy=0;yy<hh;yy++){
     for (int xx=0;xx<ww;xx++){
-      CV_MAT_ELEM(*imgY,float,hh*si+yy,ww*pi+xx)=CV_MAT_ELEM(*Y,float,hh*ww*pi+ww*yy+xx,si);
+      CV_MAT_ELEM(*imgY,float,hh*si+yy,ww*pi+xx)=CV_MAT_ELEM(*Y,float,si,hh*ww*pi+ww*yy+xx);
     }
     }
   }

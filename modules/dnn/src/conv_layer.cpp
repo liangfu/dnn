@@ -138,14 +138,14 @@ void icvCNNConvolutionForward( CvCNNLayer* _layer, const CvMat* X, CvMat* Y )
   const int Ywidth   = layer->output_width;
   const int Ysize    = Ywidth*Yheight;
 
-  const int nsamples = X->cols; // training batch size
+  const int nsamples = X->rows; // training batch size
 
   // int no; xx, yy, ni, , kx, ky
   // float *Yplane = 0, *Xplane = 0, *w = 0;
   uchar* connect_mask_data = 0;
 
-  CV_ASSERT( X->rows == nXplanes*Xsize && X->cols == nsamples );
-  CV_ASSERT( Y->rows == nYplanes*Ysize && Y->cols == nsamples );
+  CV_ASSERT( X->cols == nXplanes*Xsize && X->rows == nsamples );
+  CV_ASSERT( Y->cols == nYplanes*Ysize && Y->rows == nsamples );
   CV_ASSERT( Xheight-K+1 == Yheight && Xwidth-K+1 == Ywidth );
 
   cvSetZero( Y );
@@ -153,14 +153,14 @@ void icvCNNConvolutionForward( CvCNNLayer* _layer, const CvMat* X, CvMat* Y )
   // Yplane = Y->data.fl;
   // w = layer->weights->data.fl;
   connect_mask_data = layer->connect_mask->data.ptr;
-  CvMat * Xt = cvCreateMat(X->cols,X->rows,CV_32F); cvTranspose(X,Xt);
-  CvMat * Yt = cvCreateMat(Y->cols,Y->rows,CV_32F); cvTranspose(Y,Yt);
+  // CvMat * Xt = cvCreateMat(X->cols,X->rows,CV_32F); cvTranspose(X,Xt);
+  // CvMat * Yt = cvCreateMat(Y->cols,Y->rows,CV_32F); cvTranspose(Y,Yt);
 
   // normalize input
   CvScalar avg,sdv;
   for ( int si = 0; si < nsamples; si++ ){
   for ( int no = 0; no < nXplanes; no++ ){
-    float * xptr = Xt->data.fl+Xsize*nXplanes*si+Xsize*no;
+    float * xptr = X->data.fl+Xsize*nXplanes*si+Xsize*no;
     CvMat img = cvMat(Xsize,1,CV_32F,xptr);
     cvAvgSdv(&img,&avg,&sdv);
     cvSubS(&img,avg,&img);
@@ -172,8 +172,8 @@ void icvCNNConvolutionForward( CvCNNLayer* _layer, const CvMat* X, CvMat* Y )
 #pragma omp parallel for
   for ( int si = 0; si < nsamples; si++ ){
     for ( int no = 0; no < nYplanes; no++ ){
-    float * xptr = Xt->data.fl+Xsize*nXplanes*si;
-    float * yptr = Yt->data.fl+Ysize*nYplanes*si+Ysize*no;
+    float * xptr = X->data.fl+Xsize*nXplanes*si;
+    float * yptr = Y->data.fl+Ysize*nYplanes*si+Ysize*no;
     float * wptr = weights->data.fl+n_weights_for_Yplane*no;
     for ( int ni = 0; ni < nXplanes; ni++, xptr += Xsize ){
       for ( int yy = 0; yy < Xheight-K+1; yy++ ){
@@ -191,8 +191,8 @@ void icvCNNConvolutionForward( CvCNNLayer* _layer, const CvMat* X, CvMat* Y )
     } // no
   } // si
 
-  cvScale(Yt,Yt,1.f/float(K*K));
-  cvTranspose(Yt,Y);
+  cvScale(Y,Y,1.f/float(K*K));
+  // cvTranspose(Yt,Y);
   if (!layer->WX){layer->WX=cvCloneMat(Y);}else{cvCopy(Y,layer->WX);}
 
   if (!strcmp(layer->activation_type,"none")){ // do nothing
@@ -201,8 +201,8 @@ void icvCNNConvolutionForward( CvCNNLayer* _layer, const CvMat* X, CvMat* Y )
   }else if (!strcmp(layer->activation_type,"relu")){ CV_CALL(cvReLU( Y, Y ));
   }else{CV_ERROR(CV_StsBadArg,"Unknown activation type");}
   
-  cvReleaseMat(&Xt);
-  cvReleaseMat(&Yt);
+  // cvReleaseMat(&Xt);
+  // cvReleaseMat(&Yt);
   
   if (layer->Y){cvCopy(Y,layer->Y);}else{layer->Y=cvCloneMat(Y);}
   if (layer->visualize){icvVisualizeCNNLayer((CvCNNLayer*)layer,Y);}
