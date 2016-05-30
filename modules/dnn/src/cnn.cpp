@@ -492,7 +492,7 @@ static void icvCNNModelPredict( const CvCNNStatModel* model, const CvMat* testda
   //   cvReleaseMat(&Xn_transpose);
   //   cvReleaseMat(&result_transpose);
   // }else{
-  cvCopy(X[n_layers], result);
+  cvTranspose(X[n_layers], result);
   // }
   cvReleaseMat(&samples);
 

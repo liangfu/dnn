@@ -26,7 +26,7 @@
 #include "_dnn.h"
  
 //! assuming column vectors (a column is a sample)
-void cvSoftmax(CvMat * src, CvMat * dst){
+void cvSoftmax_old(CvMat * src, CvMat * dst, int flag){
   CV_FUNCNAME("cvSoftmax");
   __BEGIN__;
   CV_ASSERT(cvCountNAN(src)<1);
@@ -44,13 +44,58 @@ void cvSoftmax(CvMat * src, CvMat * dst){
   __END__;
 }
 
-void cvSoftmaxDer(CvMat * X, CvMat * dE_dY, CvMat * dE_dY_afder) {
+void cvSoftmaxDer_old(CvMat * X, CvMat * dE_dY, CvMat * dE_dY_afder) {
   CV_FUNCNAME("cvSoftmaxDer");
   __BEGIN__;
   const int nr = X->rows, nc = X->cols, dtype = CV_MAT_TYPE(X->type);
   CvMat * Y = cvCreateMat(nr, nc, dtype);
   CvMat * dE_dY_transpose = cvCreateMat(nr, nc, dtype);
   CvMat * sum = cvCreateMat(1, nc, dtype);
+  CvMat * sum_repeat = cvCreateMat(nr, nc, dtype);
+  cvSoftmax(X, Y);
+  if (dE_dY->rows==nc && dE_dY->cols==nr){
+    cvTranspose(dE_dY,dE_dY_transpose);
+    cvMul(Y,dE_dY_transpose,dE_dY_afder);
+  }else{
+    cvMul(Y,dE_dY,dE_dY_afder);
+  }
+  cvReduce(dE_dY_afder,sum,-1,CV_REDUCE_SUM);
+  cvRepeat(sum,sum_repeat);
+  cvMul(Y,sum_repeat,sum_repeat);
+  cvSub(dE_dY_afder,sum_repeat,dE_dY_afder);
+  cvReleaseMat(&dE_dY_transpose);
+  cvReleaseMat(&sum);
+  cvReleaseMat(&sum_repeat);
+  cvReleaseMat(&Y);
+  __END__;
+}
+
+//! assuming row vectors (a row is a sample)
+void cvSoftmax(CvMat * src, CvMat * dst){
+  CV_FUNCNAME("cvSoftmax");
+  __BEGIN__;
+  CV_ASSERT(cvCountNAN(src)<1);
+  cvExp(src,dst);
+  CV_ASSERT(cvCountNAN(dst)<1);
+  const int dtype = CV_MAT_TYPE(src->type);
+  CvMat * sum = cvCreateMat(src->rows,1,dtype);
+  CvMat * sum_repeat = cvCreateMat(src->rows,src->cols,dtype);
+  cvReduce(dst,sum,-1,CV_REDUCE_SUM);
+  CV_ASSERT(cvCountNAN(sum)<1);
+  cvRepeat(sum,sum_repeat);
+  cvDiv(dst,sum_repeat,dst);
+  cvReleaseMat(&sum);
+  cvReleaseMat(&sum_repeat);
+  __END__;
+}
+
+void cvSoftmaxDer(CvMat * X, CvMat * dE_dY, CvMat * dE_dY_afder) {
+  CV_FUNCNAME("cvSoftmaxDer");
+  __BEGIN__;
+  const int nr = X->rows, nc = X->cols, dtype = CV_MAT_TYPE(X->type);
+  CvMat * Y = cvCreateMat(nr, nc, dtype);
+  CvMat * dE_dY_transpose = cvCreateMat(nr, nc, dtype);
+  CvMat * sum = cvCreateMat(nr, 1, dtype);
   CvMat * sum_repeat = cvCreateMat(nr, nc, dtype);
   cvSoftmax(X, Y);
   if (dE_dY->rows==nc && dE_dY->cols==nr){

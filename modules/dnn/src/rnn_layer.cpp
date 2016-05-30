@@ -212,13 +212,13 @@ void icvCNNRecurrentForward( CvCNNLayer* _layer, const CvMat* X, CvMat * Y)
   // get H, Y for current time_index, output Y_curr_hdr, H_curr_hdr
   cvGetRow(layerH,&H_curr_hdr,layer->time_index); cvCopy(H_curr,&H_curr_hdr);
   cvGetRow(layerY,&Y_curr_hdr,layer->time_index);
-  CvMat * Y_curr = cvCreateMat(n_outputs,batch_size,CV_32F); cvZero(Y_curr);
+  CvMat * Y_curr = cvCreateMat(batch_size,n_outputs,CV_32F); cvZero(Y_curr);
   CvMat Y_curr_reshape_hdr; cvReshape(&Y_curr_hdr,&Y_curr_reshape_hdr,0,batch_size);
   CV_ASSERT(cvCountNAN(&Y_curr_hdr)<1);
 
   // Y = activate(Why * H + by)
-  cvGEMM( &Why_submat, &H_curr_reshaped, 1, ybias, 1, Y_curr, CV_GEMM_B_T );
-  cvTranspose(Y_curr,&WH_curr_reshaped); 
+  cvGEMM( &H_curr_reshaped, &Why_submat, 1, ybias, 1, Y_curr, CV_GEMM_B_T+CV_GEMM_C_T );
+  cvCopy(Y_curr,&WH_curr_reshaped); 
   CV_ASSERT(cvCountNonZero(&WH_curr_reshaped)>1);
   CV_ASSERT(cvCountNAN(Y_curr)<1); //  && cvSdv(Y_curr)<10.f
   CV_CALL(cvCopy(WH_curr,&WH_curr_hdr));          // copy to layer->WH
@@ -227,18 +227,14 @@ void icvCNNRecurrentForward( CvCNNLayer* _layer, const CvMat* X, CvMat * Y)
   if (!strcmp(layer->activation_type,"sigmoid")){
     CV_CALL(cvSigmoid( &Y_curr_hdr, &Y_curr_hdr )); // output activation - logistic regression
   }else if (!strcmp(layer->activation_type,"softmax")){
-    CV_ASSERT(Y_curr->rows==n_outputs && Y_curr->cols==batch_size);
+    CV_ASSERT(Y_curr->cols==n_outputs && Y_curr->rows==batch_size);
     cvSoftmax(Y_curr,Y_curr);
   }else{
     CV_ERROR(CV_StsBadArg,"invalid output activation type for RNN layer, `softmax` is prefered.");
   }
-  // cvTranspose(Y_curr,&Y_curr_reshape_hdr);
-  CvMat * Y_curr_transpose = cvCloneTransposed(Y_curr), Y_curr_reshape_hdr2;
-  cvReshape(Y_curr_transpose,&Y_curr_reshape_hdr2,0,1);
-  cvCopy(&Y_curr_reshape_hdr2,&Y_curr_hdr);
+  cvCopy(Y_curr,&Y_curr_reshape_hdr);
   CV_ASSERT(cvCountNAN(Y_curr)<1);
   if (Y_curr){cvReleaseMat(&Y_curr);Y_curr=0;}
-  if (Y_curr_transpose){cvReleaseMat(&Y_curr_transpose);Y_curr_transpose=0;}
 
   // copy layer->Y to output variable Y
 #if 0
@@ -248,8 +244,8 @@ void icvCNNRecurrentForward( CvCNNLayer* _layer, const CvMat* X, CvMat * Y)
   for (int tidx=0;tidx<seq_length;tidx++){
   for (int bidx=0;bidx<batch_size;bidx++){
     cvGetSubRect(layerY,&layer_Y_submat_hdr,cvRect(bidx*n_outputs,tidx,n_outputs,1));
-    cvGetSubRect(Y,&Y_submat_hdr,cvRect(seq_length*bidx+tidx,0,1,n_outputs));
-    cvTranspose(&layer_Y_submat_hdr,&Y_submat_hdr);
+    cvGetSubRect(Y,&Y_submat_hdr,cvRect(0,seq_length*bidx+tidx,n_outputs,1));
+    cvCopy(&layer_Y_submat_hdr,&Y_submat_hdr);
   }
   }
 #endif
