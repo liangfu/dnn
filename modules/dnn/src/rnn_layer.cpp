@@ -287,10 +287,10 @@ void icvCNNRecurrentBackward( CvCNNLayer* _layer, int t,
   
   // TODO: compute average from all output_layers
   int n_output_layers = ref_layer?ref_layer->output_layers.size():layer->output_layers.size();
+  const int batch_size = X->rows;
   if (n_output_layers){
     const int n_Y_planes = layer->n_output_planes;
     const int Y_plane_size   = layer->output_height*layer->output_width;
-    const int batch_size = X->cols;
     dE_dY = cvCreateMat(batch_size,Y_plane_size*n_Y_planes,CV_32F); cvZero(dE_dY);
     for (int li=0;li<n_output_layers;li++){
       CvCNNLayer * output_layer = ref_layer?ref_layer->output_layers[li]:layer->output_layers[li];
@@ -320,7 +320,7 @@ void icvCNNRecurrentBackward( CvCNNLayer* _layer, int t,
   int n_inputs = layer->n_input_planes;
   int n_outputs = layer->n_output_planes;
   int n_hiddens = layer->n_hiddens;
-  int batch_size = X->cols;
+  // int batch_size = X->cols;
   CvMat * dE_dY_afder = 0;
   CvMat * WX = 0, * WH = 0, * H_prev = 0, * H_curr = 0, * WX_curr = 0, * WH_curr = 0;
   CvMat * dE_dY_curr = 0, * dH_curr = 0, * dH_next = 0, * dH_raw = 0, 
@@ -478,8 +478,8 @@ void icvCNNRecurrentBackward( CvCNNLayer* _layer, int t,
   cvReleaseMat(&dH_raw_transpose);
 
   // dWxh += dH_raw * X_curr'
-  CV_ASSERT(dH_raw->rows==batch_size && X->cols==batch_size);
-  cvGEMM(dH_raw,X,1.f,0,1.f,dWxh,CV_GEMM_A_T+CV_GEMM_B_T);
+  CV_ASSERT(dH_raw->rows==batch_size && X->rows==batch_size);
+  cvGEMM(dH_raw,X,1.f,0,1.f,dWxh,CV_GEMM_A_T);
   cvScale(dWxh,dWxh,1./batch_size); // batch normalize
   cvAdd(layer_dWxh,dWxh,layer_dWxh);
   // dWhh += dH_raw * H_prev'

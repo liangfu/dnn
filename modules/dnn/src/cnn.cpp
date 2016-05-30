@@ -281,13 +281,13 @@ static void icvTrainCNNetwork( CvCNNetwork* network,const CvMat* images, const C
 
   // initialize input data
   CV_CALL(X[0] = cvCreateMat( batch_size*first_layer->seq_length, img_size, CV_32F ));
-  CV_CALL(dE_dX[0] = cvCreateMat( batch_size*first_layer->seq_length, X[0]->rows, CV_32F ));
+  CV_CALL(dE_dX[0] = cvCreateMat( batch_size*first_layer->seq_length, X[0]->cols, CV_32F ));
   cvZero(X[0]); cvZero(dE_dX[0]); cvZero(X0_transpose);
   for ( k = 0, layer = first_layer; k < n_layers; k++, layer = layer->next_layer ){
     int n_outputs = layer->n_output_planes*layer->output_height*layer->output_width;
     int seq_length = layer->seq_length;
     CV_CALL(X[k+1] = cvCreateMat( batch_size*seq_length, n_outputs, CV_32F )); 
-    CV_CALL(dE_dX[k+1] = cvCreateMat( batch_size*seq_length, X[k+1]->rows, CV_32F )); 
+    CV_CALL(dE_dX[k+1] = cvCreateMat( batch_size*seq_length, X[k+1]->cols, CV_32F )); 
     cvZero(X[k+1]); cvZero(dE_dX[k+1]);
   }
 
@@ -295,7 +295,7 @@ static void icvTrainCNNetwork( CvCNNetwork* network,const CvMat* images, const C
   {
     float loss, max_loss = 0;
     int i;
-    int nclasses = X[n_layers]->rows;
+    int nclasses = X[n_layers]->cols;
     CvMat * worst_img_idx = cvCreateMat(batch_size,1,CV_32S);
     int * right_etal_idx = responses->data.i;
     CvMat * etalon = cvCreateMat(batch_size*last_layer->seq_length,nclasses,CV_32F);
@@ -350,21 +350,21 @@ static void icvTrainCNNetwork( CvCNNetwork* network,const CvMat* images, const C
     // 4) compute loss & accuracy, print progress
     CvMat * etalon_transpose = cvCreateMat(etalon->cols,etalon->rows,CV_32F);
     cvTranspose(etalon,etalon_transpose);
-    float trloss = cvNorm(X[n_layers], etalon_transpose)/float(batch_size);
-    float top1 = icvEvalAccuracy(last_layer, X[n_layers], etalon_transpose);
+    CvMat * Xn_transpose = 
+      cvCreateMat(last_layer->n_output_planes,batch_size*last_layer->seq_length,CV_32F);
+    cvTranspose(X[n_layers],Xn_transpose);
+    float trloss = cvNorm(X[n_layers], etalon)/float(batch_size);
+    float top1 = icvEvalAccuracy(last_layer, Xn_transpose, etalon_transpose);
     static double sumloss = 0; sumloss += trloss;
     static double sumacc  = 0; sumacc  += top1;
     if (int(float(n*100)/float(max_iter))<int(float((n+1)*100)/float(max_iter))){
       fprintf(stderr, "%d/%d = %.0f%%,",n+1,max_iter,float(n*100.f)/float(max_iter));
       fprintf(stderr, "sumacc: %.1f%%[%.1f%%], sumloss: %f\n", sumacc/float(n),top1,sumloss/float(n));
-      CvMat * Xn_transpose = 
-        cvCreateMat(batch_size*last_layer->seq_length,last_layer->n_output_planes,CV_32F);
-      cvTranspose(X[n_layers],Xn_transpose);
-      if (img_size<100){fprintf(stderr,"input:\n");cvPrintf(stderr,"%.0f ", X0_transpose);}
-      {fprintf(stderr,"output:\n");cvPrintf(stderr,"%.1f ", Xn_transpose);}
+      if (img_size<100){fprintf(stderr,"input:\n");cvPrintf(stderr,"%.0f ", X[0]);}
+      {fprintf(stderr,"output:\n");cvPrintf(stderr,"%.1f ", X[n_layers]);}
       {fprintf(stderr,"expect:\n");cvPrintf(stderr,"%.1f ", etalon);}
-      cvReleaseMat(&Xn_transpose);
     }
+    cvReleaseMat(&Xn_transpose);
     cvReleaseMat(&etalon_transpose);
 
     if (etalon){cvReleaseMat(&etalon);etalon=0;}
