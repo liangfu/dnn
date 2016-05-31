@@ -310,7 +310,7 @@ void icvCNNConvolutionBackward(
 
   // dE_dY_afder = (tanh'(WX))*dE_dY
   if (!strcmp(layer->activation_type,"none")){
-    cvTranspose(dE_dY,dE_dY_afder);
+    cvCopy(dE_dY,dE_dY_afder);
   }else if (!strcmp(layer->activation_type,"tanh")){ 
     cvTanhDer(layer->WX,dE_dY_afder);
     // cvTranspose(dE_dY,dE_dY_T);
@@ -337,14 +337,15 @@ void icvCNNConvolutionBackward(
   // update weights
   {
     CvMat dE_dW_mat;
-    float eta;
-    if ( layer->decay_type == CV_CNN_LEARN_RATE_DECREASE_LOG_INV ) {
-      eta = -layer->init_learn_rate/logf(1+(float)t);
-    } else if ( layer->decay_type == CV_CNN_LEARN_RATE_DECREASE_SQRT_INV ) {
-      eta = -layer->init_learn_rate/sqrtf((float)t);
-    } else {
-      eta = -layer->init_learn_rate/(float)t;
-    }
+    // float eta;
+    // if ( layer->decay_type == CV_CNN_LEARN_RATE_DECREASE_LOG_INV ) {
+    //   eta = -layer->init_learn_rate/logf(1+(float)t);
+    // } else if ( layer->decay_type == CV_CNN_LEARN_RATE_DECREASE_SQRT_INV ) {
+    //   eta = -layer->init_learn_rate/sqrtf((float)t);
+    // } else {
+    //   eta = -layer->init_learn_rate/(float)t;
+    // }
+    float eta = -layer->init_learn_rate*cvInvSqrt((float)t);
     cvReshape( dE_dW, &dE_dW_mat, 0, weights->rows );
     if (!layer->dE_dW){
       ((CvCNNLayer*)layer)->dE_dW = cvCloneMat(&dE_dW_mat);

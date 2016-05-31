@@ -237,17 +237,19 @@ void icvCNNFullConnectBackward(CvCNNLayer * _layer, int t,
       n_inputs = input_layer->n_output_planes*input_layer->output_height*input_layer->output_width;
     }
     CvMat X_submat; CvMat * Xsrc = input_layer->Y;
-    CvMat * Xsrc_transpose = cvCreateMat(Xsrc->cols,Xsrc->rows,dtype);
-    cvTranspose(Xsrc,Xsrc_transpose);
-    X = cvCreateMat(n_inputs,batch_size,dtype);
+    // CvMat * Xsrc_transpose = cvCreateMat(Xsrc->cols,Xsrc->rows,dtype);
+    // cvTranspose(Xsrc,Xsrc_transpose);
+    X = cvCreateMat(batch_size,n_inputs,dtype);
     CV_ASSERT(n_inputs*seq_length*batch_size==Xsrc->rows*Xsrc->cols);
 #if 0
     cvGetRow(Xsrc_transpose,&X_submat,time_index);
 #else
-    cvGetRows(Xsrc_transpose,&X_submat,batch_size*time_index,batch_size*(time_index+1));
+    // cvGetRows(Xsrc_transpose,&X_submat,batch_size*time_index,batch_size*(time_index+1));
+    cvGetRows(Xsrc,&X_submat,batch_size*time_index,batch_size*(time_index+1));
 #endif
-    cvTranspose(&X_submat,X); 
-    cvReleaseMat(&Xsrc_transpose);
+    // cvTranspose(&X_submat,X); 
+    cvCopy(&X_submat,X); 
+    // cvReleaseMat(&Xsrc_transpose);
     // initialize dE_dX in layer member variable
     if (!layer->dE_dX){
       layer->dE_dX = cvCreateMat(batch_size, n_inputs, dtype); 
