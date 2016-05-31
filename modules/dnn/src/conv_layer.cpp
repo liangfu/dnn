@@ -244,7 +244,7 @@ void icvCNNConvolutionBackward(
   const int Ywidth  = layer->output_width;
   const int Y_plane_size   = Yheight*Ywidth;
 
-  const int batch_size = X->cols;
+  const int batch_size = X->rows;
   CvMat * dE_dY = (CvMat*)_dE_dY;
   CvMat* dY_dX = 0;
   CvMat* dY_dW = 0;
@@ -259,17 +259,17 @@ void icvCNNConvolutionBackward(
       }
     } // average loss from all task
   }
-  CvMat * dE_dY_T = cvCreateMat(dE_dY->cols, dE_dY->rows, CV_32F); cvZero(dE_dY_T);
-  CvMat * dE_dY_afder = cvCreateMat(dE_dY->cols, dE_dY->rows, CV_32F); cvZero(dE_dY_afder);
+  // CvMat * dE_dY_T = cvCreateMat(dE_dY->cols, dE_dY->rows, CV_32F); cvZero(dE_dY_T);
+  CvMat * dE_dY_afder = cvCreateMat(dE_dY->rows, dE_dY->cols, CV_32F); cvZero(dE_dY_afder);
 
   CV_ASSERT( t >= 1 );
   CV_ASSERT( n_Y_planes == weights->rows );
 
   if (layer->enable_cache){
-    if (!layer->dY_dX){layer->dY_dX=cvCreateMat( n_Y_planes*Y_plane_size, X->rows, CV_32F );}
+    if (!layer->dY_dX){layer->dY_dX=cvCreateMat( n_Y_planes*Y_plane_size, X->cols, CV_32F );}
     dY_dX = layer->dY_dX;
   }else{
-    dY_dX = cvCreateMat( n_Y_planes*Y_plane_size, X->rows, CV_32F );
+    dY_dX = cvCreateMat( n_Y_planes*Y_plane_size, X->cols, CV_32F );
   }
   dY_dW = cvCreateMat( dY_dX->rows, weights->cols*weights->rows, CV_32F );
   dE_dW = cvCreateMat( 1, dY_dW->cols, CV_32F );
@@ -277,14 +277,14 @@ void icvCNNConvolutionBackward(
   cvZero( dY_dW );
 
   // compute gradient of the loss function with respect to X and W
-  CvMat * Xt = cvCreateMat(X->cols,X->rows,CV_32F); cvTranspose(X,Xt);
+  // CvMat * Xt = cvCreateMat(X->cols,X->rows,CV_32F); cvTranspose(X,Xt);
 #pragma omp parallel for
   for ( int si = 0; si < batch_size; si++ ){
     int yloc = 0;
     for ( int no = 0; no < n_Y_planes; no++, yloc += Y_plane_size ){
     int noKK = no*(KK+1);
     int xloc = 0;
-    float * xptr = Xt->data.fl+Xt->cols*si;
+    float * xptr = X->data.fl+X->cols*si;
     float * wptr = weights->data.fl + noKK;
     for ( int ni = 0; ni < n_X_planes; ni++, xptr += X_plane_size, xloc += X_plane_size ){
       for ( int yy = 0; yy < Xheight - K + 1; yy++ ){
@@ -305,7 +305,7 @@ void icvCNNConvolutionBackward(
     } // ni
     } // no
   } // si
-  cvReleaseMat(&Xt);
+  // cvReleaseMat(&Xt);
   cvScale(dY_dW,dY_dW,1.f/float(batch_size));
 
   // dE_dY_afder = (tanh'(WX))*dE_dY
@@ -313,26 +313,26 @@ void icvCNNConvolutionBackward(
     cvTranspose(dE_dY,dE_dY_afder);
   }else if (!strcmp(layer->activation_type,"tanh")){ 
     cvTanhDer(layer->WX,dE_dY_afder);
-    cvTranspose(dE_dY,dE_dY_T);
-    cvMul(dE_dY_afder,dE_dY_T,dE_dY_afder);
+    // cvTranspose(dE_dY,dE_dY_T);
+    cvMul(dE_dY_afder,dE_dY,dE_dY_afder);
   }else if (!strcmp(layer->activation_type,"sigmoid")){ 
     cvSigmoidDer(layer->WX,dE_dY_afder);
-    cvTranspose(dE_dY,dE_dY_T);
-    cvMul(dE_dY_afder,dE_dY_T,dE_dY_afder);
+    // cvTranspose(dE_dY,dE_dY_T);
+    cvMul(dE_dY_afder,dE_dY,dE_dY_afder);
   }else if (!strcmp(layer->activation_type,"relu")){ 
     cvReLUDer(layer->WX,dE_dY_afder);
-    cvTranspose(dE_dY,dE_dY_T);
-    cvMul(dE_dY_afder,dE_dY_T,dE_dY_afder);
+    // cvTranspose(dE_dY,dE_dY_T);
+    cvMul(dE_dY_afder,dE_dY,dE_dY_afder);
   }else{CV_ASSERT(false);}
 
   // dE_dW = sum( dE_dY * dY_dW )
   CvMat * dE_dW_ = cvCreateMat( batch_size, dY_dW->cols, CV_32FC1 );
-  CV_CALL(cvGEMM( dE_dY_afder, dY_dW, 1.f,0,1.f,dE_dW_,CV_GEMM_A_T )); 
+  CV_CALL(cvGEMM( dE_dY_afder, dY_dW, 1.f,0,1.f,dE_dW_ )); 
   cvReduce(dE_dW_,dE_dW,-1,CV_REDUCE_AVG);
   cvReleaseMat(&dE_dW_);
 
   // dE_dX = dE_dY * dY_dX
-  CV_CALL(cvGEMM( dE_dY_afder, dY_dX, 1.f,0,1.f,dE_dX,CV_GEMM_A_T ));
+  CV_CALL(cvGEMM( dE_dY_afder, dY_dX, 1.f,0,1.f,dE_dX ));
 
   // update weights
   {

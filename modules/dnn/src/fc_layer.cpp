@@ -104,8 +104,8 @@ void icvCNNFullConnectForward( CvCNNLayer* _layer, const CvMat* _X, CvMat* _Y )
   CvMat * X = (CvMat*)_X;
   CvMat * Y = (CvMat*)_Y;
   int n_inputs = layer->n_input_planes;
-  int n_outputs = Y->rows;
-  int batch_size = X->cols;
+  int n_outputs = Y->cols;
+  int batch_size = X->rows;
   int seq_length = 1;
   
   if (input_layer){
@@ -116,59 +116,64 @@ void icvCNNFullConnectForward( CvCNNLayer* _layer, const CvMat* _X, CvMat* _Y )
       n_inputs = input_layer->n_output_planes*input_layer->output_height*input_layer->output_width;
     }
     CvMat * Xsrc = input_layer->Y;
-    CvMat * Xsrc_transpose = cvCreateMat(Xsrc->cols,Xsrc->rows,dtype);
-    cvTranspose(Xsrc,Xsrc_transpose);
-    if (layer->n_output_planes*seq_length==Y->rows){
-      X = cvCreateMat(n_inputs*seq_length,batch_size,dtype);
+    // CvMat * Xsrc_transpose = cvCreateMat(Xsrc->cols,Xsrc->rows,dtype);
+    // cvTranspose(Xsrc,Xsrc_transpose);
+    if (layer->n_output_planes*seq_length==Y->cols){
+      X = cvCreateMat(batch_size,n_inputs*seq_length,dtype);
       CV_ASSERT(n_inputs*seq_length*batch_size==Xsrc->rows*Xsrc->cols);
-      CV_ASSERT(CV_MAT_TYPE(X->type)==CV_MAT_TYPE(Xsrc_transpose->type));
-      if (CV_MAT_TYPE(X->type)==CV_32F){
-        memcpy(X->data.ptr,Xsrc_transpose->data.ptr,sizeof(float)*n_inputs*seq_length*batch_size);
-      }else{
-        memcpy(X->data.ptr,Xsrc_transpose->data.ptr,sizeof(double)*n_inputs*seq_length*batch_size);
-      }
-      cvReleaseMat(&Xsrc_transpose);
+      // CV_ASSERT(CV_MAT_TYPE(X->type)==CV_MAT_TYPE(Xsrc_transpose->type));
+      // if (CV_MAT_TYPE(X->type)==CV_32F){
+      //   memcpy(X->data.ptr,Xsrc_transpose->data.ptr,sizeof(float)*n_inputs*seq_length*batch_size);
+      // }else{
+      //   memcpy(X->data.ptr,Xsrc_transpose->data.ptr,sizeof(double)*n_inputs*seq_length*batch_size);
+      // }
+      // cvReleaseMat(&Xsrc_transpose);
+      cvCopy(Xsrc,X);
       n_outputs=layer->n_output_planes/seq_length;
       CV_ASSERT(n_outputs*seq_length==layer->n_output_planes);
     }else{
-      X = cvCreateMat(n_inputs,batch_size,dtype);
+      X = cvCreateMat(batch_size,n_inputs,dtype);
       CV_ASSERT(n_inputs*seq_length*batch_size==Xsrc->rows*Xsrc->cols);
       CvMat X_submat; 
       if (icvIsCNNRecurrentNNLayer(input_layer)){
-        cvGetRow(Xsrc_transpose,&X_submat,((CvCNNRecurrentLayer*)input_layer)->time_index);
+        // cvGetRow(Xsrc_transpose,&X_submat,((CvCNNRecurrentLayer*)input_layer)->time_index);
+        cvGetRow(Xsrc,&X_submat,((CvCNNRecurrentLayer*)input_layer)->time_index);
       }else{
-        cvGetRow(Xsrc_transpose,&X_submat,0);
+        // cvGetRow(Xsrc_transpose,&X_submat,0);
+        cvGetRow(Xsrc,&X_submat,0);
       }
-      cvTranspose(&X_submat,X);
+      // cvTranspose(&X_submat,X);
+      cvCopy(&X_submat,X);
       seq_length=1;
     }
-    cvReleaseMat(&Xsrc_transpose);
+    // cvReleaseMat(&Xsrc_transpose);
   }else if (icvIsCNNRecurrentNNLayer(layer->prev_layer) && n_inputs*seq_length!=X->rows){
     CvCNNRecurrentLayer * rnn_layer = ((CvCNNRecurrentLayer*)layer->prev_layer);
-    CV_ASSERT(X->rows==rnn_layer->seq_length*n_inputs);
-    X = cvCreateMat(n_inputs,batch_size,dtype);
+    CV_ASSERT(X->cols==rnn_layer->seq_length*n_inputs);
+    X = cvCreateMat(batch_size,n_inputs,dtype);
     CvMat X_submat;
-    cvGetSubRect(_X,&X_submat,cvRect(0,n_inputs*rnn_layer->time_index,batch_size,n_inputs));
+    cvGetSubRect(_X,&X_submat,cvRect(n_inputs*rnn_layer->time_index,0,n_inputs,batch_size));
     cvCopy(&X_submat,X);
   }
 
-  CV_ASSERT(X->cols == batch_size && X->rows == layer->n_input_planes*seq_length);
-  CV_ASSERT(Y->cols == batch_size && Y->rows == layer->n_output_planes);
+  CV_ASSERT(X->rows == batch_size && X->cols == layer->n_input_planes*seq_length);
+  CV_ASSERT(Y->rows == batch_size && Y->cols == layer->n_output_planes);
 
   CvRect roi = cvRect(0, 0, weights->cols-1, weights->rows );
   CV_CALL(cvGetSubRect( weights, &sub_weights, roi));
   CV_CALL(cvGetCol( weights, &biascol, weights->cols-1));
   CvMat * bias = cvCreateMat(biascol.rows,batch_size,dtype); 
   cvRepeat(&biascol,bias);
-  layer->WX = cvCreateMat( n_outputs, batch_size, dtype ); cvZero( layer->WX );
-  CV_CALL(cvGEMM( &sub_weights, X, 1, bias, 1, layer->WX ));
+  layer->WX = cvCreateMat( batch_size, n_outputs, dtype ); cvZero( layer->WX );
+  CV_CALL(cvGEMM( X, &sub_weights, 1, bias, 1, layer->WX, CV_GEMM_B_T+CV_GEMM_C_T ));
   if (bias){cvReleaseMat(&bias);bias=0;}
 
   if (!strcmp(layer->activation_type,"none")){ // do nothing
   }else if (!strcmp(layer->activation_type,"tanh")){ CV_CALL(cvTanh( layer->WX, Y ));
   }else if (!strcmp(layer->activation_type,"sigmoid")){ CV_CALL(cvSigmoid( layer->WX, Y ));
   }else if (!strcmp(layer->activation_type,"relu")){ CV_CALL(cvReLU( layer->WX, Y ));
-  }else if (!strcmp(layer->activation_type,"softmax")){ CV_CALL(cvSoftmax( layer->WX, Y ));
+  }else if (!strcmp(layer->activation_type,"softmax")){
+    cvSoftmax( layer->WX, Y ); CV_ASSERT(Y->rows == batch_size && Y->cols == layer->n_output_planes);
   }else{CV_ERROR(CV_StsBadArg,"Unknown activation type");}
 
   if (layer->Y){cvCopy(Y,layer->Y);}else{layer->Y=cvCloneMat(Y);}
@@ -176,9 +181,8 @@ void icvCNNFullConnectForward( CvCNNLayer* _layer, const CvMat* _X, CvMat* _Y )
   else if (layer->visualize==2){fprintf(stderr,"\n");cvPrintf(stderr,"%f ",Y);}
 
   if ( (input_layer && icvIsCNNRecurrentNNLayer(input_layer)) ||
-       (icvIsCNNRecurrentNNLayer(layer->prev_layer) && n_inputs*seq_length!=X->rows) ){
-    CV_ASSERT(X!=_X);
-    if (X) { cvReleaseMat(&X); X = 0; }
+       (icvIsCNNRecurrentNNLayer(layer->prev_layer) && n_inputs*seq_length!=X->cols) ){
+    CV_ASSERT(X!=_X); if (X) { cvReleaseMat(&X); X = 0; }
   }
   __END__;
 }
@@ -217,7 +221,7 @@ void icvCNNFullConnectBackward(CvCNNLayer * _layer, int t,
   int n_inputs  = layer->n_input_planes;
   CvMat * weights = layer->weights;
   CvMat sub_weights, Xtemplate, WXrow;
-  int batch_size = _dE_dY->rows; CV_ASSERT(_dE_dY->rows==_X->cols);
+  int batch_size = _dE_dY->rows; CV_ASSERT(_dE_dY->rows==_X->rows);
   int seq_length = 1, time_index = 0;
   CvMat * X = (CvMat*)_X;
   CvMat * dE_dY = (CvMat*)_dE_dY;
@@ -293,45 +297,43 @@ void icvCNNFullConnectBackward(CvCNNLayer * _layer, int t,
     }
   }
 
-  CvMat * dE_dY_T = cvCreateMat(n_outputs, batch_size, dtype);
+  // CvMat * dE_dY_T = cvCreateMat(n_outputs, batch_size, dtype);
 
-  CV_ASSERT(X->cols == batch_size && X->rows == n_inputs);
+  CV_ASSERT(X->rows == batch_size && X->cols == n_inputs);
   CV_ASSERT(dE_dY->rows == batch_size && dE_dY->cols == n_outputs );
   CV_ASSERT(dE_dX->rows == batch_size && dE_dX->cols == n_inputs );
 
-  CV_CALL(dE_dY_afder = cvCreateMat( n_outputs, batch_size, dtype ));
+  CV_CALL(dE_dY_afder = cvCreateMat( batch_size, n_outputs, dtype ));
 
   // compute (tanh'(WX))*dE_dY
   if (!strcmp(layer->activation_type,"none")){
   }else if (!strcmp(layer->activation_type,"tanh")){ 
     cvTanhDer(layer->WX,dE_dY_afder);
-    cvTranspose(dE_dY,dE_dY_T);
-    cvMul(dE_dY_afder,dE_dY_T,dE_dY_afder);
+    // cvTranspose(dE_dY,dE_dY_T);
+    cvMul(dE_dY_afder,dE_dY,dE_dY_afder);
   }else if (!strcmp(layer->activation_type,"sigmoid")){ 
     cvSigmoidDer(layer->WX,dE_dY_afder);
-    cvTranspose(dE_dY,dE_dY_T);
-    cvMul(dE_dY_afder,dE_dY_T,dE_dY_afder);
+    // cvTranspose(dE_dY,dE_dY_T);
+    cvMul(dE_dY_afder,dE_dY,dE_dY_afder);
   }else if (!strcmp(layer->activation_type,"softmax")){ 
     cvSoftmaxDer(layer->WX,(CvMat*)dE_dY,dE_dY_afder);
   }else if (!strcmp(layer->activation_type,"relu")){ 
     cvReLUDer(layer->WX,dE_dY_afder);
-    cvTranspose(dE_dY,dE_dY_T);
-    cvMul(dE_dY_afder,dE_dY_T,dE_dY_afder);
+    // cvTranspose(dE_dY,dE_dY_T);
+    cvMul(dE_dY_afder,dE_dY,dE_dY_afder);
   }else{CV_ASSERT(false);}
 
   // compute dE_dX=dE_dY_afder*W
   CV_CALL(cvGetCols( weights, &sub_weights, 0, weights->cols-1 ));
-  CV_CALL(cvGEMM( dE_dY_afder, &sub_weights, 1, 0, 1, dE_dX, CV_GEMM_A_T));
+  CV_CALL(cvGEMM( dE_dY_afder, &sub_weights, 1, 0, 1, dE_dX));
   
   // compute dE_dW=dE_dY*X
   CV_ASSERT( dE_dY->rows == batch_size && dE_dY->cols == n_outputs );
   dE_dW = cvCreateMat(n_outputs,n_inputs+1,dtype); cvZero(dE_dW);
-  CvMat * Xcol = cvCreateMat(X->rows+1,X->cols,dtype); 
-  CvMat Xcol_submat;
+  CvMat * Xcol = cvCreateMat(X->rows,X->cols+1,dtype); 
   cvSet(Xcol,cvScalar(1)); // all ones on last row
-  cvGetRows(Xcol,&Xcol_submat,0,X->rows);
-  cvCopy(X,&Xcol_submat);
-  cvGEMM(dE_dY,Xcol,1,0,1,dE_dW,CV_GEMM_A_T|CV_GEMM_B_T);
+  CvMat Xcol_submat; cvGetCols(Xcol,&Xcol_submat,0,X->cols); cvCopy(X,&Xcol_submat);
+  cvGEMM(dE_dY,Xcol,1,0,1,dE_dW,CV_GEMM_A_T);
   cvReleaseMat(&Xcol);
 
   // copy `dE_dW` into layer variable for gradient checking
@@ -356,7 +358,7 @@ void icvCNNFullConnectBackward(CvCNNLayer * _layer, int t,
   cvScaleAdd( dE_dW, cvRealScalar(eta), weights, weights );
 
   if (output_layer && dE_dY){cvReleaseMat(&dE_dY);dE_dY=0;}
-  cvReleaseMat(&dE_dY_T);
+  // cvReleaseMat(&dE_dY_T);
   if (layer->WX){ cvReleaseMat(&layer->WX);layer->WX=0; }
   __END__;
 

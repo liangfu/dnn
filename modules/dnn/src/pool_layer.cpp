@@ -205,18 +205,19 @@ void icvCNNSubSamplingBackward(
   CV_ASSERT(CV_MAT_TYPE(layer->mask->type)==CV_32S);
   CV_ASSERT(dE_dX->rows*dE_dX->cols==X->rows*X->cols);
 
-  int nplanes = layer->n_output_planes;
-  int nsamples = X->cols;
+  int n_outputs = layer->n_output_planes;
+  int batch_size = X->rows;
   int stride_size = layer->sub_samp_scale;
+  CV_ASSERT(layer->mask->rows==batch_size && layer->mask->cols==n_outputs*Ysize);
 
   // CvMat * maskT = cvCreateMat(dE_dY->rows,dE_dY->cols,CV_32S);
   // cvTranspose(layer->mask,maskT);
   cvZero(dE_dX);
-  for ( int si = 0; si < nsamples; si++ ){
+  for ( int si = 0; si < batch_size; si++ ){
   float * dxptr = dE_dX->data.fl+dE_dX->cols*si;
   float * dyptr = dE_dY->data.fl+dE_dY->cols*si;
   int * mptr = layer->mask->data.i;
-  for ( int ni = 0; ni < nplanes; ni++ ){
+  for ( int ni = 0; ni < n_outputs; ni++ ){
     for ( int yy = 0; yy < Yheight; yy++ ){
     for ( int xx = 0; xx < Ywidth; xx++ ){
       int maxloc = mptr[xx];

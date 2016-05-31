@@ -78,7 +78,7 @@ void icvCNNMultiTargetForward( CvCNNLayer * _layer, const CvMat * X, CvMat * Y )
   for (int lidx=0;lidx<n_input_layers;lidx++){
     CvMat Y_submat;
     int input_layer_data_size = layer->input_layers[lidx]->n_output_planes;
-    cvGetRows(Y,&Y_submat,input_layer_data_index,input_layer_data_index+input_layer_data_size);
+    cvGetCols(Y,&Y_submat,input_layer_data_index,input_layer_data_index+input_layer_data_size);
     cvCopy(layer->input_layers[lidx]->Y,&Y_submat);
     input_layer_data_index += input_layer_data_size;
   }
