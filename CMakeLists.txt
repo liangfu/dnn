@@ -147,6 +147,10 @@ add_executable(transfer_mnist_twodigit src/transfer_mnist_twodigit.cpp  src/netw
 target_link_libraries(transfer_mnist_twodigit cxcore cvutil cv highgui dnn 
   ${FFMPEG_LIBRARIES} ${OPENMP_LIBRARIES})
 
+add_executable(transfer_mnist_localize src/transfer_mnist_localize.cpp  src/network.cpp)
+target_link_libraries(transfer_mnist_localize cxcore cvutil cv highgui dnn 
+  ${FFMPEG_LIBRARIES} ${OPENMP_LIBRARIES})
+
 add_executable(transfer_mnist_addition src/transfer_mnist_addition.cpp  src/network.cpp)
 target_link_libraries(transfer_mnist_addition cxcore cvutil cv highgui dnn 
   ${FFMPEG_LIBRARIES} ${OPENMP_LIBRARIES})
