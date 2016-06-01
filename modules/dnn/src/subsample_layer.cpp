@@ -50,7 +50,7 @@ CvCNNLayer * cvCreateCNNImgCroppingLayer(
   CV_ASSERT(icvIsCNNInputDataLayer((CvCNNLayer*)_image_layer));
 
   fprintf(stderr,"ImgCroppingLayer(%s): "
-          "input (%d@%dx%d), output (%d@%dx%d), seq_length: %d, time_index: %d\n", name,
+          "input (%d@%dx%d), output (%d@%dx%d), seq_length: (%d), time_index: (%d)\n", name,
           n_inputs,input_layer->input_height,input_layer->input_width,
           n_outputs,output_height,output_width,input_layer->seq_length,time_index);
   

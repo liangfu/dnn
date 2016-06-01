@@ -105,12 +105,13 @@ void icvCNNFullConnectForward( CvCNNLayer* _layer, const CvMat* _X, CvMat* _Y )
   CvMat * Y = (CvMat*)_Y;
   int n_inputs = layer->n_input_planes;
   int n_outputs = Y->cols;
-  int batch_size = X->rows;
   int seq_length = 1;
+  int batch_size = X->rows;
   
   if (input_layer){
     if (icvIsCNNRecurrentNNLayer(input_layer)){
       seq_length = ((CvCNNRecurrentLayer*)input_layer)->seq_length;
+      batch_size = X->rows/seq_length;
     }else if (icvIsCNNSubSamplingLayer(input_layer)){
       seq_length = 1;
       n_inputs = input_layer->n_output_planes*input_layer->output_height*input_layer->output_width;

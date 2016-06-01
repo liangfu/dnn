@@ -272,8 +272,8 @@ void CvNetwork::train(CvMat *trainingData, CvMat *responseMat)
   params.batch_size = m_solver->batch_size();
   params.grad_estim_type=CV_CNN_GRAD_ESTIM_RANDOM;
 
-  if (CV_MAT_TYPE(responseMat->type)!=CV_32S){
-    CvMat * tmp = cvCreateMat(responseMat->rows,responseMat->cols,CV_32S);
+  if (CV_MAT_TYPE(responseMat->type)!=CV_32F){
+    CvMat * tmp = cvCreateMat(responseMat->rows,responseMat->cols,CV_32F);
     cvConvert(responseMat,tmp);
     m_cnn = cvTrainCNNClassifier( trainingData, CV_ROW_SAMPLE,tmp,&params,0,0,0,0);
     cvReleaseMat(&tmp);

@@ -1,13 +1,13 @@
 %YAML:1.0
 layers:
   - {type: InputData, name: input1, n_input_planes: 1, input_height: 64, input_width: 64, seq_length: 1}
-  - {type: Convolution, name: conv1, visualize: 0, n_output_planes: 10, ksize: 5, stride: 1}
+  - {type: Convolution, name: conv1, visualize: 0, n_output_planes: 4, ksize: 5, stride: 1}
   - {type: SubSampling, name: pool1, visualize: 0, ksize: 2, stride: 2}
-  - {type: Convolution, name: conv2, visualize: 0, n_output_planes: 50, ksize: 5, stride: 1}
+  - {type: Convolution, name: conv2, visualize: 0, n_output_planes: 10, ksize: 5, stride: 1}
   - {type: SubSampling, name: pool2, visualize: 0, ksize: 2, stride: 2}
-  - {type: Convolution, name: conv3, visualize: 0, n_output_planes: 50, ksize: 5, stride: 1}
-  - {type: FullConnect, name: fc1, input_layer: conv3, visualize: 0, n_output_planes: 200, activation_type: tanh}
-  - {type: FullConnect, name: fc2, visualize: 0, n_output_planes: 10, activation_type: softmax}
-  - {type: FullConnect, name: fc3, input_layer: conv3, visualize: 0, n_output_planes: 200, activation_type: tanh}
-  - {type: FullConnect, name: fc4, visualize: 0, n_output_planes: 10, activation_type: softmax}
-  - {type: MultiTarget, name: multi1, n_input_layers: 2, input_layers: "fc2,fc4", visualize: 0, n_output_planes: 20}
+  - {type: Convolution, name: conv3, visualize: 0, n_output_planes: 10, ksize: 5, stride: 1}
+  - {type: FullConnect, name: fc1, input_layer: conv3, visualize: 0, n_output_planes: 100, activation_type: tanh}
+  - {type: FullConnect, name: fc2, visualize: 0, n_output_planes: 2, activation_type: sigmoid}
+  - {type: FullConnect, name: fc3, input_layer: conv3, visualize: 0, n_output_planes: 100, activation_type: tanh}
+  - {type: FullConnect, name: fc4, visualize: 0, n_output_planes: 2, activation_type: sigmoid}
+  - {type: MultiTarget, name: multi1, n_input_layers: 2, input_layers: "fc2,fc4", visualize: 0, n_output_planes: 4}

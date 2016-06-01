@@ -11,8 +11,8 @@
 
 typedef cv::CommandLineParser CvCommandLineParser;
 
-CvMat * icvReadPrimateImages(char * filename, const int max_samples);
-CvMat * icvReadPrimateLabels(char * filename, const int max_samples);
+CvMat * icvReadPrimateImages(char * filename, const int seq_length, const int max_samples);
+CvMat * icvReadPrimateLabels(char * filename, const int seq_length, const int max_samples);
 
 int main(int argc, char * argv[])
 {
@@ -36,13 +36,14 @@ int main(int argc, char * argv[])
   const char * expected_filename_xml = cnn->solver()->expected_filename();
   const int trainsize = parser.get<int>("trainsize");
   const int testsize = parser.get<int>("testsize");
+  const int seq_length = 2;
 
   fprintf(stderr,"Loading Primate Images ...\n");
-  CvMat * response = icvReadPrimateLabels((char*)response_filename,trainsize);
-  CvMat * training = icvReadPrimateImages((char*)response_filename,trainsize);
+  CvMat * response = icvReadPrimateLabels((char*)response_filename,seq_length,trainsize);
+  CvMat * training = icvReadPrimateImages((char*)response_filename,seq_length,trainsize);
   assert(CV_MAT_TYPE(training->type)==CV_32F);
-  CvMat * expected = icvReadPrimateLabels((char*)expected_filename,testsize);
-  CvMat * testing  = icvReadPrimateImages((char*)expected_filename,testsize);
+  CvMat * expected = icvReadPrimateLabels((char*)expected_filename,seq_length,testsize);
+  CvMat * testing  = icvReadPrimateImages((char*)expected_filename,seq_length,testsize);
 
   fprintf(stderr,"%d training samples generated!\n", training->rows);
   fprintf(stderr,"%d testing samples generated!\n", testing->rows);
@@ -60,11 +61,11 @@ int main(int argc, char * argv[])
   return 0;
 }
 
-CvMat * icvReadPrimateImages(char * filename, const int max_samples)
+CvMat * icvReadPrimateImages(char * filename, const int seq_length, const int max_samples)
 {
   CV_FUNCNAME("icvReadPrimateImages");
   static const int imsize = 240*240;
-  CvMat * data = cvCreateMat(max_samples,imsize,CV_32F); cvZero(data);
+  CvMat * data = cvCreateMat(max_samples,imsize*seq_length,CV_32F); cvZero(data);
   __BEGIN__;
   CvFileStorage * fs = cvOpenFileStorage(filename,0,CV_STORAGE_READ);
   if (!fs){fprintf(stderr,"file loading error: %s\n",filename);return 0;}
@@ -73,8 +74,9 @@ CvMat * icvReadPrimateImages(char * filename, const int max_samples)
   CV_ASSERT(CV_NODE_IS_SEQ(root->tag));
   CvSeq * seq = root->data.seq; int total = seq->total;
   CvSeqReader reader; cvStartReadSeq( seq, &reader, 0 );
-  data->rows=total;
+  data->rows=total-(seq_length-1);
   CvMat * image = cvCreateMat(240,240,CV_32F);
+  CvMat * cache = 0; CV_ASSERT(seq_length==2);
   for (int ii=0;ii<total;ii++){
     CvFileNode * node = (CvFileNode*)reader.ptr;
     if (!node){break;}
@@ -85,8 +87,17 @@ CvMat * icvReadPrimateImages(char * filename, const int max_samples)
     CV_ASSERT(320*240==img->height*img->width);
     CvMat img_submat; cvGetSubRect(img,&img_submat,cvRect(0,0,240,240));
     CV_ASSERT(imsize==img_submat.height*img_submat.width);
-    cvConvert(&img_submat,image);
-    memcpy(data->data.fl+imsize*ii,image->data.ptr,imsize*sizeof(float));
+    if (cache){cvCopy(image,cache);cvConvert(&img_submat,image);}else{
+      cache=cvCreateMat(240,240,CV_32F);cvConvert(&img_submat,image);
+      CV_NEXT_SEQ_ELEM( seq->elem_size, reader );continue;
+    }
+    CvMat image_reshape_hdr, data_submat_hdr;
+    cvReshape(cache,&image_reshape_hdr,0,1);
+    cvGetSubRect(data,&data_submat_hdr,cvRect(0,ii-1,imsize,1));
+    cvCopy(&image_reshape_hdr,&data_submat_hdr);
+    cvReshape(image,&image_reshape_hdr,0,1);
+    cvGetSubRect(data,&data_submat_hdr,cvRect(imsize,ii-1,imsize,1));
+    cvCopy(&image_reshape_hdr,&data_submat_hdr);
     CV_NEXT_SEQ_ELEM( seq->elem_size, reader );
   }
   cvReleaseMat(&image);
@@ -95,10 +106,11 @@ CvMat * icvReadPrimateImages(char * filename, const int max_samples)
   return data;
 }
 
-CvMat * icvReadPrimateLabels(char * filename, const int max_samples)
+CvMat * icvReadPrimateLabels(char * filename, const int seq_length, const int max_samples)
 {
   CV_FUNCNAME("icvReadPrimateLabels");
-  CvMat * data = cvCreateMat(max_samples,6,CV_32F); cvZero(data);
+  CvMat * data = cvCreateMat(max_samples,6*seq_length,CV_32F); cvZero(data);
+  CvMat * sample = cvCreateMat(1,6,CV_32F); cvZero(sample);
   __BEGIN__;
   CvFileStorage * fs = cvOpenFileStorage(filename,0,CV_STORAGE_READ);
   if (!fs){fprintf(stderr,"file loading error: %s\n",filename);return 0;}
@@ -107,7 +119,8 @@ CvMat * icvReadPrimateLabels(char * filename, const int max_samples)
   CV_ASSERT(CV_NODE_IS_SEQ(root->tag));
   CvSeq * seq = root->data.seq; int total = seq->total;
   CvSeqReader reader; cvStartReadSeq( seq, &reader, 0 );
-  data->rows=total;
+  data->rows=total-(seq_length-1);
+  CvMat * cache = 0; CV_ASSERT(seq_length==2);
   for (int ii=0;ii<total;ii++){
     CvFileNode * node = (CvFileNode*)reader.ptr;
     if (!node){break;}
@@ -122,15 +135,27 @@ CvMat * icvReadPrimateLabels(char * filename, const int max_samples)
     int x3 = cvReadInt((CvFileNode*)reader2.ptr,0); CV_NEXT_SEQ_ELEM( seq2->elem_size, reader2 );
     int y3 = cvReadInt((CvFileNode*)reader2.ptr,0);
     // fprintf(stderr,"%s: (%d,%d) (%d,%d) (%d,%d)\n", imgname, x1, y1, x2, y2, x3, y3);
-    CV_MAT_ELEM(*data,float,ii,0)=x1/240.f;
-    CV_MAT_ELEM(*data,float,ii,1)=y1/240.f;
-    CV_MAT_ELEM(*data,float,ii,2)=x2/240.f;
-    CV_MAT_ELEM(*data,float,ii,3)=y2/240.f;
-    CV_MAT_ELEM(*data,float,ii,4)=x3/240.f;
-    CV_MAT_ELEM(*data,float,ii,5)=y3/240.f;
+    CV_MAT_ELEM(*sample,float,0,0)=x1/240.f;
+    CV_MAT_ELEM(*sample,float,0,1)=y1/240.f;
+    CV_MAT_ELEM(*sample,float,0,2)=x2/240.f;
+    CV_MAT_ELEM(*sample,float,0,3)=y2/240.f;
+    CV_MAT_ELEM(*sample,float,0,4)=x3/240.f;
+    CV_MAT_ELEM(*sample,float,0,5)=y3/240.f;
+    if (!cache){
+      cache = cvCloneMat(sample);
+      CV_NEXT_SEQ_ELEM(seq->elem_size, reader); continue;
+    }
+    CvMat data_submat_hdr;
+    cvGetSubRect(data,&data_submat_hdr,cvRect(0,ii-1,6,1));
+    cvCopy(cache,&data_submat_hdr);
+    cvGetSubRect(data,&data_submat_hdr,cvRect(6,ii-1,6,1));
+    cvCopy(sample,&data_submat_hdr);
+    cvCopy(sample,cache);
     CV_NEXT_SEQ_ELEM( seq->elem_size, reader );
   }
   cvReleaseFileStorage(&fs);
+  cvReleaseMat(&sample);
+  cvReleaseMat(&cache);
   __END__;
   return data;
 }

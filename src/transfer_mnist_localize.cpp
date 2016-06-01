@@ -86,7 +86,13 @@ int main(int argc, char * argv[])
   const int display_help = parser.get<bool>("help");
   const int trainsize = parser.get<int>("trainsize");
   const int testsize = parser.get<int>("testsize");
-  if (display_help){parser.printParams();return 0;}
+  if (display_help){
+    char program[100]; cvGetBaseName(argv[0],program);
+    fprintf(stderr,"%s: generate localization data set from mnist.\n"
+            "  each row in expected data matrix represent relative distance "
+            "from image center.\noptions:\n",program);
+    parser.printParams();return 0;
+  }
   const char * solver_filename  = parser.get<string>("solver").c_str();
   CvNetwork * cnn = new CvNetwork();
   cnn->loadSolver(solver_filename);
@@ -189,13 +195,13 @@ void cvLocalizeTwoDigitMNIST(CvMat * training, CvMat * training_twodigit,
     warp_p->data.fl[2]=-(cvRandReal(&rng)*(32-28))-32;
     warp_p->data.fl[5]=-cvRandReal(&rng)*(64-28); // cvPrintf(stderr,"%f ",warp_p);
     icvWarp(sample,target,warp_p); 
-    vals[2] = cvRound(-warp_p->data.fl[2]+28*.5+32);
+    vals[2] = cvRound(-warp_p->data.fl[2]+28*.5);
     vals[3] = cvRound(-warp_p->data.fl[5]+28*.5);
     cvAdd(target0, target, target); 
-    CV_MAT_ELEM(*response_twodigit,float,idx,0)=vals[0];
-    CV_MAT_ELEM(*response_twodigit,float,idx,1)=vals[1];
-    CV_MAT_ELEM(*response_twodigit,float,idx,2)=vals[2];
-    CV_MAT_ELEM(*response_twodigit,float,idx,3)=vals[3];
+    CV_MAT_ELEM(*response_twodigit,float,idx,0)=(vals[0])/(64.f-14.f);
+    CV_MAT_ELEM(*response_twodigit,float,idx,1)=(vals[1])/(64.f-14.f);
+    CV_MAT_ELEM(*response_twodigit,float,idx,2)=(vals[2])/(64.f-14.f);
+    CV_MAT_ELEM(*response_twodigit,float,idx,3)=(vals[3])/(64.f-14.f);
     memcpy(training_twodigit->data.ptr+training_twodigit->step*idx,target->data.ptr,
            training_twodigit->step);
     // visualize

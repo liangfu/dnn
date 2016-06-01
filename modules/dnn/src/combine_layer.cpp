@@ -51,10 +51,7 @@ CvCNNLayer * cvCreateCNNMultiTargetLayer(
 
   layer->seq_length = 1;
   layer->visualize = visualize;
-  // layer->n_input_layers = n_input_layers;
-  // layer->input_layers = new CvCNNLayer*[n_input_layers];
   for (int lidx=0; lidx<n_input_layers; lidx++){
-    // layer->input_layers[lidx] = input_layers[lidx];
     layer->input_layers.push_back(input_layers[lidx]);
   }
 

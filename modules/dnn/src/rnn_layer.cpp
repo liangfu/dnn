@@ -225,7 +225,11 @@ void icvCNNRecurrentForward( CvCNNLayer* _layer, const CvMat* X, CvMat * Y)
 
   // apply activation to output
   if (!strcmp(layer->activation_type,"sigmoid")){
-    CV_CALL(cvSigmoid( &Y_curr_hdr, &Y_curr_hdr )); // output activation - logistic regression
+    CV_CALL(cvSigmoid( &Y_curr_hdr, &Y_curr_hdr )); 
+  }else if (!strcmp(layer->activation_type,"tanh")){
+    CV_CALL(cvTanh( &Y_curr_hdr, &Y_curr_hdr )); 
+  }else if (!strcmp(layer->activation_type,"relu")){
+    CV_CALL(cvReLU( &Y_curr_hdr, &Y_curr_hdr )); 
   }else if (!strcmp(layer->activation_type,"softmax")){
     CV_ASSERT(Y_curr->cols==n_outputs && Y_curr->rows==batch_size);
     cvSoftmax(Y_curr,Y_curr);
@@ -439,11 +443,15 @@ void icvCNNRecurrentBackward( CvCNNLayer* _layer, int t,
 
   // output activation derivative
   if (!strcmp(layer->activation_type,"sigmoid")){
-    // compute (sig'(WX))*dE_dY
-    cvSigmoidDer(WH_curr,dE_dY_afder); // logistic regression
+    cvSigmoidDer(WH_curr,dE_dY_afder);
+    cvMul(dE_dY_afder,dE_dY_curr,dE_dY_afder);
+  }else if (!strcmp(layer->activation_type,"tanh")){
+    cvTanhDer(WH_curr,dE_dY_afder);
+    cvMul(dE_dY_afder,dE_dY_curr,dE_dY_afder);
+  }else if (!strcmp(layer->activation_type,"relu")){
+    cvReLUDer(WH_curr,dE_dY_afder);
     cvMul(dE_dY_afder,dE_dY_curr,dE_dY_afder);
   }else if (!strcmp(layer->activation_type,"softmax")){
-    // cvSoftmaxDer(WH_curr,dE_dY_curr,dE_dY_afder); ????
     cvCopy(dE_dY_curr,dE_dY_afder);    // softmax for classification
   }else{
     CV_ERROR(CV_StsBadArg,"invalid output activation type for RNN layer, `softmax` is prefered.");

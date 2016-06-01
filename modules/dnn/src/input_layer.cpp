@@ -43,7 +43,7 @@ CvCNNLayer * cvCreateCNNInputDataLayer(
     CV_ERROR( CV_StsBadArg, "Incorrect parameters" );
   }
 
-  fprintf(stderr,"InputDataLayer(%s): input (%d@%dx%d), output (%d@%dx%d), seq_length: %d\n", name,
+  fprintf(stderr,"InputDataLayer(%s): input (%d@%dx%d), output (%d@%dx%d), seq_length: (%d)\n", name,
           n_inputs,input_height,input_width,
           n_outputs,output_height,output_width,seq_length);
   
