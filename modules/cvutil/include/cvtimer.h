@@ -97,7 +97,7 @@ static char * time2str(float elapsed)
   do {                                                              \
   fprintf(stderr, "%s: ", __FUNCTION__);                            \
   float seconds = timer.elapsed();                                  \
-  fprintf(stderr,"elapsed: %s\n",time2str(seconds));                \ 
+  fprintf(stderr,"elapsed: %s\n",time2str(seconds));                \
   }while(false)
 #else
 #  define CV_TIMER_SHOW() {}
