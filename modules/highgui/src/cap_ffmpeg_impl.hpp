@@ -792,7 +792,9 @@ double CvCapture_FFMPEG::getProperty( int property_id )
     case CV_FFMPEG_CAP_PROP_FRAME_HEIGHT:
         return (double)frame.height;
     case CV_FFMPEG_CAP_PROP_FPS:
-#if LIBAVCODEC_BUILD > 4753
+#if LIBAVCODEC_BUILD > CALC_FFMPEG_VERSION(55,1,0)
+        return av_q2d(video_st->avg_frame_rate);
+#elif LIBAVCODEC_BUILD > 4753
         return av_q2d(video_st->r_frame_rate);
 #else
         return (double)video_st->codec.frame_rate
@@ -840,7 +842,11 @@ int CvCapture_FFMPEG::get_bitrate()
 
 double CvCapture_FFMPEG::get_fps()
 {
+#if LIBAVCODEC_BUILD > CALC_FFMPEG_VERSION(55,1,0)
+    double fps = r2d(ic->streams[video_stream]->avg_frame_rate);
+#else
     double fps = r2d(ic->streams[video_stream]->r_frame_rate);
+#endif
 
 #if LIBAVFORMAT_BUILD >= CALC_FFMPEG_VERSION(52, 111, 0)
     if (fps < eps_zero)
@@ -1228,7 +1234,8 @@ static AVStream *icv_add_video_stream_FFMPEG(AVFormatContext *oc,
 
 static const int OPENCV_NO_FRAMES_WRITTEN_CODE = 1000;
 
-static int icv_av_write_frame_FFMPEG( AVFormatContext * oc, AVStream * video_st, uint8_t * outbuf, uint32_t outbuf_size, AVFrame * picture )
+static int icv_av_write_frame_FFMPEG( AVFormatContext * oc, AVStream * video_st,
+                                      uint8_t * outbuf, uint32_t outbuf_size, AVFrame * picture )
 {
 #if LIBAVFORMAT_BUILD > 4628
     AVCodecContext * c = video_st->codec;
@@ -1256,7 +1263,11 @@ static int icv_av_write_frame_FFMPEG( AVFormatContext * oc, AVStream * video_st,
         ret = av_write_frame(oc, &pkt);
     } else {
         /* encode the image */
+#if LIBAVCODEC_BUILD > CALC_FFMPEG_VERSION(55,1,0)
+        out_size = avcodec_encode_video2(c, 0,0,0); // WARNING: temporally disabled this feature
+#else
         out_size = avcodec_encode_video(c, outbuf, outbuf_size, picture);
+#endif
         /* if zero size, it means the image was buffered */
         if (out_size > 0) {
             AVPacket pkt;
