@@ -1,13 +1,13 @@
 %YAML:1.0
 layers:
-  - {type: InputData, name: input1, n_input_planes: 1, input_height: 28, input_width: 28, seq_length: 1}
+  - {type: RepeatVector, name: input1, n_input_planes: 1, input_height: 28, input_width: 28, seq_length: 1}
 
   # GLIMPSE NETWORK
-  - {type: ImgCropping, name: crop1, input_layer: input1, n_output_planes: 1, output_height: 8, output_width: 8}
+  - {type: ImgWarping, name: crop1, input_layer: input1, n_output_planes: 1, output_height: 8, output_width: 8}
   - {type: Convolution, name: conv1, visualize: 1, n_output_planes: 16, ksize: 3, stride: 1}
   - {type: Convolution, name: conv2, visualize: 1, n_output_planes: 20, ksize: 3, stride: 1}
-  - {type: FullConnect, name: fc1, visualize: 0, n_output_planes: 128, activation_type: tanh}
-  - {type: RecurrentNN, name: rnn1, n_output_planes: 128, seq_length: 3, time_index: 0, activation_type: tanh}
+  - {type: Dense, name: fc1, visualize: 0, n_output_planes: 128, activation: tanh}
+  - {type: SimpleRNN, name: rnn1, n_output_planes: 128, seq_length: 3, time_index: 0, activation: tanh}
 
   - {predefined: crop1}
   - {predefined: conv1}
@@ -22,10 +22,10 @@ layers:
   - {predefined: rnn1, time_index: 2}
 
   # CLASSIFICATION NETWORK
-  - {type: FullConnect, name: fc4, input_layer: rnn1, time_index: 0, n_output_planes: 10, activation_type: softmax}
-  - {type: FullConnect, name: fc5, input_layer: rnn1, time_index: 1, n_output_planes: 10, activation_type: softmax}
-  - {type: FullConnect, name: fc6, input_layer: rnn1, time_index: 2, n_output_planes: 10, activation_type: softmax}
+  - {type: Dense, name: fc4, input_layer: rnn1, time_index: 0, n_output_planes: 10, activation: softmax}
+  - {type: Dense, name: fc5, input_layer: rnn1, time_index: 1, n_output_planes: 10, activation: softmax}
+  - {type: Dense, name: fc6, input_layer: rnn1, time_index: 2, n_output_planes: 10, activation: softmax}
 
   # MERGE CLASSIFICATION RESULTS
-  - {type: MultiTarget, name: multi1, input_layers: "fc4,fc5,fc6", n_output_planes: 30}
+  - {type: Merge, name: multi1, input_layers: "fc4,fc5,fc6", n_output_planes: 30}
 

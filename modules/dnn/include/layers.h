@@ -64,7 +64,7 @@ typedef void (CV_CDECL *CvCNNLayerRelease)(CvCNNLayer** layer);
                                                                         \
     /* activation function type for hidden layer activation, */         \
     /* either sigmoid,tanh,softmax or relu */                           \
-    char activation_type[20];                                           \
+    char activation[20];                                           \
     /* Learning rate at the first iteration */                          \
     float init_learn_rate;                                              \
     /* Dynamics of learning rate decreasing */                          \
@@ -135,19 +135,19 @@ int icvIsCNNConvolutionLayer( CvCNNLayer * layer ) {
 }
 
 CV_INLINE
-int icvIsCNNMaxPoollingLayer( CvCNNLayer * layer ) {                              
+int icvIsCNNMaxPoolingLayer( CvCNNLayer * layer ) {                              
   return ( (icvIsCNNLayer( layer )) &&
            (((CvCNNLayer*) (layer))->flags & ~CV_MAGIC_MASK) == ICV_CNN_MAXPOOLLING_LAYER );
 }
 
 CV_INLINE
-int icvIsCNNFullConnectLayer( CvCNNLayer * layer ) {                              
+int icvIsCNNDenseLayer( CvCNNLayer * layer ) {                              
   return ( (icvIsCNNLayer( layer )) &&
            (((CvCNNLayer*) (layer))->flags & ~CV_MAGIC_MASK) == ICV_CNN_FULLCONNECT_LAYER );
 }
 
 CV_INLINE
-int icvIsCNNImgWarppingLayer( CvCNNLayer * layer ) {
+int icvIsCNNImgWarpingLayer( CvCNNLayer * layer ) {
   return ( (icvIsCNNLayer( layer )) &&
            (((CvCNNLayer*) (layer))->flags & ~CV_MAGIC_MASK) == ICV_CNN_IMGWARPPING_LAYER );
 }
@@ -159,19 +159,19 @@ int icvIsCNNSeqSamplingLayer( CvCNNLayer * layer ) {
 }
 
 CV_INLINE
-int icvIsCNNRecurrentNNLayer( CvCNNLayer * layer ) {                              
+int icvIsCNNSimpleRNNLayer( CvCNNLayer * layer ) {                              
   return ( (icvIsCNNLayer( layer )) &&
            (((CvCNNLayer*) (layer))->flags & ~CV_MAGIC_MASK) == ICV_CNN_RECURRENTNN_LAYER );
 }
 
 CV_INLINE
-int icvIsCNNCombinationLayer( CvCNNLayer * layer ) {                              
+int icvIsCNNMergeLayer( CvCNNLayer * layer ) {                              
   return ( (icvIsCNNLayer( layer )) &&
            (((CvCNNLayer*) (layer))->flags & ~CV_MAGIC_MASK) == ICV_CNN_COMBINATION_LAYER );
 }
 
 CV_INLINE
-int icvIsCNNInputDataLayer( CvCNNLayer * layer ) {                                
+int icvIsCNNRepeatVectorLayer( CvCNNLayer * layer ) {                                
   return ( (icvIsCNNLayer( layer )) &&
            (((CvCNNLayer*) (layer))->flags & ~CV_MAGIC_MASK) == ICV_CNN_INPUTDATA_LAYER );
 }
@@ -193,7 +193,7 @@ typedef struct CvCNNConvolutionLayer
   // value of the learning rate for updating weights at the first iteration
 }CvCNNConvolutionLayer;
 
-typedef struct CvCNNMaxPoollingLayer
+typedef struct CvCNNMaxPoolingLayer
 {
   CV_CNN_LAYER_FIELDS();
   // ratio between the heights (or widths - ratios are supposed to be equal)
@@ -205,25 +205,25 @@ typedef struct CvCNNMaxPoollingLayer
   CvMat * sumX;
   // location where max pooling values are taken from
   CvMat * mask;
-}CvCNNMaxPoollingLayer;
+}CvCNNMaxPoolingLayer;
 
 // structure of the last layer.
-typedef struct CvCNNFullConnectLayer
+typedef struct CvCNNDenseLayer
 {
   CV_CNN_LAYER_FIELDS();
   // WX = (W*X) - is the vector used in computing of the 
   // activation function and it's derivative by the formulae
   CvMat * WX;
-}CvCNNFullConnectLayer;
+}CvCNNDenseLayer;
 
-typedef struct CvCNNImgWarppingLayer
+typedef struct CvCNNImgWarpingLayer
 {
   CV_CNN_LAYER_FIELDS();
   // crop specified time index for next layer
   // int time_index;
-}CvCNNImgWarppingLayer;
+}CvCNNImgWarpingLayer;
 
-typedef struct CvCNNRecurrentLayer
+typedef struct CvCNNSimpleRNNLayer
 {
   CV_CNN_LAYER_FIELDS();
   // reference layer
@@ -253,9 +253,9 @@ typedef struct CvCNNRecurrentLayer
   CvMat * dH;
   // weight updates
   CvMat * dWxh, * dWhh, * dWhy;
-}CvCNNRecurrentLayer;
+}CvCNNSimpleRNNLayer;
 
-typedef struct CvCNNInputDataLayer
+typedef struct CvCNNRepeatVectorLayer
 {
   // shape of the data are available in common `layer fields`
   CV_CNN_LAYER_FIELDS();
@@ -267,14 +267,14 @@ typedef struct CvCNNInputDataLayer
   // original response matrix, default size:
   //          (1, nsamples)
   CvMat * response;
-}CvCNNInputDataLayer;
+}CvCNNRepeatVectorLayer;
 
-typedef struct CvCNNCombinationLayer
+typedef struct CvCNNMergeLayer
 {
   CV_CNN_LAYER_FIELDS();
   // CvCNNLayer ** input_layers;
   // int n_input_layers;
-}CvCNNCombinationLayer;
+}CvCNNMergeLayer;
 
 /*------------------------ activation functions -----------------------*/
 CVAPI(void) cvTanh(CvMat * src, CvMat * dst);
@@ -290,39 +290,39 @@ CVAPI(CvCNNLayer*) cvCreateCNNConvolutionLayer(
     const int dtype, const char * name, const CvCNNLayer * ref_layer,
     const int visualize, const CvCNNLayer * input_layer, 
     int n_input_planes, int input_height, int input_width, int n_output_planes, int K,
-    float init_learn_rate, int update_rule, const char * activation_type,
+    float init_learn_rate, int update_rule, const char * activation,
     CvMat* connect_mask, CvMat* weights );
 
-CVAPI(CvCNNLayer*) cvCreateCNNMaxPoollingLayer( 
+CVAPI(CvCNNLayer*) cvCreateCNNMaxPoolingLayer( 
     const int dtype, const char * name, const int visualize,
     int n_input_planes, int input_height, int input_width,
     int sub_samp_scale, 
     float init_learn_rate, int update_rule, CvMat* weights );
 
-CVAPI(CvCNNLayer*) cvCreateCNNFullConnectLayer( 
+CVAPI(CvCNNLayer*) cvCreateCNNDenseLayer( 
     const int dtype, const char * name, const int visualize,
     const CvCNNLayer * input_layer, int n_inputs, int n_outputs, 
-    float init_learn_rate, int update_rule, const char * activation_type,
+    float init_learn_rate, int update_rule, const char * activation,
     CvMat * weights );
 
-CVAPI(CvCNNLayer*) cvCreateCNNImgWarppingLayer( 
+CVAPI(CvCNNLayer*) cvCreateCNNImgWarpingLayer( 
     const int dtype, const char * name, const int visualize, 
     const CvCNNLayer * input_layer,
     int n_output_planes, int output_height, int output_width, int seq_length, int time_index,
     float init_learn_rate, int update_rule);
 
-CVAPI(CvCNNLayer*) cvCreateCNNRecurrentLayer( 
+CVAPI(CvCNNLayer*) cvCreateCNNSimpleRNNLayer( 
     const int dtype, const char * name, const CvCNNLayer * hidden_layer, 
     int n_inputs, int n_outputs, int n_hiddens, int seq_length, int time_index, 
-    float init_learn_rate, int update_rule, const char * activation_type, 
+    float init_learn_rate, int update_rule, const char * activation, 
     CvMat * Wxh, CvMat * Whh, CvMat * Why );
 
-CVAPI(CvCNNLayer*) cvCreateCNNInputDataLayer( 
+CVAPI(CvCNNLayer*) cvCreateCNNRepeatVectorLayer( 
     const int dtype, const char * name, 
     int n_inputs, int input_height, int input_width, int seq_length,
     float init_learn_rate, int update_rule);
 
-CVAPI(CvCNNLayer*) cvCreateCNNCombinationLayer( 
+CVAPI(CvCNNLayer*) cvCreateCNNMergeLayer( 
     const int dtype, const char * name, const int visualize,
     int n_input_layers, CvCNNLayer ** input_layers, int outputs,
     float init_learn_rate, int update_rule);

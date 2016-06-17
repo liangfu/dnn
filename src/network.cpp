@@ -58,40 +58,40 @@ void CvNetwork::loadModel(string inFile)
     const char * type = cvReadStringByName(fs,node,"type","");
     const char * name = cvReadStringByName(fs,node,"name","");
     const int visualize = cvReadIntByName(fs,node,"visualize",0);
-    const char * activation_type = cvReadStringByName(fs,node,"activation_type","none");
+    const char * activation = cvReadStringByName(fs,node,"activation","none");
 
     // parse layer-specific parameters
     if (strlen(predefined)>0){
       CvCNNLayer * predefined_layer = m_cnn->network->get_layer(m_cnn->network,predefined);
-      if (icvIsCNNRecurrentNNLayer(predefined_layer)){
+      if (icvIsCNNSimpleRNNLayer(predefined_layer)){
         int time_index = cvReadIntByName(fs,node,"time_index",0);
-        CvCNNRecurrentLayer * recurrent_layer = (CvCNNRecurrentLayer*)predefined_layer;
-        layer = cvCreateCNNRecurrentLayer( 
+        CvCNNSimpleRNNLayer * recurrent_layer = (CvCNNSimpleRNNLayer*)predefined_layer;
+        layer = cvCreateCNNSimpleRNNLayer( 
           predefined_layer->dtype, predefined_layer->name, predefined_layer, 
           predefined_layer->n_input_planes, predefined_layer->n_output_planes, 
           recurrent_layer->n_hiddens, recurrent_layer->seq_length, time_index, lr_init, decay_type, 
-          recurrent_layer->activation_type, NULL, NULL, NULL );
-        if (((CvCNNRecurrentLayer*)layer)->Wxh){
-          cvReleaseMat(&((CvCNNRecurrentLayer*)layer)->Wxh);((CvCNNRecurrentLayer*)layer)->Wxh=0;}
-        if (((CvCNNRecurrentLayer*)layer)->Whh){
-          cvReleaseMat(&((CvCNNRecurrentLayer*)layer)->Whh);((CvCNNRecurrentLayer*)layer)->Whh=0;}
-        if (((CvCNNRecurrentLayer*)layer)->Why){
-          cvReleaseMat(&((CvCNNRecurrentLayer*)layer)->Why);((CvCNNRecurrentLayer*)layer)->Why=0;}
-      }else if (icvIsCNNImgWarppingLayer(predefined_layer)){
+          recurrent_layer->activation, NULL, NULL, NULL );
+        if (((CvCNNSimpleRNNLayer*)layer)->Wxh){
+          cvReleaseMat(&((CvCNNSimpleRNNLayer*)layer)->Wxh);((CvCNNSimpleRNNLayer*)layer)->Wxh=0;}
+        if (((CvCNNSimpleRNNLayer*)layer)->Whh){
+          cvReleaseMat(&((CvCNNSimpleRNNLayer*)layer)->Whh);((CvCNNSimpleRNNLayer*)layer)->Whh=0;}
+        if (((CvCNNSimpleRNNLayer*)layer)->Why){
+          cvReleaseMat(&((CvCNNSimpleRNNLayer*)layer)->Why);((CvCNNSimpleRNNLayer*)layer)->Why=0;}
+      }else if (icvIsCNNImgWarpingLayer(predefined_layer)){
         int time_index = cvReadIntByName(fs,node,"time_index",0);
-        CvCNNImgWarppingLayer * this_layer = (CvCNNImgWarppingLayer*)predefined_layer;
+        CvCNNImgWarpingLayer * this_layer = (CvCNNImgWarpingLayer*)predefined_layer;
         CvCNNLayer * input_layer = (this_layer->input_layers.size()>0?this_layer->input_layers[0]:0);
-        layer = cvCreateCNNImgWarppingLayer( 
+        layer = cvCreateCNNImgWarpingLayer( 
           this_layer->dtype, this_layer->name, this_layer->visualize, input_layer, 
           this_layer->n_output_planes, this_layer->output_height, this_layer->output_width, 
           this_layer->seq_length, time_index, this_layer->init_learn_rate, this_layer->decay_type );
-      }else if (icvIsCNNFullConnectLayer(predefined_layer)){
-        CvCNNFullConnectLayer * this_layer = (CvCNNFullConnectLayer*)predefined_layer;
-        layer = cvCreateCNNFullConnectLayer( 
+      }else if (icvIsCNNDenseLayer(predefined_layer)){
+        CvCNNDenseLayer * this_layer = (CvCNNDenseLayer*)predefined_layer;
+        layer = cvCreateCNNDenseLayer( 
           this_layer->dtype, this_layer->name, this_layer->visualize, 
           this_layer->input_layers.size()>0?this_layer->input_layers[0]:0, 
           this_layer->n_input_planes, this_layer->n_output_planes, 
-          this_layer->init_learn_rate, this_layer->decay_type, this_layer->activation_type, NULL );
+          this_layer->init_learn_rate, this_layer->decay_type, this_layer->activation, NULL );
       }else if (icvIsCNNConvolutionLayer(predefined_layer)){
         CvCNNConvolutionLayer * this_layer = (CvCNNConvolutionLayer*)predefined_layer;
         layer = cvCreateCNNConvolutionLayer( 
@@ -99,10 +99,10 @@ void CvNetwork::loadModel(string inFile)
           this_layer->input_layers.size()>0?this_layer->input_layers[0]:0, 
           this_layer->n_input_planes, this_layer->input_height, this_layer->input_width,
           this_layer->n_output_planes, this_layer->K,
-          this_layer->init_learn_rate, this_layer->decay_type, this_layer->activation_type, NULL, NULL );
-      }else if (icvIsCNNMaxPoollingLayer(predefined_layer)){
-        CvCNNMaxPoollingLayer * this_layer = (CvCNNMaxPoollingLayer*)predefined_layer;
-        layer = cvCreateCNNMaxPoollingLayer( 
+          this_layer->init_learn_rate, this_layer->decay_type, this_layer->activation, NULL, NULL );
+      }else if (icvIsCNNMaxPoolingLayer(predefined_layer)){
+        CvCNNMaxPoolingLayer * this_layer = (CvCNNMaxPoolingLayer*)predefined_layer;
+        layer = cvCreateCNNMaxPoolingLayer( 
           this_layer->dtype, this_layer->name, this_layer->visualize,
           this_layer->n_input_planes, this_layer->input_height, this_layer->input_width,
           this_layer->sub_samp_scale, this_layer->init_learn_rate, this_layer->decay_type, 0 );
@@ -124,26 +124,26 @@ void CvNetwork::loadModel(string inFile)
       int ksize = cvReadIntByName(fs,node,"ksize");
       layer = cvCreateCNNConvolutionLayer( dtype, name, 0, visualize, input_layer, 
         n_input_planes, input_height, input_width, n_output_planes, ksize,
-        lr_init, decay_type, activation_type, NULL, NULL );
+        lr_init, decay_type, activation, NULL, NULL );
       if (input_layer){input_layer->output_layers.push_back(layer);}
       n_input_planes = n_output_planes;
       input_height = input_height-ksize+1;
       input_width = input_width-ksize+1;
-    }else if (!strcmp(type,"MaxPoolling")){ // max pooling layer
+    }else if (!strcmp(type,"MaxPooling")){ // max pooling layer
       CvCNNLayer * input_layer = 0; 
       const char * input_layer_name = cvReadStringByName(fs,node,"input_layer","");
       if (strlen(input_layer_name)>0){
         input_layer = m_cnn->network->get_layer(m_cnn->network,input_layer_name);
       }
       int ksize = cvReadIntByName(fs,node,"ksize");
-      layer = cvCreateCNNMaxPoollingLayer( dtype, name, visualize,
+      layer = cvCreateCNNMaxPoolingLayer( dtype, name, visualize,
         n_input_planes, input_height, input_width, ksize,
         lr_init, decay_type, NULL);
       if (input_layer){input_layer->output_layers.push_back(layer);}
       n_input_planes = n_output_planes;
       input_height = input_height/ksize;
       input_width = input_width/ksize;
-    }else if (!strcmp(type,"FullConnect")){ // full connection layer
+    }else if (!strcmp(type,"Dense")){ // full connection layer
       CvCNNLayer * input_layer = 0; 
       const char * input_layer_name = cvReadStringByName(fs,node,"input_layer","");
       if (strlen(input_layer_name)>0){
@@ -154,12 +154,12 @@ void CvNetwork::loadModel(string inFile)
         n_input_planes = n_input_planes*input_height*input_width;
       }
       n_output_planes = cvReadIntByName(fs,node,"n_output_planes");
-      layer = cvCreateCNNFullConnectLayer( dtype, name, visualize, input_layer, 
+      layer = cvCreateCNNDenseLayer( dtype, name, visualize, input_layer, 
         n_input_planes, n_output_planes, 
-        lr_init, decay_type, activation_type, NULL );
+        lr_init, decay_type, activation, NULL );
       if (input_layer){input_layer->output_layers.push_back(layer);}
       n_input_planes = n_output_planes; input_height = 1; input_width = 1;
-    }else if (!strcmp(type,"ImgWarpping")){ // image cropping layer
+    }else if (!strcmp(type,"ImgWarping")){ // image cropping layer
       const char * input_layer_name = cvReadStringByName(fs,node,"input_layer","");
       if (strlen(input_layer_name)<1){
         LOGE("input layer name is required while defining ImgCropping layer."); exit(-1);}
@@ -171,12 +171,12 @@ void CvNetwork::loadModel(string inFile)
       output_width = cvReadIntByName(fs,node,"output_width",output_width);
       const int seq_length = cvReadIntByName(fs,node,"seq_length",1);
       const int time_index = cvReadIntByName(fs,node,"time_index",0);
-      layer = cvCreateCNNImgWarppingLayer( dtype, name, visualize, input_layer, 
+      layer = cvCreateCNNImgWarpingLayer( dtype, name, visualize, input_layer, 
         n_output_planes, output_height, output_width, seq_length, time_index, 
         lr_init, decay_type );
       n_input_planes = n_output_planes; // input_height = 1; input_width = 1;
       input_height = output_height; input_width = output_width;
-    }else if (!strcmp(type,"RecurrentNN")){ // recurrent layer
+    }else if (!strcmp(type,"SimpleRNN")){ // recurrent layer
       const int n_input_planes_default = n_input_planes * input_height * input_width;
       n_input_planes = cvReadIntByName(fs,node,"n_input_planes",n_input_planes_default);
       n_output_planes = cvReadIntByName(fs,node,"n_output_planes",1);
@@ -184,19 +184,19 @@ void CvNetwork::loadModel(string inFile)
       const int n_hiddens = cvReadIntByName(fs,node,"n_hiddens",n_hiddens_default);
       const int seq_length = cvReadIntByName(fs,node,"seq_length",1);
       const int time_index = cvReadIntByName(fs,node,"time_index",0);
-      layer = cvCreateCNNRecurrentLayer( dtype, name, 0, 
+      layer = cvCreateCNNSimpleRNNLayer( dtype, name, 0, 
         n_input_planes, n_output_planes, n_hiddens, seq_length, time_index, 
-        lr_init, decay_type, activation_type, NULL, NULL, NULL );
+        lr_init, decay_type, activation, NULL, NULL, NULL );
       n_input_planes = n_output_planes; input_height = 1; input_width = 1;
-    }else if (!strcmp(type,"InputData")){ // data container layer
+    }else if (!strcmp(type,"RepeatVector")){ // data container layer
       n_input_planes = cvReadIntByName(fs,node,"n_input_planes",1);
       input_height   = cvReadIntByName(fs,node,"input_height",1);
       input_width    = cvReadIntByName(fs,node,"input_width",1);
       const int seq_length = cvReadIntByName(fs,node,"seq_length",1);
-      layer = cvCreateCNNInputDataLayer( dtype, name, 
+      layer = cvCreateCNNRepeatVectorLayer( dtype, name, 
         n_input_planes, input_height, input_width, seq_length,
         lr_init, decay_type );
-    }else if (!strcmp(type,"Combination")){ // merge multiple data source  layer
+    }else if (!strcmp(type,"Merge")){ // merge multiple data source  layer
       int n_input_layers = 1;
       const char * input_layer_names = cvReadStringByName(fs,node,"input_layers","");
       n_output_planes = cvReadIntByName(fs,node,"n_output_planes",1);
@@ -211,9 +211,9 @@ void CvNetwork::loadModel(string inFile)
         output_plane_count += input_layers[ii]->n_output_planes;
       }
       if (output_plane_count!=n_output_planes){
-        CV_ERROR(CV_StsBadArg,"Invalid definition of `input_layers` in Combination layer.");
+        CV_ERROR(CV_StsBadArg,"Invalid definition of `input_layers` in Merge layer.");
       }
-      layer = cvCreateCNNCombinationLayer( dtype, name, visualize, 
+      layer = cvCreateCNNMergeLayer( dtype, name, visualize, 
         n_input_layers, input_layers, n_output_planes, lr_init, decay_type );
       for (int lidx=0;lidx<n_input_layers;lidx++){input_layers[lidx]->output_layers.push_back(layer);}
       if (input_layers){delete [] input_layers; input_layers = 0;}
@@ -256,8 +256,8 @@ void CvNetwork::train(CvMat *trainingData, CvMat *responseMat)
 
   CvCNNLayer * last_layer = cvGetCNNLastLayer(m_cnn->network);
   int n_outputs = last_layer->n_output_planes;
-  if (icvIsCNNRecurrentNNLayer(last_layer)){
-    n_outputs *= ((CvCNNRecurrentLayer*)last_layer)->seq_length;
+  if (icvIsCNNSimpleRNNLayer(last_layer)){
+    n_outputs *= ((CvCNNSimpleRNNLayer*)last_layer)->seq_length;
   }
 
   params.cls_labels = cvCreateMat( n_outputs, n_outputs, CV_32FC1 );

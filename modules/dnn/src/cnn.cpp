@@ -121,9 +121,9 @@ static void icvCheckCNNetwork(CvCNNetwork * network,
       CV_ERROR( CV_StsBadArg, "Invalid input sizes of the first layer" );
     }
   }
-  if (icvIsCNNRecurrentNNLayer(last_layer)){
+  if (icvIsCNNSimpleRNNLayer(last_layer)){
     if ( params->etalons->cols != last_layer->n_output_planes*
-         ((CvCNNRecurrentLayer*)last_layer)->seq_length*
+         ((CvCNNSimpleRNNLayer*)last_layer)->seq_length*
          last_layer->output_height*last_layer->output_width ) {
       CV_ERROR( CV_StsBadArg, "Invalid output sizes of the last layer" );
     }
@@ -378,8 +378,8 @@ static float icvEvalAccuracy(CvCNNLayer * last_layer, CvMat * result, CvMat * ex
   CV_FUNCNAME("icvEvalAccuracy");
   float top1 = 0;
   int n_outputs = last_layer->n_output_planes;
-  int seq_length = icvIsCNNRecurrentNNLayer(last_layer)?
-    ((CvCNNRecurrentLayer*)last_layer)->seq_length:1;
+  int seq_length = icvIsCNNSimpleRNNLayer(last_layer)?
+    ((CvCNNSimpleRNNLayer*)last_layer)->seq_length:1;
   int batch_size = result->cols;
   CvMat * sorted = cvCreateMat(result->rows,result->cols,CV_32F);
   CvMat * indices = cvCreateMat(result->rows,result->cols,CV_32S);
@@ -599,8 +599,8 @@ static void icvCNNetworkAddLayer( CvCNNetwork* network, CvCNNLayer* layer )
   // while ( prev_layer->next_layer ) { prev_layer = prev_layer->next_layer; }
   prev_layer = cvGetCNNLastLayer(network);
 
-  if ( icvIsCNNFullConnectLayer(layer) ){
-    if ( ((CvCNNFullConnectLayer*)layer)->input_layers.size()==0 && 
+  if ( icvIsCNNDenseLayer(layer) ){
+    if ( ((CvCNNDenseLayer*)layer)->input_layers.size()==0 && 
          layer->n_input_planes != prev_layer->output_width*prev_layer->output_height*
          prev_layer->n_output_planes ) {
       CV_ERROR( CV_StsBadArg, "Unmatched size of the new layer" );
@@ -609,21 +609,21 @@ static void icvCNNetworkAddLayer( CvCNNetwork* network, CvCNNLayer* layer )
          layer->input_width != 1  || layer->output_width != 1 ) {
       CV_ERROR( CV_StsBadArg, "Invalid size of the new layer" );
     }
-  }else if ( icvIsCNNConvolutionLayer(layer) || icvIsCNNMaxPoollingLayer(layer) ){
+  }else if ( icvIsCNNConvolutionLayer(layer) || icvIsCNNMaxPoolingLayer(layer) ){
     if ( prev_layer->n_output_planes != layer->n_input_planes ||
          prev_layer->output_height   != layer->input_height ||
          prev_layer->output_width    != layer->input_width ) {
       CV_ERROR( CV_StsBadArg, "Unmatched size of the new layer" );
     }
-  }else if ( icvIsCNNRecurrentNNLayer(layer) ) {
+  }else if ( icvIsCNNSimpleRNNLayer(layer) ) {
     if ( layer->input_height != 1 || layer->output_height != 1 ||
          layer->input_width != 1  || layer->output_width != 1 ) {
       CV_ERROR( CV_StsBadArg, "Invalid size of the new layer" );
     }
-  }else if ( icvIsCNNImgWarppingLayer(layer) ) {
-  }else if ( icvIsCNNCombinationLayer(layer) ) {
-    CV_ASSERT(((CvCNNCombinationLayer*)layer)->input_layers.size()>=1);
-    CV_ASSERT(((CvCNNCombinationLayer*)layer)->input_layers.size()<=100);
+  }else if ( icvIsCNNImgWarpingLayer(layer) ) {
+  }else if ( icvIsCNNMergeLayer(layer) ) {
+    CV_ASSERT(((CvCNNMergeLayer*)layer)->input_layers.size()>=1);
+    CV_ASSERT(((CvCNNMergeLayer*)layer)->input_layers.size()<=100);
   }else{
     CV_ERROR( CV_StsBadArg, "Invalid layer" );
   }
@@ -946,7 +946,7 @@ static CvCNNLayer* icvReadCNNLayer( CvFileStorage* fs, CvFileNode* node )
   //   if ( input_height != 1  || input_width != 1 || output_height != 1 || output_width != 1 ) { 
   //     CV_ERROR( CV_StsBadArg, "" ); 
   //   }
-  //   CV_CALL(layer = cvCreateCNNFullConnectLayer( "", 0, 0, n_input_planes, n_output_planes,
+  //   CV_CALL(layer = cvCreateCNNDenseLayer( "", 0, 0, n_input_planes, n_output_planes,
   //     init_learn_rate, learn_type, "tanh", weights ));
   // } else {
   //   CV_ERROR( CV_StsBadArg, "Invalid <layer_type>" );
@@ -987,11 +987,11 @@ static void icvWriteCNNLayer( CvFileStorage* fs, CvCNNLayer* layer )
     CvCNNConvolutionLayer* l = (CvCNNConvolutionLayer*)layer;
     CV_CALL(cvWriteInt( fs, "layer_type", ICV_CNN_CONVOLUTION_LAYER ));
     CV_CALL(cvWrite( fs, "connect_mask", l->connect_mask ));
-  }else if ( icvIsCNNMaxPoollingLayer( layer ) ){
-    CvCNNMaxPoollingLayer* l = (CvCNNMaxPoollingLayer*)layer;
+  }else if ( icvIsCNNMaxPoolingLayer( layer ) ){
+    CvCNNMaxPoolingLayer* l = (CvCNNMaxPoolingLayer*)layer;
     CV_CALL(cvWriteInt( fs, "layer_type", ICV_CNN_MAXPOOLLING_LAYER ));
-  }else if ( icvIsCNNFullConnectLayer( layer ) ){
-    CvCNNFullConnectLayer* l = (CvCNNFullConnectLayer*)layer;
+  }else if ( icvIsCNNDenseLayer( layer ) ){
+    CvCNNDenseLayer* l = (CvCNNDenseLayer*)layer;
     CV_CALL(cvWriteInt( fs, "layer_type", ICV_CNN_FULLCONNECT_LAYER ));
   }else {
     CV_ERROR( CV_StsBadArg, "Invalid layer" );
@@ -1011,8 +1011,8 @@ static void icvCNNetworkRead( CvCNNetwork * network, CvFileStorage * fs )
   CvCNNLayer * layer = network->first_layer;
   CvFileNode * root = cvGetRootFileNode( fs );
   for (int ii=0;ii<n_layers;ii++,layer=layer->next_layer){
-    if (icvIsCNNRecurrentNNLayer(layer)){
-      CvCNNRecurrentLayer * rnnlayer = (CvCNNRecurrentLayer*)(layer->ref_layer?layer->ref_layer:layer);
+    if (icvIsCNNSimpleRNNLayer(layer)){
+      CvCNNSimpleRNNLayer * rnnlayer = (CvCNNSimpleRNNLayer*)(layer->ref_layer?layer->ref_layer:layer);
       char xhstr[1024],hhstr[1024],hystr[1024];
       sprintf(xhstr,"%s_Wxh",rnnlayer->name);
       sprintf(hhstr,"%s_Whh",rnnlayer->name);
@@ -1037,8 +1037,8 @@ static void icvCNNetworkWrite( CvCNNetwork * network, CvFileStorage * fs )
   const int n_layers = network->n_layers;
   CvCNNLayer * layer = (CvCNNLayer*)network->first_layer;
   for (int ii=0;ii<n_layers;ii++,layer=layer->next_layer){
-    if (icvIsCNNRecurrentNNLayer(layer)){
-      CvCNNRecurrentLayer * rnnlayer = (CvCNNRecurrentLayer*)layer;
+    if (icvIsCNNSimpleRNNLayer(layer)){
+      CvCNNSimpleRNNLayer * rnnlayer = (CvCNNSimpleRNNLayer*)layer;
       char xhstr[1024],hhstr[1024],hystr[1024];
       sprintf(xhstr,"%s_Wxh",rnnlayer->name);
       sprintf(hhstr,"%s_Whh",rnnlayer->name);

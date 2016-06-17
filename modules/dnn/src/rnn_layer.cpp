@@ -25,25 +25,25 @@
  
 #include "_dnn.h"
 
-ML_IMPL CvCNNLayer* cvCreateCNNRecurrentLayer( 
+ML_IMPL CvCNNLayer* cvCreateCNNSimpleRNNLayer( 
     const int dtype, const char * name, const CvCNNLayer * ref_layer, 
     int n_inputs, int n_outputs, int n_hiddens, int seq_length, int time_index, 
-    float init_learn_rate, int update_rule, const char * activation_type, 
+    float init_learn_rate, int update_rule, const char * activation, 
     CvMat * Wxh, CvMat * Whh, CvMat * Why )
 {
-  CvCNNRecurrentLayer* layer = 0;
+  CvCNNSimpleRNNLayer* layer = 0;
 
-  CV_FUNCNAME("cvCreateCNNRecurrentLayer");
+  CV_FUNCNAME("cvCreateCNNSimpleRNNLayer");
   __BEGIN__;
 
   if ( init_learn_rate <= 0) { CV_ERROR( CV_StsBadArg, "Incorrect parameters" ); }
 
-  fprintf(stderr,"RecurrentNNLayer(%s): input(%d), hidden(%d), output(%d), "
+  fprintf(stderr,"SimpleRNNLayer(%s): input(%d), hidden(%d), output(%d), "
           "seq_length(%d), time_index(%d)\n", name,
           n_inputs, n_hiddens, n_outputs, seq_length, time_index);
   
-  CV_CALL(layer = (CvCNNRecurrentLayer*)icvCreateCNNLayer( ICV_CNN_RECURRENTNN_LAYER, dtype, name, 
-      sizeof(CvCNNRecurrentLayer), n_inputs, 1, 1, n_outputs, 1, 1,
+  CV_CALL(layer = (CvCNNSimpleRNNLayer*)icvCreateCNNLayer( ICV_CNN_RECURRENTNN_LAYER, dtype, name, 
+      sizeof(CvCNNSimpleRNNLayer), n_inputs, 1, 1, n_outputs, 1, 1,
       init_learn_rate, update_rule,
       icvCNNRecurrentRelease, icvCNNRecurrentForward, icvCNNRecurrentBackward ));
 
@@ -55,7 +55,7 @@ ML_IMPL CvCNNLayer* cvCreateCNNRecurrentLayer(
   layer->Wxh = 0;
   layer->Whh = 0;
   layer->Why = 0;
-  strcpy(layer->activation_type,activation_type);
+  strcpy(layer->activation,activation);
   layer->H = 0;
   layer->Y = 0;
   layer->loss = 0;
@@ -103,14 +103,14 @@ void icvCNNRecurrentRelease( CvCNNLayer** p_layer )
   CV_FUNCNAME("icvCNNRecurrentRelease");
   __BEGIN__;
 
-  CvCNNRecurrentLayer* layer = 0;
+  CvCNNSimpleRNNLayer* layer = 0;
 
   if ( !p_layer ) { CV_ERROR( CV_StsNullPtr, "Null double pointer" ); }
 
-  layer = *(CvCNNRecurrentLayer**)p_layer;
+  layer = *(CvCNNSimpleRNNLayer**)p_layer;
 
   if ( !layer ) { return; }
-  if ( !icvIsCNNRecurrentNNLayer((CvCNNLayer*)layer) ) { 
+  if ( !icvIsCNNSimpleRNNLayer((CvCNNLayer*)layer) ) { 
     CV_ERROR( CV_StsBadArg, "Invalid layer" ); 
   }
 
@@ -127,11 +127,11 @@ void icvCNNRecurrentRelease( CvCNNLayer** p_layer )
 void icvCNNRecurrentForward( CvCNNLayer* _layer, const CvMat* X, CvMat * Y) 
 {
   CV_FUNCNAME("icvCNNRecurrentForward");
-  if ( !icvIsCNNRecurrentNNLayer(_layer) ) { CV_ERROR( CV_StsBadArg, "Invalid layer" ); }
+  if ( !icvIsCNNSimpleRNNLayer(_layer) ) { CV_ERROR( CV_StsBadArg, "Invalid layer" ); }
   __BEGIN__;
 
-  CvCNNRecurrentLayer * layer = (CvCNNRecurrentLayer*)_layer;
-  CvCNNRecurrentLayer * ref_layer = (CvCNNRecurrentLayer*)layer->ref_layer;
+  CvCNNSimpleRNNLayer * layer = (CvCNNSimpleRNNLayer*)_layer;
+  CvCNNSimpleRNNLayer * ref_layer = (CvCNNSimpleRNNLayer*)layer->ref_layer;
   CvMat Wxh_submat, Whh_submat, hbiascol, Why_submat, ybiascol;
   int time_index = layer->time_index;
   int seq_length = layer->seq_length;
@@ -224,13 +224,13 @@ void icvCNNRecurrentForward( CvCNNLayer* _layer, const CvMat* X, CvMat * Y)
   CV_CALL(cvCopy(WH_curr,&WH_curr_hdr));          // copy to layer->WH
 
   // apply activation to output
-  if (!strcmp(layer->activation_type,"sigmoid")){
+  if (!strcmp(layer->activation,"sigmoid")){
     CV_CALL(cvSigmoid( &Y_curr_hdr, &Y_curr_hdr )); 
-  }else if (!strcmp(layer->activation_type,"tanh")){
+  }else if (!strcmp(layer->activation,"tanh")){
     CV_CALL(cvTanh( &Y_curr_hdr, &Y_curr_hdr )); 
-  }else if (!strcmp(layer->activation_type,"relu")){
+  }else if (!strcmp(layer->activation,"relu")){
     CV_CALL(cvReLU( &Y_curr_hdr, &Y_curr_hdr )); 
-  }else if (!strcmp(layer->activation_type,"softmax")){
+  }else if (!strcmp(layer->activation,"softmax")){
     CV_ASSERT(Y_curr->cols==n_outputs && Y_curr->rows==batch_size);
     cvSoftmax(Y_curr,Y_curr);
   }else{
@@ -281,12 +281,12 @@ void icvCNNRecurrentBackward( CvCNNLayer* _layer, int t,
                                      const CvMat * X, const CvMat * _dE_dY, CvMat * dE_dX )
 {
   CV_FUNCNAME( "icvCNNRecurrentBackward" );
-  if ( !icvIsCNNRecurrentNNLayer(_layer) ) { CV_ERROR( CV_StsBadArg, "Invalid layer" ); }
+  if ( !icvIsCNNSimpleRNNLayer(_layer) ) { CV_ERROR( CV_StsBadArg, "Invalid layer" ); }
 
   __BEGIN__;
 
-  CvCNNRecurrentLayer * layer = (CvCNNRecurrentLayer*)_layer;
-  CvCNNRecurrentLayer * ref_layer = (CvCNNRecurrentLayer*)layer->ref_layer;
+  CvCNNSimpleRNNLayer * layer = (CvCNNSimpleRNNLayer*)_layer;
+  CvCNNSimpleRNNLayer * ref_layer = (CvCNNSimpleRNNLayer*)layer->ref_layer;
   CvMat * dE_dY = (CvMat*)_dE_dY;
   
   // TODO: compute average from all output_layers
@@ -298,7 +298,7 @@ void icvCNNRecurrentBackward( CvCNNLayer* _layer, int t,
     dE_dY = cvCreateMat(batch_size,Y_plane_size*n_Y_planes,CV_32F); cvZero(dE_dY);
     for (int li=0;li<n_output_layers;li++){
       CvCNNLayer * output_layer = ref_layer?ref_layer->output_layers[li]:layer->output_layers[li];
-      if (icvIsCNNFullConnectLayer(output_layer)){
+      if (icvIsCNNDenseLayer(output_layer)){
         cvAddWeighted(dE_dY,1.f,output_layer->dE_dX,1.f/float(n_output_layers),0.f,dE_dY);
       }
     }
@@ -442,16 +442,16 @@ void icvCNNRecurrentBackward( CvCNNLayer* _layer, int t,
   // CV_ASSERT(cvSdv(dE_dY_curr)>1e-5);
 
   // output activation derivative
-  if (!strcmp(layer->activation_type,"sigmoid")){
+  if (!strcmp(layer->activation,"sigmoid")){
     cvSigmoidDer(WH_curr,dE_dY_afder);
     cvMul(dE_dY_afder,dE_dY_curr,dE_dY_afder);
-  }else if (!strcmp(layer->activation_type,"tanh")){
+  }else if (!strcmp(layer->activation,"tanh")){
     cvTanhDer(WH_curr,dE_dY_afder);
     cvMul(dE_dY_afder,dE_dY_curr,dE_dY_afder);
-  }else if (!strcmp(layer->activation_type,"relu")){
+  }else if (!strcmp(layer->activation,"relu")){
     cvReLUDer(WH_curr,dE_dY_afder);
     cvMul(dE_dY_afder,dE_dY_curr,dE_dY_afder);
-  }else if (!strcmp(layer->activation_type,"softmax")){
+  }else if (!strcmp(layer->activation,"softmax")){
     cvCopy(dE_dY_curr,dE_dY_afder);    // softmax for classification
   }else{
     CV_ERROR(CV_StsBadArg,"invalid output activation type for RNN layer, `softmax` is prefered.");

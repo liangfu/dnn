@@ -30,7 +30,7 @@ ML_IMPL CvCNNLayer* cvCreateCNNConvolutionLayer(
     const int dtype, const char * name, const CvCNNLayer * ref_layer,
     const int visualize, const CvCNNLayer * input_layer, 
     int n_input_planes, int input_height, int input_width, int n_output_planes, int K,
-    float init_learn_rate, int update_rule, const char * activation_type,
+    float init_learn_rate, int update_rule, const char * activation,
     CvMat* connect_mask, CvMat* weights )
 
 {
@@ -56,7 +56,7 @@ ML_IMPL CvCNNLayer* cvCreateCNNConvolutionLayer(
     init_learn_rate, update_rule, 
     icvCNNConvolutionRelease, icvCNNConvolutionForward, icvCNNConvolutionBackward ));
 
-  strcpy(layer->activation_type,activation_type);
+  strcpy(layer->activation,activation);
   layer->enable_cache = 1;
   layer->K = K;
   layer->seq_length = 1;
@@ -195,10 +195,10 @@ void icvCNNConvolutionForward( CvCNNLayer* _layer, const CvMat* X, CvMat* Y )
   // cvTranspose(Yt,Y);
   if (!layer->WX){layer->WX=cvCloneMat(Y);}else{cvCopy(Y,layer->WX);}
 
-  if (!strcmp(layer->activation_type,"none")){ // do nothing
-  }else if (!strcmp(layer->activation_type,"tanh")){ CV_CALL(cvTanh( Y, Y ));
-  }else if (!strcmp(layer->activation_type,"sigmoid")){ CV_CALL(cvSigmoid( Y, Y ));
-  }else if (!strcmp(layer->activation_type,"relu")){ CV_CALL(cvReLU( Y, Y ));
+  if (!strcmp(layer->activation,"none")){ // do nothing
+  }else if (!strcmp(layer->activation,"tanh")){ CV_CALL(cvTanh( Y, Y ));
+  }else if (!strcmp(layer->activation,"sigmoid")){ CV_CALL(cvSigmoid( Y, Y ));
+  }else if (!strcmp(layer->activation,"relu")){ CV_CALL(cvReLU( Y, Y ));
   }else{CV_ERROR(CV_StsBadArg,"Unknown activation type");}
   
   // cvReleaseMat(&Xt);
@@ -254,7 +254,7 @@ void icvCNNConvolutionBackward(
     dE_dY = cvCreateMat(batch_size,Y_plane_size*n_Y_planes,CV_32F); cvZero(dE_dY);
     for (int li=0;li<n_output_layers;li++){
       CvCNNLayer * output_layer = layer->output_layers[li];
-      if (icvIsCNNFullConnectLayer(output_layer)){
+      if (icvIsCNNDenseLayer(output_layer)){
         cvAddWeighted(dE_dY,1.f,output_layer->dE_dX,1.f/float(n_output_layers),0.f,dE_dY);
       }
     } // average loss from all task
@@ -309,17 +309,17 @@ void icvCNNConvolutionBackward(
   cvScale(dY_dW,dY_dW,1.f/float(batch_size));
 
   // dE_dY_afder = (tanh'(WX))*dE_dY
-  if (!strcmp(layer->activation_type,"none")){
+  if (!strcmp(layer->activation,"none")){
     cvCopy(dE_dY,dE_dY_afder);
-  }else if (!strcmp(layer->activation_type,"tanh")){ 
+  }else if (!strcmp(layer->activation,"tanh")){ 
     cvTanhDer(layer->WX,dE_dY_afder);
     // cvTranspose(dE_dY,dE_dY_T);
     cvMul(dE_dY_afder,dE_dY,dE_dY_afder);
-  }else if (!strcmp(layer->activation_type,"sigmoid")){ 
+  }else if (!strcmp(layer->activation,"sigmoid")){ 
     cvSigmoidDer(layer->WX,dE_dY_afder);
     // cvTranspose(dE_dY,dE_dY_T);
     cvMul(dE_dY_afder,dE_dY,dE_dY_afder);
-  }else if (!strcmp(layer->activation_type,"relu")){ 
+  }else if (!strcmp(layer->activation,"relu")){ 
     cvReLUDer(layer->WX,dE_dY_afder);
     // cvTranspose(dE_dY,dE_dY_T);
     cvMul(dE_dY_afder,dE_dY,dE_dY_afder);

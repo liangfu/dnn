@@ -161,25 +161,25 @@ TEST(ML_ConvolutionLayer, gradcheck){
   cvReleaseMat(&norm);
 }
 
-void FullConnectLayerTest(int n_inputs, int n_outputs, int batch_size, 
+void DenseLayerTest(int n_inputs, int n_outputs, int batch_size, 
                           int dtype, int norm_type, const char * actype);
-TEST(ML_FullConnectLayer, gradcheck){
+TEST(ML_DenseLayer, gradcheck){
   int n_inputs = 16;
   int n_outputs = 6;
   int batch_size = 1;
   int dtype = CV_64F;
-  FullConnectLayerTest(n_inputs, n_outputs, batch_size, dtype, CV_NORM_TYPE1, "tanh");
-  FullConnectLayerTest(n_inputs, n_outputs, batch_size, dtype, CV_NORM_TYPE2, "sigmoid");
-  FullConnectLayerTest(n_inputs, n_outputs, batch_size, dtype, CV_NORM_TYPE2, "softmax");
-  FullConnectLayerTest(n_inputs, n_outputs, batch_size, dtype, CV_NORM_TYPE1, "relu");
+  DenseLayerTest(n_inputs, n_outputs, batch_size, dtype, CV_NORM_TYPE1, "tanh");
+  DenseLayerTest(n_inputs, n_outputs, batch_size, dtype, CV_NORM_TYPE2, "sigmoid");
+  DenseLayerTest(n_inputs, n_outputs, batch_size, dtype, CV_NORM_TYPE2, "softmax");
+  DenseLayerTest(n_inputs, n_outputs, batch_size, dtype, CV_NORM_TYPE1, "relu");
 }
 
-void FullConnectLayerTest(int n_inputs, int n_outputs, int batch_size, 
+void DenseLayerTest(int n_inputs, int n_outputs, int batch_size, 
                           int dtype, int norm_type, const char * actype)
 {
   CvCNNLayer * layer = 
-    cvCreateCNNFullConnectLayer(dtype,"fc1",0,0,n_inputs,n_outputs,.01,1,actype,0);
-  ASSERT_TRUE(icvIsCNNFullConnectLayer(layer));
+    cvCreateCNNDenseLayer(dtype,"fc1",0,0,n_inputs,n_outputs,.01,1,actype,0);
+  ASSERT_TRUE(icvIsCNNDenseLayer(layer));
   CvMat * X = cvCreateMat(n_inputs,batch_size,dtype);
   CvMat * Y = cvCreateMat(n_outputs,batch_size,dtype);
   CvMat * target = cvCreateMat(Y->rows,Y->cols,dtype);

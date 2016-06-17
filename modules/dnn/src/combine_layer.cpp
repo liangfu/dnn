@@ -25,29 +25,29 @@
  
 #include "_dnn.h"
 
-CvCNNLayer * cvCreateCNNCombinationLayer( 
+CvCNNLayer * cvCreateCNNMergeLayer( 
     const int dtype, const char * name, const int visualize,
     int n_input_layers, CvCNNLayer ** input_layers, int n_outputs,
     float init_learn_rate, int update_rule)
 {
-  CvCNNCombinationLayer * layer = 0;
+  CvCNNMergeLayer * layer = 0;
   int n_inputs = n_input_layers;
   int input_width = 1, input_height = 1, output_width = 1, output_height = 1;
 
-  CV_FUNCNAME("cvCreateCNNCombinationLayer");
+  CV_FUNCNAME("cvCreateCNNMergeLayer");
   __BEGIN__;
 
   if ( init_learn_rate <= 0) {
     CV_ERROR( CV_StsBadArg, "Incorrect parameters" );
   }
 
-  fprintf(stderr,"CombinationLayer(%s): input_layers (%d), outputs (%d)\n", name,
+  fprintf(stderr,"MergeLayer(%s): input_layers (%d), outputs (%d)\n", name,
           n_input_layers,n_outputs);
   
-  CV_CALL(layer = (CvCNNCombinationLayer*)icvCreateCNNLayer( ICV_CNN_COMBINATION_LAYER, dtype, name, 
-      sizeof(CvCNNCombinationLayer), n_inputs, input_height, input_width, 
+  CV_CALL(layer = (CvCNNMergeLayer*)icvCreateCNNLayer( ICV_CNN_COMBINATION_LAYER, dtype, name, 
+      sizeof(CvCNNMergeLayer), n_inputs, input_height, input_width, 
       n_outputs, output_height, output_width, init_learn_rate, update_rule,
-      icvCNNCombinationRelease, icvCNNCombinationForward, icvCNNCombinationBackward ));
+      icvCNNMergeRelease, icvCNNMergeForward, icvCNNMergeBackward ));
 
   layer->seq_length = 1;
   layer->visualize = visualize;
@@ -64,11 +64,11 @@ CvCNNLayer * cvCreateCNNCombinationLayer(
   return (CvCNNLayer*)layer;
 }
 
-void icvCNNCombinationForward( CvCNNLayer * _layer, const CvMat * X, CvMat * Y )
+void icvCNNMergeForward( CvCNNLayer * _layer, const CvMat * X, CvMat * Y )
 {
-  CV_FUNCNAME("icvCNNCombinationForward");
+  CV_FUNCNAME("icvCNNMergeForward");
   __BEGIN__;
-  CvCNNCombinationLayer * layer = (CvCNNCombinationLayer*)_layer;
+  CvCNNMergeLayer * layer = (CvCNNMergeLayer*)_layer;
   int n_input_layers = layer->input_layers.size();
   // CvCNNLayer ** input_layers = layer->input_layers;
   int input_layer_data_index = 0;
@@ -83,13 +83,13 @@ void icvCNNCombinationForward( CvCNNLayer * _layer, const CvMat * X, CvMat * Y )
   __END__;
 }
 
-void icvCNNCombinationBackward( CvCNNLayer* layer, int t,
+void icvCNNMergeBackward( CvCNNLayer* layer, int t,
                                        const CvMat*, const CvMat* dE_dY, CvMat* dE_dX )
 {
-  CV_FUNCNAME("icvCNNCombinationBackward");
+  CV_FUNCNAME("icvCNNMergeBackward");
   __BEGIN__;
   if (layer->dE_dX){cvCopy(dE_dY,layer->dE_dX);}else{layer->dE_dX=cvCloneMat(dE_dY);}
   __END__;
 }
 
-void icvCNNCombinationRelease( CvCNNLayer** p_layer ){}
+void icvCNNMergeRelease( CvCNNLayer** p_layer ){}

@@ -25,32 +25,32 @@
  
 #include "_dnn.h"
 
-CvCNNLayer * cvCreateCNNInputDataLayer( 
+CvCNNLayer * cvCreateCNNRepeatVectorLayer( 
     const int dtype, const char * name, 
     int n_input_planes, int input_height, int input_width, int seq_length,
     float init_learn_rate, int update_rule)
 {
-  CvCNNInputDataLayer* layer = 0;
+  CvCNNRepeatVectorLayer* layer = 0;
   const int n_inputs = n_input_planes;
   const int n_outputs = n_input_planes;
   const int output_width = input_width;
   const int output_height = input_height;
 
-  CV_FUNCNAME("cvCreateCNNInputDataLayer");
+  CV_FUNCNAME("cvCreateCNNRepeatVectorLayer");
   __BEGIN__;
 
   if ( init_learn_rate <= 0) {
     CV_ERROR( CV_StsBadArg, "Incorrect parameters" );
   }
 
-  fprintf(stderr,"InputDataLayer(%s): input (%d@%dx%d), output (%d@%dx%d), seq_length: (%d)\n", name,
+  fprintf(stderr,"RepeatVectorLayer(%s): input (%d@%dx%d), output (%d@%dx%d), seq_length: (%d)\n", name,
           n_inputs,input_height,input_width,
           n_outputs,output_height,output_width,seq_length);
   
-  CV_CALL(layer = (CvCNNInputDataLayer*)icvCreateCNNLayer( ICV_CNN_INPUTDATA_LAYER, dtype, name, 
-      sizeof(CvCNNInputDataLayer), n_inputs, input_height, input_width, 
+  CV_CALL(layer = (CvCNNRepeatVectorLayer*)icvCreateCNNLayer( ICV_CNN_INPUTDATA_LAYER, dtype, name, 
+      sizeof(CvCNNRepeatVectorLayer), n_inputs, input_height, input_width, 
       n_outputs, output_height, output_width, init_learn_rate, update_rule,
-      icvCNNInputDataRelease, icvCNNInputDataForward, icvCNNInputDataBackward ));
+      icvCNNRepeatVectorRelease, icvCNNRepeatVectorForward, icvCNNRepeatVectorBackward ));
 
   layer->seq_length = seq_length;
 
@@ -64,12 +64,12 @@ CvCNNLayer * cvCreateCNNInputDataLayer(
 }
 
 
-void icvCNNInputDataForward( CvCNNLayer * _layer, const CvMat * X, CvMat * Y )
+void icvCNNRepeatVectorForward( CvCNNLayer * _layer, const CvMat * X, CvMat * Y )
 {
-  CV_FUNCNAME("icvCNNInputDataForward");
-  if ( !icvIsCNNInputDataLayer(_layer) ) { CV_ERROR( CV_StsBadArg, "Invalid layer" ); }
+  CV_FUNCNAME("icvCNNRepeatVectorForward");
+  if ( !icvIsCNNRepeatVectorLayer(_layer) ) { CV_ERROR( CV_StsBadArg, "Invalid layer" ); }
   __BEGIN__;
-  CvCNNInputDataLayer * layer = (CvCNNInputDataLayer*)_layer;
+  CvCNNRepeatVectorLayer * layer = (CvCNNRepeatVectorLayer*)_layer;
   if (!layer->input_data){
     layer->input_data = cvCloneMat(X);
   }else{
@@ -85,11 +85,11 @@ void icvCNNInputDataForward( CvCNNLayer * _layer, const CvMat * X, CvMat * Y )
 }
 
 
-void icvCNNInputDataBackward( CvCNNLayer * layer, int t, 
+void icvCNNRepeatVectorBackward( CvCNNLayer * layer, int t, 
                               const CvMat * X, const CvMat * dE_dY, CvMat * dE_dX )
 {
   cvZero(dE_dX);
 }
 
-void icvCNNInputDataRelease( CvCNNLayer** p_layer ){}
+void icvCNNRepeatVectorRelease( CvCNNLayer** p_layer ){}
 
