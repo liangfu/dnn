@@ -112,7 +112,7 @@ void icvCNNFullConnectForward( CvCNNLayer* _layer, const CvMat* _X, CvMat* _Y )
     if (icvIsCNNRecurrentNNLayer(input_layer)){
       seq_length = ((CvCNNRecurrentLayer*)input_layer)->seq_length;
       batch_size = X->rows/seq_length;
-    }else if (icvIsCNNSubSamplingLayer(input_layer)){
+    }else if (icvIsCNNMaxPoollingLayer(input_layer)){
       seq_length = 1;
       n_inputs = input_layer->n_output_planes*input_layer->output_height*input_layer->output_width;
     }
@@ -233,7 +233,7 @@ void icvCNNFullConnectBackward(CvCNNLayer * _layer, int t,
     if (icvIsCNNRecurrentNNLayer(input_layer)){
       seq_length = ((CvCNNRecurrentLayer*)input_layer)->seq_length;
       time_index = ((CvCNNRecurrentLayer*)input_layer)->time_index;
-    }else if (icvIsCNNSubSamplingLayer(input_layer) || icvIsCNNConvolutionLayer(input_layer)){ 
+    }else if (icvIsCNNMaxPoollingLayer(input_layer) || icvIsCNNConvolutionLayer(input_layer)){ 
       seq_length = 1; time_index = 0; 
       n_inputs = input_layer->n_output_planes*input_layer->output_height*input_layer->output_width;
     }
@@ -277,17 +277,17 @@ void icvCNNFullConnectBackward(CvCNNLayer * _layer, int t,
   }
 
   if (output_layer){
-    if (icvIsCNNMultiTargetLayer(output_layer)){
-      int n_input_layers = ((CvCNNMultiTargetLayer*)output_layer)->input_layers.size();
+    if (icvIsCNNCombinationLayer(output_layer)){
+      int n_input_layers = ((CvCNNCombinationLayer*)output_layer)->input_layers.size();
       int layer_index = -1;
       int output_layer_index = 0;
       int output_layer_size = 0;
       for (int lidx=0;lidx<n_input_layers;lidx++){
-        output_layer_index+=((CvCNNMultiTargetLayer*)output_layer)->input_layers[lidx]->n_output_planes;
-        if (!strcmp(((CvCNNMultiTargetLayer*)output_layer)->input_layers[lidx]->name,layer->name)){
+        output_layer_index+=((CvCNNCombinationLayer*)output_layer)->input_layers[lidx]->n_output_planes;
+        if (!strcmp(((CvCNNCombinationLayer*)output_layer)->input_layers[lidx]->name,layer->name)){
           layer_index=lidx;
-          output_layer_index-=((CvCNNMultiTargetLayer*)output_layer)->input_layers[lidx]->n_output_planes;
-          output_layer_size=((CvCNNMultiTargetLayer*)output_layer)->input_layers[lidx]->n_output_planes;
+          output_layer_index-=((CvCNNCombinationLayer*)output_layer)->input_layers[lidx]->n_output_planes;
+          output_layer_size=((CvCNNCombinationLayer*)output_layer)->input_layers[lidx]->n_output_planes;
           break;
         }
       }

@@ -77,11 +77,11 @@ void CvNetwork::loadModel(string inFile)
           cvReleaseMat(&((CvCNNRecurrentLayer*)layer)->Whh);((CvCNNRecurrentLayer*)layer)->Whh=0;}
         if (((CvCNNRecurrentLayer*)layer)->Why){
           cvReleaseMat(&((CvCNNRecurrentLayer*)layer)->Why);((CvCNNRecurrentLayer*)layer)->Why=0;}
-      }else if (icvIsCNNImgCroppingLayer(predefined_layer)){
+      }else if (icvIsCNNImgWarppingLayer(predefined_layer)){
         int time_index = cvReadIntByName(fs,node,"time_index",0);
-        CvCNNImgCroppingLayer * this_layer = (CvCNNImgCroppingLayer*)predefined_layer;
+        CvCNNImgWarppingLayer * this_layer = (CvCNNImgWarppingLayer*)predefined_layer;
         CvCNNLayer * input_layer = (this_layer->input_layers.size()>0?this_layer->input_layers[0]:0);
-        layer = cvCreateCNNImgCroppingLayer( 
+        layer = cvCreateCNNImgWarppingLayer( 
           this_layer->dtype, this_layer->name, this_layer->visualize, input_layer, 
           this_layer->n_output_planes, this_layer->output_height, this_layer->output_width, 
           this_layer->seq_length, time_index, this_layer->init_learn_rate, this_layer->decay_type );
@@ -100,9 +100,9 @@ void CvNetwork::loadModel(string inFile)
           this_layer->n_input_planes, this_layer->input_height, this_layer->input_width,
           this_layer->n_output_planes, this_layer->K,
           this_layer->init_learn_rate, this_layer->decay_type, this_layer->activation_type, NULL, NULL );
-      }else if (icvIsCNNSubSamplingLayer(predefined_layer)){
-        CvCNNSubSamplingLayer * this_layer = (CvCNNSubSamplingLayer*)predefined_layer;
-        layer = cvCreateCNNSubSamplingLayer( 
+      }else if (icvIsCNNMaxPoollingLayer(predefined_layer)){
+        CvCNNMaxPoollingLayer * this_layer = (CvCNNMaxPoollingLayer*)predefined_layer;
+        layer = cvCreateCNNMaxPoollingLayer( 
           this_layer->dtype, this_layer->name, this_layer->visualize,
           this_layer->n_input_planes, this_layer->input_height, this_layer->input_width,
           this_layer->sub_samp_scale, this_layer->init_learn_rate, this_layer->decay_type, 0 );
@@ -129,14 +129,14 @@ void CvNetwork::loadModel(string inFile)
       n_input_planes = n_output_planes;
       input_height = input_height-ksize+1;
       input_width = input_width-ksize+1;
-    }else if (!strcmp(type,"SubSampling")){ // max pooling layer
+    }else if (!strcmp(type,"MaxPoolling")){ // max pooling layer
       CvCNNLayer * input_layer = 0; 
       const char * input_layer_name = cvReadStringByName(fs,node,"input_layer","");
       if (strlen(input_layer_name)>0){
         input_layer = m_cnn->network->get_layer(m_cnn->network,input_layer_name);
       }
       int ksize = cvReadIntByName(fs,node,"ksize");
-      layer = cvCreateCNNSubSamplingLayer( dtype, name, visualize,
+      layer = cvCreateCNNMaxPoollingLayer( dtype, name, visualize,
         n_input_planes, input_height, input_width, ksize,
         lr_init, decay_type, NULL);
       if (input_layer){input_layer->output_layers.push_back(layer);}
@@ -159,7 +159,7 @@ void CvNetwork::loadModel(string inFile)
         lr_init, decay_type, activation_type, NULL );
       if (input_layer){input_layer->output_layers.push_back(layer);}
       n_input_planes = n_output_planes; input_height = 1; input_width = 1;
-    }else if (!strcmp(type,"ImgCropping")){ // image cropping layer
+    }else if (!strcmp(type,"ImgWarpping")){ // image cropping layer
       const char * input_layer_name = cvReadStringByName(fs,node,"input_layer","");
       if (strlen(input_layer_name)<1){
         LOGE("input layer name is required while defining ImgCropping layer."); exit(-1);}
@@ -171,7 +171,7 @@ void CvNetwork::loadModel(string inFile)
       output_width = cvReadIntByName(fs,node,"output_width",output_width);
       const int seq_length = cvReadIntByName(fs,node,"seq_length",1);
       const int time_index = cvReadIntByName(fs,node,"time_index",0);
-      layer = cvCreateCNNImgCroppingLayer( dtype, name, visualize, input_layer, 
+      layer = cvCreateCNNImgWarppingLayer( dtype, name, visualize, input_layer, 
         n_output_planes, output_height, output_width, seq_length, time_index, 
         lr_init, decay_type );
       n_input_planes = n_output_planes; // input_height = 1; input_width = 1;
@@ -196,7 +196,7 @@ void CvNetwork::loadModel(string inFile)
       layer = cvCreateCNNInputDataLayer( dtype, name, 
         n_input_planes, input_height, input_width, seq_length,
         lr_init, decay_type );
-    }else if (!strcmp(type,"MultiTarget")){ // merge multiple data source  layer
+    }else if (!strcmp(type,"Combination")){ // merge multiple data source  layer
       int n_input_layers = 1;
       const char * input_layer_names = cvReadStringByName(fs,node,"input_layers","");
       n_output_planes = cvReadIntByName(fs,node,"n_output_planes",1);
@@ -211,9 +211,9 @@ void CvNetwork::loadModel(string inFile)
         output_plane_count += input_layers[ii]->n_output_planes;
       }
       if (output_plane_count!=n_output_planes){
-        CV_ERROR(CV_StsBadArg,"Invalid definition of `input_layers` in MultiTarget layer.");
+        CV_ERROR(CV_StsBadArg,"Invalid definition of `input_layers` in Combination layer.");
       }
-      layer = cvCreateCNNMultiTargetLayer( dtype, name, visualize, 
+      layer = cvCreateCNNCombinationLayer( dtype, name, visualize, 
         n_input_layers, input_layers, n_output_planes, lr_init, decay_type );
       for (int lidx=0;lidx<n_input_layers;lidx++){input_layers[lidx]->output_layers.push_back(layer);}
       if (input_layers){delete [] input_layers; input_layers = 0;}

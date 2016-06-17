@@ -25,29 +25,29 @@
  
 #include "_dnn.h"
 
-CvCNNLayer * cvCreateCNNMultiTargetLayer( 
+CvCNNLayer * cvCreateCNNCombinationLayer( 
     const int dtype, const char * name, const int visualize,
     int n_input_layers, CvCNNLayer ** input_layers, int n_outputs,
     float init_learn_rate, int update_rule)
 {
-  CvCNNMultiTargetLayer * layer = 0;
+  CvCNNCombinationLayer * layer = 0;
   int n_inputs = n_input_layers;
   int input_width = 1, input_height = 1, output_width = 1, output_height = 1;
 
-  CV_FUNCNAME("cvCreateCNNMultiTargetLayer");
+  CV_FUNCNAME("cvCreateCNNCombinationLayer");
   __BEGIN__;
 
   if ( init_learn_rate <= 0) {
     CV_ERROR( CV_StsBadArg, "Incorrect parameters" );
   }
 
-  fprintf(stderr,"MultiTargetLayer(%s): input_layers (%d), outputs (%d)\n", name,
+  fprintf(stderr,"CombinationLayer(%s): input_layers (%d), outputs (%d)\n", name,
           n_input_layers,n_outputs);
   
-  CV_CALL(layer = (CvCNNMultiTargetLayer*)icvCreateCNNLayer( ICV_CNN_MULTITARGET_LAYER, dtype, name, 
-      sizeof(CvCNNMultiTargetLayer), n_inputs, input_height, input_width, 
+  CV_CALL(layer = (CvCNNCombinationLayer*)icvCreateCNNLayer( ICV_CNN_COMBINATION_LAYER, dtype, name, 
+      sizeof(CvCNNCombinationLayer), n_inputs, input_height, input_width, 
       n_outputs, output_height, output_width, init_learn_rate, update_rule,
-      icvCNNMultiTargetRelease, icvCNNMultiTargetForward, icvCNNMultiTargetBackward ));
+      icvCNNCombinationRelease, icvCNNCombinationForward, icvCNNCombinationBackward ));
 
   layer->seq_length = 1;
   layer->visualize = visualize;
@@ -64,11 +64,11 @@ CvCNNLayer * cvCreateCNNMultiTargetLayer(
   return (CvCNNLayer*)layer;
 }
 
-void icvCNNMultiTargetForward( CvCNNLayer * _layer, const CvMat * X, CvMat * Y )
+void icvCNNCombinationForward( CvCNNLayer * _layer, const CvMat * X, CvMat * Y )
 {
-  CV_FUNCNAME("icvCNNMultiTargetForward");
+  CV_FUNCNAME("icvCNNCombinationForward");
   __BEGIN__;
-  CvCNNMultiTargetLayer * layer = (CvCNNMultiTargetLayer*)_layer;
+  CvCNNCombinationLayer * layer = (CvCNNCombinationLayer*)_layer;
   int n_input_layers = layer->input_layers.size();
   // CvCNNLayer ** input_layers = layer->input_layers;
   int input_layer_data_index = 0;
@@ -83,13 +83,13 @@ void icvCNNMultiTargetForward( CvCNNLayer * _layer, const CvMat * X, CvMat * Y )
   __END__;
 }
 
-void icvCNNMultiTargetBackward( CvCNNLayer* layer, int t,
+void icvCNNCombinationBackward( CvCNNLayer* layer, int t,
                                        const CvMat*, const CvMat* dE_dY, CvMat* dE_dX )
 {
-  CV_FUNCNAME("icvCNNMultiTargetBackward");
+  CV_FUNCNAME("icvCNNCombinationBackward");
   __BEGIN__;
   if (layer->dE_dX){cvCopy(dE_dY,layer->dE_dX);}else{layer->dE_dX=cvCloneMat(dE_dY);}
   __END__;
 }
 
-void icvCNNMultiTargetRelease( CvCNNLayer** p_layer ){}
+void icvCNNCombinationRelease( CvCNNLayer** p_layer ){}

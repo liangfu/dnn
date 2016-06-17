@@ -51,9 +51,9 @@ void icvCNNConvolutionForward( CvCNNLayer* layer, const CvMat* X, CvMat* Y );
 void icvCNNConvolutionBackward( CvCNNLayer*  layer, int t, const CvMat* X, const CvMat* dE_dY, CvMat* dE_dX );
 
 /*------------------ functions for sub-sampling layer -------------------*/
-void icvCNNSubSamplingRelease( CvCNNLayer** p_layer );
-void icvCNNSubSamplingForward( CvCNNLayer* layer, const CvMat* X, CvMat* Y );
-void icvCNNSubSamplingBackward( CvCNNLayer*  layer, int t, const CvMat* X, const CvMat* dE_dY, CvMat* dE_dX );
+void icvCNNMaxPoollingRelease( CvCNNLayer** p_layer );
+void icvCNNMaxPoollingForward( CvCNNLayer* layer, const CvMat* X, CvMat* Y );
+void icvCNNMaxPoollingBackward( CvCNNLayer*  layer, int t, const CvMat* X, const CvMat* dE_dY, CvMat* dE_dX );
 
 /*---------- functions for full connected layer -----------------------*/
 void icvCNNFullConnectRelease( CvCNNLayer** p_layer );
@@ -66,9 +66,9 @@ void icvCNNRecurrentForward( CvCNNLayer* layer, const CvMat* X, CvMat* Y );
 void icvCNNRecurrentBackward( CvCNNLayer* layer, int t, const CvMat*, const CvMat* dE_dY, CvMat* dE_dX );
 
 /*-------------- functions for multi target layer -----------------------*/
-void icvCNNMultiTargetRelease( CvCNNLayer** p_layer );
-void icvCNNMultiTargetForward( CvCNNLayer* layer, const CvMat* X, CvMat* Y );
-void icvCNNMultiTargetBackward( CvCNNLayer* layer, int t, const CvMat*, const CvMat* dE_dY, CvMat* dE_dX );
+void icvCNNCombinationRelease( CvCNNLayer** p_layer );
+void icvCNNCombinationForward( CvCNNLayer* layer, const CvMat* X, CvMat* Y );
+void icvCNNCombinationBackward( CvCNNLayer* layer, int t, const CvMat*, const CvMat* dE_dY, CvMat* dE_dX );
 
 CvCNNLayer* icvCreateCNNLayer( int layer_type, 
     const int dtype, const char * name, int header_size,

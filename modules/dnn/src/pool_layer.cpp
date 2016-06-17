@@ -26,33 +26,33 @@
 #include "_dnn.h" 
 
 /*************************************************************************/
-ML_IMPL CvCNNLayer* cvCreateCNNSubSamplingLayer( 
+ML_IMPL CvCNNLayer* cvCreateCNNMaxPoollingLayer( 
     const int dtype, const char * name, const int visualize,
     int n_input_planes, int input_height, int input_width,
     int sub_samp_scale, 
     float init_learn_rate, int learn_rate_decrease_type, CvMat* weights )
 
 {
-    CvCNNSubSamplingLayer* layer = 0;
+    CvCNNMaxPoollingLayer* layer = 0;
 
-    CV_FUNCNAME("cvCreateCNNSubSamplingLayer");
+    CV_FUNCNAME("cvCreateCNNMaxPoollingLayer");
     __BEGIN__;
 
     const int output_height   = input_height/sub_samp_scale;
     const int output_width    = input_width/sub_samp_scale;
     const int n_output_planes = n_input_planes;
-    fprintf(stderr,"SubSamplingLayer(%s): input (%d@%dx%d), output (%d@%dx%d)\n", name,
+    fprintf(stderr,"MaxPoollingLayer(%s): input (%d@%dx%d), output (%d@%dx%d)\n", name,
             n_input_planes,input_width,input_height,n_output_planes,output_width,output_height);
 
     if ( sub_samp_scale < 1 )
         CV_ERROR( CV_StsBadArg, "Incorrect parameters" );
 
-    CV_CALL(layer = (CvCNNSubSamplingLayer*)icvCreateCNNLayer( 
-        ICV_CNN_SUBSAMPLING_LAYER, dtype, name, sizeof(CvCNNSubSamplingLayer), 
+    CV_CALL(layer = (CvCNNMaxPoollingLayer*)icvCreateCNNLayer( 
+        ICV_CNN_MAXPOOLLING_LAYER, dtype, name, sizeof(CvCNNMaxPoollingLayer), 
         n_input_planes, input_height, input_width,
         n_output_planes, output_height, output_width,
         init_learn_rate, learn_rate_decrease_type,
-        icvCNNSubSamplingRelease, icvCNNSubSamplingForward, icvCNNSubSamplingBackward ));
+        icvCNNMaxPoollingRelease, icvCNNMaxPoollingForward, icvCNNMaxPoollingBackward ));
 
     layer->sub_samp_scale  = sub_samp_scale;
     layer->visualize = visualize;
@@ -93,16 +93,16 @@ ML_IMPL CvCNNLayer* cvCreateCNNSubSamplingLayer(
     return (CvCNNLayer*)layer;
 }
 
-void icvCNNSubSamplingForward( CvCNNLayer* _layer, const CvMat* X, CvMat* Y )
+void icvCNNMaxPoollingForward( CvCNNLayer* _layer, const CvMat* X, CvMat* Y )
 {
-  CV_FUNCNAME("icvCNNSubSamplingForward");
+  CV_FUNCNAME("icvCNNMaxPoollingForward");
 
-  if ( !icvIsCNNSubSamplingLayer(_layer) )
+  if ( !icvIsCNNMaxPoollingLayer(_layer) )
       CV_ERROR( CV_StsBadArg, "Invalid layer" );
 
   __BEGIN__;
 
-  CvCNNSubSamplingLayer * layer = (CvCNNSubSamplingLayer*) _layer;
+  CvCNNMaxPoollingLayer * layer = (CvCNNMaxPoollingLayer*) _layer;
   // CvMat * Xt = 0;
   // CvMat * Yt = 0;
 
@@ -174,7 +174,7 @@ void icvCNNSubSamplingForward( CvCNNLayer* _layer, const CvMat* X, CvMat* Y )
   __END__;
 }
 
-void icvCNNSubSamplingBackward(
+void icvCNNMaxPoollingBackward(
     CvCNNLayer* _layer, int t, const CvMat* X, const CvMat* dE_dY, CvMat* dE_dX )
 {
   // derivative of activation function
@@ -182,14 +182,14 @@ void icvCNNSubSamplingBackward(
   CvMat* dY_dW_elems = 0; // elements of matrix dY_dW
   CvMat* dE_dW = 0;
 
-  CV_FUNCNAME("icvCNNSubSamplingBackward");
+  CV_FUNCNAME("icvCNNMaxPoollingBackward");
 
-  if ( !icvIsCNNSubSamplingLayer(_layer) ) {
+  if ( !icvIsCNNMaxPoollingLayer(_layer) ) {
     CV_ERROR( CV_StsBadArg, "Invalid layer" );
   }
 
   __BEGIN__;
-  CvCNNSubSamplingLayer* layer = (CvCNNSubSamplingLayer*) _layer;
+  CvCNNMaxPoollingLayer* layer = (CvCNNMaxPoollingLayer*) _layer;
 
   const int Xwidth  = layer->input_width;
   const int Xheight = layer->input_height;
@@ -241,21 +241,21 @@ void icvCNNSubSamplingBackward(
   if (dE_dW      ){cvReleaseMat( &dE_dW       );dE_dW      =0;}
 }
 
-void icvCNNSubSamplingRelease( CvCNNLayer** p_layer )
+void icvCNNMaxPoollingRelease( CvCNNLayer** p_layer )
 {
-  CV_FUNCNAME("icvCNNSubSamplingRelease");
+  CV_FUNCNAME("icvCNNMaxPoollingRelease");
   __BEGIN__;
 
-  CvCNNSubSamplingLayer* layer = 0;
+  CvCNNMaxPoollingLayer* layer = 0;
 
   if ( !p_layer )
       CV_ERROR( CV_StsNullPtr, "Null double pointer" );
 
-  layer = *(CvCNNSubSamplingLayer**)p_layer;
+  layer = *(CvCNNMaxPoollingLayer**)p_layer;
 
   if ( !layer )
       return;
-  if ( !icvIsCNNSubSamplingLayer((CvCNNLayer*)layer) )
+  if ( !icvIsCNNMaxPoollingLayer((CvCNNLayer*)layer) )
       CV_ERROR( CV_StsBadArg, "Invalid layer" );
 
   if (layer->mask      ){cvReleaseMat( &layer->mask       ); layer->mask      =0;}

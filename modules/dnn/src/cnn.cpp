@@ -609,7 +609,7 @@ static void icvCNNetworkAddLayer( CvCNNetwork* network, CvCNNLayer* layer )
          layer->input_width != 1  || layer->output_width != 1 ) {
       CV_ERROR( CV_StsBadArg, "Invalid size of the new layer" );
     }
-  }else if ( icvIsCNNConvolutionLayer(layer) || icvIsCNNSubSamplingLayer(layer) ){
+  }else if ( icvIsCNNConvolutionLayer(layer) || icvIsCNNMaxPoollingLayer(layer) ){
     if ( prev_layer->n_output_planes != layer->n_input_planes ||
          prev_layer->output_height   != layer->input_height ||
          prev_layer->output_width    != layer->input_width ) {
@@ -620,10 +620,10 @@ static void icvCNNetworkAddLayer( CvCNNetwork* network, CvCNNLayer* layer )
          layer->input_width != 1  || layer->output_width != 1 ) {
       CV_ERROR( CV_StsBadArg, "Invalid size of the new layer" );
     }
-  }else if ( icvIsCNNImgCroppingLayer(layer) ) {
-  }else if ( icvIsCNNMultiTargetLayer(layer) ) {
-    CV_ASSERT(((CvCNNMultiTargetLayer*)layer)->input_layers.size()>=1);
-    CV_ASSERT(((CvCNNMultiTargetLayer*)layer)->input_layers.size()<=100);
+  }else if ( icvIsCNNImgWarppingLayer(layer) ) {
+  }else if ( icvIsCNNCombinationLayer(layer) ) {
+    CV_ASSERT(((CvCNNCombinationLayer*)layer)->input_layers.size()>=1);
+    CV_ASSERT(((CvCNNCombinationLayer*)layer)->input_layers.size()<=100);
   }else{
     CV_ERROR( CV_StsBadArg, "Invalid layer" );
   }
@@ -987,9 +987,9 @@ static void icvWriteCNNLayer( CvFileStorage* fs, CvCNNLayer* layer )
     CvCNNConvolutionLayer* l = (CvCNNConvolutionLayer*)layer;
     CV_CALL(cvWriteInt( fs, "layer_type", ICV_CNN_CONVOLUTION_LAYER ));
     CV_CALL(cvWrite( fs, "connect_mask", l->connect_mask ));
-  }else if ( icvIsCNNSubSamplingLayer( layer ) ){
-    CvCNNSubSamplingLayer* l = (CvCNNSubSamplingLayer*)layer;
-    CV_CALL(cvWriteInt( fs, "layer_type", ICV_CNN_SUBSAMPLING_LAYER ));
+  }else if ( icvIsCNNMaxPoollingLayer( layer ) ){
+    CvCNNMaxPoollingLayer* l = (CvCNNMaxPoollingLayer*)layer;
+    CV_CALL(cvWriteInt( fs, "layer_type", ICV_CNN_MAXPOOLLING_LAYER ));
   }else if ( icvIsCNNFullConnectLayer( layer ) ){
     CvCNNFullConnectLayer* l = (CvCNNFullConnectLayer*)layer;
     CV_CALL(cvWriteInt( fs, "layer_type", ICV_CNN_FULLCONNECT_LAYER ));
