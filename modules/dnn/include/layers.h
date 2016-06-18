@@ -171,7 +171,7 @@ int icvIsCNNMergeLayer( CvCNNLayer * layer ) {
 }
 
 CV_INLINE
-int icvIsCNNRepeatVectorLayer( CvCNNLayer * layer ) {                                
+int icvIsCNNInputLayer( CvCNNLayer * layer ) {                                
   return ( (icvIsCNNLayer( layer )) &&
            (((CvCNNLayer*) (layer))->flags & ~CV_MAGIC_MASK) == ICV_CNN_INPUTDATA_LAYER );
 }
@@ -255,7 +255,7 @@ typedef struct CvCNNSimpleRNNLayer
   CvMat * dWxh, * dWhh, * dWhy;
 }CvCNNSimpleRNNLayer;
 
-typedef struct CvCNNRepeatVectorLayer
+typedef struct CvCNNInputLayer
 {
   // shape of the data are available in common `layer fields`
   CV_CNN_LAYER_FIELDS();
@@ -267,7 +267,7 @@ typedef struct CvCNNRepeatVectorLayer
   // original response matrix, default size:
   //          (1, nsamples)
   CvMat * response;
-}CvCNNRepeatVectorLayer;
+}CvCNNInputLayer;
 
 typedef struct CvCNNMergeLayer
 {
@@ -317,7 +317,7 @@ CVAPI(CvCNNLayer*) cvCreateCNNSimpleRNNLayer(
     float init_learn_rate, int update_rule, const char * activation, 
     CvMat * Wxh, CvMat * Whh, CvMat * Why );
 
-CVAPI(CvCNNLayer*) cvCreateCNNRepeatVectorLayer( 
+CVAPI(CvCNNLayer*) cvCreateCNNInputLayer( 
     const int dtype, const char * name, 
     int n_inputs, int input_height, int input_width, int seq_length,
     float init_learn_rate, int update_rule);

@@ -1,6 +1,6 @@
 %YAML:1.0
 layers:
-  - {type: RepeatVector, name: input1, n_input_planes: 1, input_height: 64, input_width: 64, seq_length: 1}
+  - {type: Input, name: input1, n_input_planes: 1, input_height: 64, input_width: 64, seq_length: 1}
 
   # CONTEXT NETWORK
   - {type: ImgWarping, name: crop1, input_layer: input1, n_output_planes: 1, output_height: 36, output_width: 36}

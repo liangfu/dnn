@@ -188,12 +188,12 @@ void CvNetwork::loadModel(string inFile)
         n_input_planes, n_output_planes, n_hiddens, seq_length, time_index, 
         lr_init, decay_type, activation, NULL, NULL, NULL );
       n_input_planes = n_output_planes; input_height = 1; input_width = 1;
-    }else if (!strcmp(type,"RepeatVector")){ // data container layer
+    }else if (!strcmp(type,"Input")){ // data container layer
       n_input_planes = cvReadIntByName(fs,node,"n_input_planes",1);
       input_height   = cvReadIntByName(fs,node,"input_height",1);
       input_width    = cvReadIntByName(fs,node,"input_width",1);
       const int seq_length = cvReadIntByName(fs,node,"seq_length",1);
-      layer = cvCreateCNNRepeatVectorLayer( dtype, name, 
+      layer = cvCreateCNNInputLayer( dtype, name, 
         n_input_planes, input_height, input_width, seq_length,
         lr_init, decay_type );
     }else if (!strcmp(type,"Merge")){ // merge multiple data source  layer

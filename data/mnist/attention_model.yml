@@ -1,6 +1,6 @@
 %YAML:1.0
 layers:
-  - {type: RepeatVector, name: input1, n_input_planes: 1, input_height: 28, input_width: 28, seq_length: 1}
+  - {type: Input, name: input1, n_input_planes: 1, input_height: 28, input_width: 28, seq_length: 1}
   - {type: Dense, name: fc1, visualize: 0, n_output_planes: 128, activation: tanh}
   - {type: SimpleRNN, name: rnn1, n_output_planes: 128, seq_length: 3, time_index: 0, activation: tanh}
 

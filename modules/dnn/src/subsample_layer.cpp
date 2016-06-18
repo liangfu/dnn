@@ -41,13 +41,13 @@ CvCNNLayer * cvCreateCNNImgWarpingLayer(
   CvCNNImgWarpingLayer* layer = 0;
   int n_inputs = _image_layer->n_input_planes;
   int n_outputs = n_output_planes;
-  CvCNNRepeatVectorLayer * input_layer = (CvCNNRepeatVectorLayer*)_image_layer;
+  CvCNNInputLayer * input_layer = (CvCNNInputLayer*)_image_layer;
 
   CV_FUNCNAME("cvCreateCNNImgWarpingLayer");
   __BEGIN__;
 
   if ( init_learn_rate <= 0) { CV_ERROR( CV_StsBadArg, "Incorrect parameters" ); }
-  CV_ASSERT(icvIsCNNRepeatVectorLayer((CvCNNLayer*)_image_layer));
+  CV_ASSERT(icvIsCNNInputLayer((CvCNNLayer*)_image_layer));
 
   fprintf(stderr,"ImgWarpingLayer(%s): "
           "input (%d@%dx%d), output (%d@%dx%d), seq_length: (%d), time_index: (%d)\n", name,
@@ -81,8 +81,8 @@ static void icvCNNImgWarpingForward( CvCNNLayer * _layer, const CvMat* X, CvMat*
   if ( !icvIsCNNImgWarpingLayer(_layer) ) { CV_ERROR( CV_StsBadArg, "Invalid layer" ); }
   __BEGIN__;
   CvCNNImgWarpingLayer * layer = (CvCNNImgWarpingLayer*)_layer;
-  const CvCNNRepeatVectorLayer * input_layer = 
-    (CvCNNRepeatVectorLayer*)(layer->input_layers.size()>0?layer->input_layers[0]:0);
+  const CvCNNInputLayer * input_layer = 
+    (CvCNNInputLayer*)(layer->input_layers.size()>0?layer->input_layers[0]:0);
   const int time_index = layer->time_index;
   const int input_seqlen = input_layer->seq_length;
   const int input_height = layer->input_height;

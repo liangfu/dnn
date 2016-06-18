@@ -41,9 +41,9 @@ void cvDebugGEMM(const char * src1name, const char * src2name, const char * src3
                  CvMat * src1, CvMat * src2, float alpha, CvMat * src3, float beta, CvMat * dst, int tABC);
     
 /*-------------- functions for input data layer -----------------------*/
-void icvCNNRepeatVectorRelease( CvCNNLayer** p_layer );
-void icvCNNRepeatVectorForward( CvCNNLayer* layer, const CvMat* X, CvMat* Y );
-void icvCNNRepeatVectorBackward( CvCNNLayer* layer, int t, const CvMat*, const CvMat* dE_dY, CvMat* dE_dX );
+void icvCNNInputRelease( CvCNNLayer** p_layer );
+void icvCNNInputForward( CvCNNLayer* layer, const CvMat* X, CvMat* Y );
+void icvCNNInputBackward( CvCNNLayer* layer, int t, const CvMat*, const CvMat* dE_dY, CvMat* dE_dX );
 
 /*--------------- functions for convolutional layer --------------------*/
 void icvCNNConvolutionRelease( CvCNNLayer** p_layer );
