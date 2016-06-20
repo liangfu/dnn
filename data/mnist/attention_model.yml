@@ -2,32 +2,18 @@
 layers:
   - {type: Input, name: input1, n_input_planes: 1, input_height: 28, input_width: 28, seq_length: 1}
   - {type: Dense, name: fc1, visualize: 0, n_output_planes: 128, activation: tanh}
-  - {type: SimpleRNN, name: rnn1, n_output_planes: 128, seq_length: 3, time_index: 0, activation: tanh}
+  - {type: SimpleRNN, name: rnn1, n_output_planes: 128, seq_length: 2, time_index: 0, activation: tanh}
+  - {type: Dense, name: fc2, visualize: 0, n_output_planes: 2, activation: sigmoid} # localize 
 
   # GLIMPSE NETWORK
   - {type: ImgWarping, name: crop1, input_layer: input1, n_output_planes: 1, output_height: 8, output_width: 8}
   - {type: Convolution, name: conv1, visualize: 1, n_output_planes: 16, ksize: 3, stride: 1}
   - {type: Convolution, name: conv2, visualize: 1, n_output_planes: 20, ksize: 3, stride: 1}
-  - {type: Dense, name: fc1, visualize: 0, n_output_planes: 128, activation: tanh}
-  - {type: SimpleRNN, name: rnn1, n_output_planes: 128, seq_length: 3, time_index: 1, activation: tanh}
-
-  - {predefined: crop1}
-  - {predefined: conv1}
-  - {predefined: conv2}
-  - {predefined: fc1}
-  - {predefined: rnn1, time_index: 2}
-
-  - {predefined: crop1}
-  - {predefined: conv1}
-  - {predefined: conv2}
-  - {predefined: fc1}
-  - {predefined: rnn1, time_index: 3}
+  - {type: Dense, name: fc3, visualize: 0, n_output_planes: 128, activation: tanh}
+  - {predefined: rnn1, time_index: 1}
+  - {type: RepeatVector, name: repeat1}
+  - {type: Merge, name: merge1, input_layers: "fc2,repeat1", n_output_planes: 130}
 
   # CLASSIFICATION NETWORK
   - {type: Dense, name: fc4, input_layer: rnn1, time_index: 1, n_output_planes: 10, activation: softmax}
-  - {type: Dense, name: fc5, input_layer: rnn1, time_index: 2, n_output_planes: 10, activation: softmax}
-  - {type: Dense, name: fc6, input_layer: rnn1, time_index: 3, n_output_planes: 10, activation: softmax}
-
-  # MERGE CLASSIFICATION RESULTS
-  - {type: Merge, name: multi1, input_layers: "fc4,fc5,fc6", n_output_planes: 30}
 
