@@ -360,7 +360,7 @@ void icvCNNDenseBackward(CvCNNLayer * _layer, int t,
   }
   cvScaleAdd( dE_dW, cvRealScalar(eta), weights, weights );
 
-  if (output_layer && dE_dY){cvReleaseMat(&dE_dY);dE_dY=0;}
+  // if (output_layer && dE_dY){cvReleaseMat(&dE_dY);dE_dY=0;}
   // cvReleaseMat(&dE_dY_T);
   if (layer->WX){ cvReleaseMat(&layer->WX);layer->WX=0; }
   __END__;

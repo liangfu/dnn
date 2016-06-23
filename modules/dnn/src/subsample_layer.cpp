@@ -27,38 +27,38 @@
 #include "cvimgwarp.h"
 
 /*-------------- functions for image cropping layer ------------------*/
-static void icvCNNImgWarpingRelease( CvCNNLayer** p_layer );
-static void icvCNNImgWarpingForward( CvCNNLayer* layer, const CvMat* X, CvMat* Y );
-static void icvCNNImgWarpingBackward( CvCNNLayer* layer, int t, const CvMat*, const CvMat* dE_dY, CvMat* dE_dX );
+static void icvCNNSpatialTransformRelease( CvCNNLayer** p_layer );
+static void icvCNNSpatialTransformForward( CvCNNLayer* layer, const CvMat* X, CvMat* Y );
+static void icvCNNSpatialTransformBackward( CvCNNLayer* layer, int t, const CvMat*, const CvMat* dE_dY, CvMat* dE_dX );
 
-CvCNNLayer * cvCreateCNNImgWarpingLayer( 
+CvCNNLayer * cvCreateCNNSpatialTransformLayer( 
     const int dtype, const char * name, const int visualize, 
     const CvCNNLayer * _image_layer,
     int n_output_planes, int output_height, int output_width, int seq_length, int time_index,
     float init_learn_rate, int update_rule
 )
 {
-  CvCNNImgWarpingLayer* layer = 0;
+  CvCNNSpatialTransformLayer* layer = 0;
   int n_inputs = _image_layer->n_input_planes;
   int n_outputs = n_output_planes;
   CvCNNInputLayer * input_layer = (CvCNNInputLayer*)_image_layer;
 
-  CV_FUNCNAME("cvCreateCNNImgWarpingLayer");
+  CV_FUNCNAME("cvCreateCNNSpatialTransformLayer");
   __BEGIN__;
 
   if ( init_learn_rate <= 0) { CV_ERROR( CV_StsBadArg, "Incorrect parameters" ); }
   CV_ASSERT(icvIsCNNInputLayer((CvCNNLayer*)_image_layer));
 
-  fprintf(stderr,"ImgWarpingLayer(%s): "
+  fprintf(stderr,"SpatialTransformLayer(%s): "
           "input (%d@%dx%d), output (%d@%dx%d), seq_length: (%d), time_index: (%d)\n", name,
           n_inputs,input_layer->input_height,input_layer->input_width,
           n_outputs,output_height,output_width,input_layer->seq_length,time_index);
   
-  CV_CALL(layer = (CvCNNImgWarpingLayer*)icvCreateCNNLayer( ICV_CNN_IMGWARPPING_LAYER, dtype, name, 
-      sizeof(CvCNNImgWarpingLayer), 
+  CV_CALL(layer = (CvCNNSpatialTransformLayer*)icvCreateCNNLayer( ICV_CNN_IMGWARPPING_LAYER, dtype, name, 
+      sizeof(CvCNNSpatialTransformLayer), 
       n_inputs, input_layer->input_height, input_layer->input_width, 
       n_outputs, output_height, output_width, init_learn_rate, update_rule,
-      icvCNNImgWarpingRelease, icvCNNImgWarpingForward, icvCNNImgWarpingBackward ));
+      icvCNNSpatialTransformRelease, icvCNNSpatialTransformForward, icvCNNSpatialTransformBackward ));
 
   layer->input_layers.push_back((CvCNNLayer*)_image_layer);
   layer->seq_length = seq_length;
@@ -75,12 +75,12 @@ CvCNNLayer * cvCreateCNNImgWarpingLayer(
 }
 
 
-static void icvCNNImgWarpingForward( CvCNNLayer * _layer, const CvMat* X, CvMat* Y )
+static void icvCNNSpatialTransformForward( CvCNNLayer * _layer, const CvMat* X, CvMat* Y )
 {
-  CV_FUNCNAME("icvCNNImgWarpingForward");
-  if ( !icvIsCNNImgWarpingLayer(_layer) ) { CV_ERROR( CV_StsBadArg, "Invalid layer" ); }
+  CV_FUNCNAME("icvCNNSpatialTransformForward");
+  if ( !icvIsCNNSpatialTransformLayer(_layer) ) { CV_ERROR( CV_StsBadArg, "Invalid layer" ); }
   __BEGIN__;
-  CvCNNImgWarpingLayer * layer = (CvCNNImgWarpingLayer*)_layer;
+  CvCNNSpatialTransformLayer * layer = (CvCNNSpatialTransformLayer*)_layer;
   const CvCNNInputLayer * input_layer = 
     (CvCNNInputLayer*)(layer->input_layers.size()>0?layer->input_layers[0]:0);
   const int time_index = layer->time_index;
@@ -149,9 +149,9 @@ static void icvCNNImgWarpingForward( CvCNNLayer * _layer, const CvMat* X, CvMat*
   __END__;
 }
 
-static void icvCNNImgWarpingBackward( CvCNNLayer* layer, int t, 
+static void icvCNNSpatialTransformBackward( CvCNNLayer* layer, int t, 
                                        const CvMat * X, const CvMat* dE_dY, CvMat* dE_dX )
 {
 }
 
-static void icvCNNImgWarpingRelease( CvCNNLayer** p_layer ){}
+static void icvCNNSpatialTransformRelease( CvCNNLayer** p_layer ){}

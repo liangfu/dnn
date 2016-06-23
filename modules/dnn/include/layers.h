@@ -147,7 +147,7 @@ int icvIsCNNDenseLayer( CvCNNLayer * layer ) {
 }
 
 CV_INLINE
-int icvIsCNNImgWarpingLayer( CvCNNLayer * layer ) {
+int icvIsCNNSpatialTransformLayer( CvCNNLayer * layer ) {
   return ( (icvIsCNNLayer( layer )) &&
            (((CvCNNLayer*) (layer))->flags & ~CV_MAGIC_MASK) == ICV_CNN_IMGWARPPING_LAYER );
 }
@@ -216,12 +216,12 @@ typedef struct CvCNNDenseLayer
   CvMat * WX;
 }CvCNNDenseLayer;
 
-typedef struct CvCNNImgWarpingLayer
+typedef struct CvCNNSpatialTransformLayer
 {
   CV_CNN_LAYER_FIELDS();
   // crop specified time index for next layer
   // int time_index;
-}CvCNNImgWarpingLayer;
+}CvCNNSpatialTransformLayer;
 
 typedef struct CvCNNSimpleRNNLayer
 {
@@ -305,7 +305,7 @@ CVAPI(CvCNNLayer*) cvCreateCNNDenseLayer(
     float init_learn_rate, int update_rule, const char * activation,
     CvMat * weights );
 
-CVAPI(CvCNNLayer*) cvCreateCNNImgWarpingLayer( 
+CVAPI(CvCNNLayer*) cvCreateCNNSpatialTransformLayer( 
     const int dtype, const char * name, const int visualize, 
     const CvCNNLayer * input_layer,
     int n_output_planes, int output_height, int output_width, int seq_length, int time_index,

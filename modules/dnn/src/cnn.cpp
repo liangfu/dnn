@@ -620,7 +620,8 @@ static void icvCNNetworkAddLayer( CvCNNetwork* network, CvCNNLayer* layer )
          layer->input_width != 1  || layer->output_width != 1 ) {
       CV_ERROR( CV_StsBadArg, "Invalid size of the new layer" );
     }
-  }else if ( icvIsCNNImgWarpingLayer(layer) ) {
+  }else if ( icvIsCNNSpatialTransformLayer(layer) ) {
+  }else if ( icvIsCNNInputLayer(layer) ) {
   }else if ( icvIsCNNMergeLayer(layer) ) {
     CV_ASSERT(((CvCNNMergeLayer*)layer)->input_layers.size()>=1);
     CV_ASSERT(((CvCNNMergeLayer*)layer)->input_layers.size()<=100);

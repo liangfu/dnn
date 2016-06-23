@@ -77,11 +77,11 @@ void CvNetwork::loadModel(string inFile)
           cvReleaseMat(&((CvCNNSimpleRNNLayer*)layer)->Whh);((CvCNNSimpleRNNLayer*)layer)->Whh=0;}
         if (((CvCNNSimpleRNNLayer*)layer)->Why){
           cvReleaseMat(&((CvCNNSimpleRNNLayer*)layer)->Why);((CvCNNSimpleRNNLayer*)layer)->Why=0;}
-      }else if (icvIsCNNImgWarpingLayer(predefined_layer)){
+      }else if (icvIsCNNSpatialTransformLayer(predefined_layer)){
         int time_index = cvReadIntByName(fs,node,"time_index",0);
-        CvCNNImgWarpingLayer * this_layer = (CvCNNImgWarpingLayer*)predefined_layer;
+        CvCNNSpatialTransformLayer * this_layer = (CvCNNSpatialTransformLayer*)predefined_layer;
         CvCNNLayer * input_layer = (this_layer->input_layers.size()>0?this_layer->input_layers[0]:0);
-        layer = cvCreateCNNImgWarpingLayer( 
+        layer = cvCreateCNNSpatialTransformLayer( 
           this_layer->dtype, this_layer->name, this_layer->visualize, input_layer, 
           this_layer->n_output_planes, this_layer->output_height, this_layer->output_width, 
           this_layer->seq_length, time_index, this_layer->init_learn_rate, this_layer->decay_type );
@@ -159,7 +159,7 @@ void CvNetwork::loadModel(string inFile)
         lr_init, decay_type, activation, NULL );
       if (input_layer){input_layer->output_layers.push_back(layer);}
       n_input_planes = n_output_planes; input_height = 1; input_width = 1;
-    }else if (!strcmp(type,"ImgWarping")){ // image cropping layer
+    }else if (!strcmp(type,"SpatialTransform")){ // image cropping layer
       const char * input_layer_name = cvReadStringByName(fs,node,"input_layer","");
       if (strlen(input_layer_name)<1){
         LOGE("input layer name is required while defining ImgCropping layer."); exit(-1);}
@@ -171,7 +171,7 @@ void CvNetwork::loadModel(string inFile)
       output_width = cvReadIntByName(fs,node,"output_width",output_width);
       const int seq_length = cvReadIntByName(fs,node,"seq_length",1);
       const int time_index = cvReadIntByName(fs,node,"time_index",0);
-      layer = cvCreateCNNImgWarpingLayer( dtype, name, visualize, input_layer, 
+      layer = cvCreateCNNSpatialTransformLayer( dtype, name, visualize, input_layer, 
         n_output_planes, output_height, output_width, seq_length, time_index, 
         lr_init, decay_type );
       n_input_planes = n_output_planes; // input_height = 1; input_width = 1;
@@ -189,9 +189,9 @@ void CvNetwork::loadModel(string inFile)
         lr_init, decay_type, activation, NULL, NULL, NULL );
       n_input_planes = n_output_planes; input_height = 1; input_width = 1;
     }else if (!strcmp(type,"Input")){ // data container layer
-      n_input_planes = cvReadIntByName(fs,node,"n_input_planes",1);
-      input_height   = cvReadIntByName(fs,node,"input_height",1);
-      input_width    = cvReadIntByName(fs,node,"input_width",1);
+      n_input_planes = cvReadIntByName(fs,node,"n_input_planes",n_input_planes);
+      input_height   = cvReadIntByName(fs,node,"input_height",input_height);
+      input_width    = cvReadIntByName(fs,node,"input_width",input_width);
       const int seq_length = cvReadIntByName(fs,node,"seq_length",1);
       layer = cvCreateCNNInputLayer( dtype, name, 
         n_input_planes, input_height, input_width, seq_length,
@@ -200,18 +200,20 @@ void CvNetwork::loadModel(string inFile)
       int n_input_layers = 1;
       const char * input_layer_names = cvReadStringByName(fs,node,"input_layers","");
       n_output_planes = cvReadIntByName(fs,node,"n_output_planes",1);
-      CvCNNLayer ** input_layers = new CvCNNLayer*[256];
+      static const int max_input_layers = 100;
+      CvCNNLayer ** input_layers = new CvCNNLayer*[max_input_layers];
       char * input_layer_name = strtok((char*)input_layer_names," ,");
       input_layers[0] = m_cnn->network->get_layer(m_cnn->network, input_layer_name);
       int output_plane_count = input_layers[0]->n_output_planes;
-      for (int ii=1; ii<256; ii++){
+      for (int ii=1; ii<max_input_layers; ii++){
         input_layer_name = strtok(0," ,");
         if (!input_layer_name){break;}else{n_input_layers++;}
         input_layers[ii] = m_cnn->network->get_layer(m_cnn->network, input_layer_name);
         output_plane_count += input_layers[ii]->n_output_planes;
       }
       if (output_plane_count!=n_output_planes){
-        CV_ERROR(CV_StsBadArg,"Invalid definition of `input_layers` in Merge layer.");
+        CV_ERROR(CV_StsBadArg,"Invalid definition of `input_layers` in Merge layer, "
+                 "`n_output_planes` should equal to sum of output_planes of input_layers.");
       }
       layer = cvCreateCNNMergeLayer( dtype, name, visualize, 
         n_input_layers, input_layers, n_output_planes, lr_init, decay_type );
