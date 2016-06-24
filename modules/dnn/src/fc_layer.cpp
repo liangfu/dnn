@@ -54,7 +54,7 @@ CvCNNLayer * cvCreateCNNDenseLayer(
   layer->dE_dW = 0;
   layer->seq_length = 1;
 
-  strcpy(layer->activation,activation);//CV_CNN_HYPERBOLIC;
+  strcpy(layer->activation,activation);
   layer->visualize = visualize;
   layer->input_layers.push_back((CvCNNLayer*)input_layer);
 
@@ -117,18 +117,9 @@ void icvCNNDenseForward( CvCNNLayer* _layer, const CvMat* _X, CvMat* _Y )
       n_inputs = input_layer->n_output_planes*input_layer->output_height*input_layer->output_width;
     }
     CvMat * Xsrc = input_layer->Y;
-    // CvMat * Xsrc_transpose = cvCreateMat(Xsrc->cols,Xsrc->rows,dtype);
-    // cvTranspose(Xsrc,Xsrc_transpose);
     if (layer->n_output_planes*seq_length==Y->cols){
       X = cvCreateMat(batch_size,n_inputs*seq_length,dtype);
       CV_ASSERT(n_inputs*seq_length*batch_size==Xsrc->rows*Xsrc->cols);
-      // CV_ASSERT(CV_MAT_TYPE(X->type)==CV_MAT_TYPE(Xsrc_transpose->type));
-      // if (CV_MAT_TYPE(X->type)==CV_32F){
-      //   memcpy(X->data.ptr,Xsrc_transpose->data.ptr,sizeof(float)*n_inputs*seq_length*batch_size);
-      // }else{
-      //   memcpy(X->data.ptr,Xsrc_transpose->data.ptr,sizeof(double)*n_inputs*seq_length*batch_size);
-      // }
-      // cvReleaseMat(&Xsrc_transpose);
       cvCopy(Xsrc,X);
       n_outputs=layer->n_output_planes/seq_length;
       CV_ASSERT(n_outputs*seq_length==layer->n_output_planes);
@@ -137,17 +128,13 @@ void icvCNNDenseForward( CvCNNLayer* _layer, const CvMat* _X, CvMat* _Y )
       CV_ASSERT(n_inputs*seq_length*batch_size==Xsrc->rows*Xsrc->cols);
       CvMat X_submat; 
       if (icvIsCNNSimpleRNNLayer(input_layer)){
-        // cvGetRow(Xsrc_transpose,&X_submat,((CvCNNSimpleRNNLayer*)input_layer)->time_index);
         cvGetRow(Xsrc,&X_submat,((CvCNNSimpleRNNLayer*)input_layer)->time_index);
       }else{
-        // cvGetRow(Xsrc_transpose,&X_submat,0);
         cvGetRow(Xsrc,&X_submat,0);
       }
-      // cvTranspose(&X_submat,X);
       cvCopy(&X_submat,X);
       seq_length=1;
     }
-    // cvReleaseMat(&Xsrc_transpose);
   }else if (icvIsCNNSimpleRNNLayer(layer->prev_layer) && n_inputs*seq_length!=X->rows){
     CvCNNSimpleRNNLayer * rnn_layer = ((CvCNNSimpleRNNLayer*)layer->prev_layer);
     CV_ASSERT(X->cols==rnn_layer->seq_length*n_inputs);
@@ -238,25 +225,15 @@ void icvCNNDenseBackward(CvCNNLayer * _layer, int t,
       n_inputs = input_layer->n_output_planes*input_layer->output_height*input_layer->output_width;
     }
     CvMat X_submat; CvMat * Xsrc = input_layer->Y;
-    // CvMat * Xsrc_transpose = cvCreateMat(Xsrc->cols,Xsrc->rows,dtype);
-    // cvTranspose(Xsrc,Xsrc_transpose);
     X = cvCreateMat(batch_size,n_inputs,dtype);
     CV_ASSERT(n_inputs*seq_length*batch_size==Xsrc->rows*Xsrc->cols);
-#if 0
-    cvGetRow(Xsrc_transpose,&X_submat,time_index);
-#else
-    // cvGetRows(Xsrc_transpose,&X_submat,batch_size*time_index,batch_size*(time_index+1));
     cvGetRows(Xsrc,&X_submat,batch_size*time_index,batch_size*(time_index+1));
-#endif
-    // cvTranspose(&X_submat,X); 
     cvCopy(&X_submat,X); 
-    // cvReleaseMat(&Xsrc_transpose);
     // initialize dE_dX in layer member variable
     if (!layer->dE_dX){
       layer->dE_dX = cvCreateMat(batch_size, n_inputs, dtype); 
     }else{CV_ASSERT(layer->dE_dX->rows==batch_size && layer->dE_dX->cols==n_inputs);}
     cvZero(layer->dE_dX);
-    // following variables are modified if input layer is given
     seq_length=1; dE_dX = layer->dE_dX;
   }else if (icvIsCNNSimpleRNNLayer(layer->prev_layer)){
     CvCNNSimpleRNNLayer * rnn_layer = (CvCNNSimpleRNNLayer*)layer->prev_layer;
@@ -271,7 +248,6 @@ void icvCNNDenseBackward(CvCNNLayer * _layer, int t,
         layer->dE_dX = cvCreateMat(batch_size, n_inputs, dtype); 
       }else{CV_ASSERT(layer->dE_dX->rows==batch_size && layer->dE_dX->cols==n_inputs);}
       cvZero(layer->dE_dX);
-      // following variables are modified if input layer is given
       dE_dX = layer->dE_dX;
     }
   }
@@ -300,8 +276,6 @@ void icvCNNDenseBackward(CvCNNLayer * _layer, int t,
     }
   }
 
-  // CvMat * dE_dY_T = cvCreateMat(n_outputs, batch_size, dtype);
-
   CV_ASSERT(X->rows == batch_size && X->cols == n_inputs);
   CV_ASSERT(dE_dY->rows == batch_size && dE_dY->cols == n_outputs );
   CV_ASSERT(dE_dX->rows == batch_size && dE_dX->cols == n_inputs );
@@ -312,17 +286,14 @@ void icvCNNDenseBackward(CvCNNLayer * _layer, int t,
   if (!strcmp(layer->activation,"none")){
   }else if (!strcmp(layer->activation,"tanh")){ 
     cvTanhDer(layer->WX,dE_dY_afder);
-    // cvTranspose(dE_dY,dE_dY_T);
     cvMul(dE_dY_afder,dE_dY,dE_dY_afder);
   }else if (!strcmp(layer->activation,"sigmoid")){ 
     cvSigmoidDer(layer->WX,dE_dY_afder);
-    // cvTranspose(dE_dY,dE_dY_T);
     cvMul(dE_dY_afder,dE_dY,dE_dY_afder);
   }else if (!strcmp(layer->activation,"softmax")){ 
     cvSoftmaxDer(layer->WX,(CvMat*)dE_dY,dE_dY_afder);
   }else if (!strcmp(layer->activation,"relu")){ 
     cvReLUDer(layer->WX,dE_dY_afder);
-    // cvTranspose(dE_dY,dE_dY_T);
     cvMul(dE_dY_afder,dE_dY,dE_dY_afder);
   }else{CV_ASSERT(false);}
 
@@ -361,7 +332,6 @@ void icvCNNDenseBackward(CvCNNLayer * _layer, int t,
   cvScaleAdd( dE_dW, cvRealScalar(eta), weights, weights );
 
   // if (output_layer && dE_dY){cvReleaseMat(&dE_dY);dE_dY=0;}
-  // cvReleaseMat(&dE_dY_T);
   if (layer->WX){ cvReleaseMat(&layer->WX);layer->WX=0; }
   __END__;
 

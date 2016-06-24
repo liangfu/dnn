@@ -11,9 +11,9 @@ layers:
   # - {type: Convolution, name: conv2, visualize: 1, n_output_planes: 16, ksize: 3, stride: 1}
   # - {type: Dense, name: fc3, visualize: 0, n_output_planes: 128, activation: tanh}
   # - {predefined: rnn1, time_index: 1}
-  # - {type: Input, name: input2}
+  - {type: Input, name: input2}
   # - {type: Merge, name: merge1, input_layers: "fc2,input2", n_output_planes: 130}
 
   # CLASSIFICATION NETWORK
-  - {type: Dense, name: fc4, input_layer: fc1, n_output_planes: 10, activation: softmax}
+  - {type: Dense, name: fc4, input_layer: input2, n_output_planes: 10, activation: softmax}
 

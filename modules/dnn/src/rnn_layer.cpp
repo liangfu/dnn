@@ -196,11 +196,7 @@ void icvCNNRecurrentForward( CvCNNLayer* _layer, const CvMat* X, CvMat * Y)
   CvMat WX_curr_reshaped = cvMat(batch_size, n_hiddens, CV_32F, WX_curr->data.ptr);
   CvMat WH_curr_reshaped = cvMat(batch_size, n_outputs, CV_32F, WH_curr->data.ptr);
   
-  // {CvMat * X_transpose = cvCreateMat(X->cols,X->rows,CV_32F);cvTranspose(X,X_transpose);
-  // cvPrintf(stderr,"%.0f ",X_transpose);cvReleaseMat(&X_transpose);}
-  
   // H_curr = Wxh * X_curr + ( Whh * H_prev + bh )
-  // WARNING: Whh_submat is square matrix !!! 
   CV_CALL(cvGEMM( X, Wxh, 1, 0, 1, WX, CV_GEMM_B_T ));
   CV_CALL(cvGEMM( &H_prev_reshaped, &Whh_submat, 1, hbias, 1, WH, CV_GEMM_B_T+CV_GEMM_C_T ));  
   cvAdd(WX,WH,&H_curr_reshaped);
@@ -220,7 +216,7 @@ void icvCNNRecurrentForward( CvCNNLayer* _layer, const CvMat* X, CvMat * Y)
   cvGEMM( &H_curr_reshaped, &Why_submat, 1, ybias, 1, Y_curr, CV_GEMM_B_T+CV_GEMM_C_T );
   cvCopy(Y_curr,&WH_curr_reshaped); 
   CV_ASSERT(cvCountNonZero(&WH_curr_reshaped)>1);
-  CV_ASSERT(cvCountNAN(Y_curr)<1); //  && cvSdv(Y_curr)<10.f
+  CV_ASSERT(cvCountNAN(Y_curr)<1);
   CV_CALL(cvCopy(WH_curr,&WH_curr_hdr));          // copy to layer->WH
 
   // apply activation to output
@@ -324,7 +320,6 @@ void icvCNNRecurrentBackward( CvCNNLayer* _layer, int t,
   int n_inputs = layer->n_input_planes;
   int n_outputs = layer->n_output_planes;
   int n_hiddens = layer->n_hiddens;
-  // int batch_size = X->cols;
   CvMat * dE_dY_afder = 0;
   CvMat * WX = 0, * WH = 0, * H_prev = 0, * H_curr = 0, * WX_curr = 0, * WH_curr = 0;
   CvMat * dE_dY_curr = 0, * dH_curr = 0, * dH_next = 0, * dH_raw = 0, 
@@ -388,8 +383,6 @@ void icvCNNRecurrentBackward( CvCNNLayer* _layer, int t,
   CV_CALL(cvGetCol(  layer_Why, &layer_ybiascol,      layer_Why->cols-1));
   CV_CALL(cvGetCols( dWhh, &dWhh_submat, 0, dWhh->cols-1));
   CV_CALL(cvGetCols( dWhy, &dWhy_submat, 0, dWhy->cols-1));
-  // CV_CALL(cvGetCol(  dWhh, &dhbiascol,      dWhh->cols-1));
-  // CV_CALL(cvGetCol(  dWhy, &dybiascol,      dWhy->cols-1));
   CV_CALL(cvGetCols( layer_dWhh, &layer_dWhh_submat, 0, layer_dWhh->cols-1));
   CV_CALL(cvGetCols( layer_dWhy, &layer_dWhy_submat, 0, layer_dWhy->cols-1));
   CV_CALL(cvGetCol(  layer_dWhh, &layer_dhbiascol,      layer_dWhh->cols-1));
@@ -439,7 +432,6 @@ void icvCNNRecurrentBackward( CvCNNLayer* _layer, int t,
     cvGetRow(dE_dY_curr,&dE_dY_curr_submat,bidx);
     cvCopy(&layer_dE_dY_submat, &dE_dY_curr_submat);
   }
-  // CV_ASSERT(cvSdv(dE_dY_curr)>1e-5);
 
   // output activation derivative
   if (!strcmp(layer->activation,"sigmoid")){
@@ -459,7 +451,6 @@ void icvCNNRecurrentBackward( CvCNNLayer* _layer, int t,
 
   // dWhy += dE_dY_afder * H_curr'
   CV_GEMM(dE_dY_afder,H_curr,1.f,0,1.f,&dWhy_submat,CV_GEMM_A_T);
-  // CV_ASSERT(cvSdv(H_curr)<.3f);
   if (time_index==seq_length-1){CV_ASSERT(cvSdv(&layer_dWhy_submat)<1e-5f);}
   else{CV_ASSERT(cvSdv(&layer_dWhy_submat)>1e-5f);}
   cvAdd(&layer_dWhy_submat,&dWhy_submat,&layer_dWhy_submat);
@@ -495,7 +486,6 @@ void icvCNNRecurrentBackward( CvCNNLayer* _layer, int t,
   CV_GEMM(dH_raw,H_prev,1.f,0,1.f,&dWhh_submat,CV_GEMM_A_T);
   cvScale(&dWhh_submat,&dWhh_submat,1./batch_size); // batch normalize
   cvAdd(&layer_dWhh_submat,&dWhh_submat,&layer_dWhh_submat);
-  // CV_ASSERT(cvSdv(&layer_dWhh_submat)>1e-5f);
 
   // gradient of hidden states, reserve it to continue backward pass to previous layers
   // dH_curr = Whh' * dH_raw, while (A'*B)=(B'*A)'
@@ -514,9 +504,7 @@ void icvCNNRecurrentBackward( CvCNNLayer* _layer, int t,
     for (int ii=0;ii<5;ii++){ 
       CV_ASSERT(cvCountNAN(dW[ii])<1 && cvCountNAN(W[ii])<1);
       cvMaxS(dW[ii],-5,dW[ii]); cvMinS(dW[ii],5,dW[ii]); 
-      // if (ii<3){CV_ASSERT(cvSdv(dW[ii])>1e-5f && cvSdv(dW[ii])<.2f);}
       cvScaleAdd( dW[ii], cvScalar(eta), W[ii], W[ii] );
-      // if (ii<3){CV_ASSERT(cvSdv(W[ii])>1e-5f && cvSdv(W[ii])<1.f);}
     }
   }
 
