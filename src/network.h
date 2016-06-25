@@ -4,8 +4,8 @@
     No Further Details.
 */
 
-#ifndef __CV_CNNETWORK_H__
-#define __CV_CNNETWORK_H__
+#ifndef __CV_DNNETWORK_H__
+#define __CV_DNNETWORK_H__
 
 #include "cv.h"
 #include "highgui.h"
@@ -19,10 +19,10 @@
 
 using namespace std;
 
-class CvCNNSolver
+class CvDNNSolver
 {
   float m_lr_init;
-  int m_decay_type;// = CV_CNN_LEARN_RATE_DECREASE_SQRT_INV;
+  int m_decay_type;// = CV_DNN_LEARN_RATE_DECREASE_SQRT_INV;
   int m_maxiter;
   int m_batch_size;
   float m_validate_ratio;
@@ -35,8 +35,8 @@ class CvCNNSolver
   char m_testing_filename[1<<10];
   char m_expected_filename[1<<10];
 public:
-  CvCNNSolver(char * solver_filename):
-    m_lr_init(.0001f),m_decay_type(CV_CNN_LEARN_RATE_DECREASE_SQRT_INV),
+  CvDNNSolver(char * solver_filename):
+    m_lr_init(.0001f),m_decay_type(CV_DNN_LEARN_RATE_DECREASE_SQRT_INV),
     m_maxiter(1),m_batch_size(1),m_validate_ratio(0.1f)
   {
     CvFileStorage * fs = cvOpenFileStorage(solver_filename,0,CV_STORAGE_READ);
@@ -51,13 +51,13 @@ public:
     strcpy(m_weights_filename,cvReadStringByName(fs,node,"weights_filename"));
     m_lr_init = cvReadRealByName(fs,node,"lr_init");
     // const char * decay_desc = cvReadStringByName(fs,node,"decay_type");
-    // if (!strcmp(decay_desc,"invsqrt")){m_decay_type=CV_CNN_LEARN_RATE_DECREASE_SQRT_INV;}
+    // if (!strcmp(decay_desc,"invsqrt")){m_decay_type=CV_DNN_LEARN_RATE_DECREASE_SQRT_INV;}
     m_maxiter = cvReadIntByName(fs,node,"maxiter");
     m_batch_size = cvReadIntByName(fs,node,"batch_size");
     m_validate_ratio = cvReadRealByName(fs,node,"validate_ratio");
     if (fs){cvReleaseFileStorage(&fs);fs=0;}
   }
-  ~CvCNNSolver(){}
+  ~CvDNNSolver(){}
 
   float lr_init(){return m_lr_init;}
   int decay_type(){return m_decay_type;}
@@ -78,18 +78,18 @@ public:
  *  \brief CvNetwork class
  *  see member functions for detail
  */
-class CvNetwork
+class Network
 {
-  CvCNNSolver * m_solver;
-  CvCNNStatModel * m_cnn ;	
+  CvDNNSolver * m_solver;
+  CvDNNStatModel * m_cnn ;	
 
 public:
-  CvNetwork();
+  Network();
   // CvNetwork(int height, int width, int node, int cNode,
   //        double alpha, int maxiter, int batch_size);
-  ~CvNetwork();
+  ~Network();
 
-  CvCNNSolver * solver(){return m_solver;}
+  CvDNNSolver * solver(){return m_solver;}
 
   /** \brief CNN models
    * a public variable.
@@ -105,7 +105,7 @@ public:
   
   void loadSolver(string inFile){
     if (m_solver){delete m_solver;m_solver=0;}
-    m_solver = new CvCNNSolver((char*)inFile.c_str());
+    m_solver = new CvDNNSolver((char*)inFile.c_str());
   }
 
   /** \brief Load CNN parameters from a file
@@ -130,5 +130,5 @@ public:
   float evaluate(CvMat * testing, CvMat * expected, int nsamples);
 };
 
-#endif // __CV_CNNETWORK_H__
+#endif // __CV_DNNETWORK_H__
 

@@ -48,7 +48,7 @@ void cvActivationGradCheck(CvActivationFunc actfunc, CvActivationFunc actfunc_de
   EXPECT_LT(cvNorm(rel_error,0,CV_L1)/(nr*nc), 0.001);
 }
 
-void cvCNNLayerGradCheck(CvCNNLayer * layer, CvMat * X, CvMat * Y, CvMat * target, 
+void cvCNNLayerGradCheck(CvDNNLayer * layer, CvMat * X, CvMat * Y, CvMat * target, 
                          CvMat * grad0, CvMat * grad1, int norm_type)
 {
   const float eps = 1e-4;
@@ -124,8 +124,8 @@ TEST(ML_ConvolutionLayer, gradcheck){
   const int ksize = 3;
   const int batch_size = 2;
   const int imsize_out = imsize-ksize+1;
-  CvCNNLayer * layer = 
-    cvCreateCNNConvolutionLayer(CV_32F,"conv1",0,0,0,n_inputs,imsize,imsize,n_outputs,ksize,.01,1,"tanh",0,0);
+  CvDNNLayer * layer = 
+    cvCreateConvolutionLayer(CV_32F,"conv1",0,0,0,n_inputs,imsize,imsize,n_outputs,ksize,.01,1,"tanh",0,0);
   CvMat * X = cvCreateMat(imsize*imsize*n_inputs,batch_size,CV_32F);
   CvMat * Y = cvCreateMat(imsize_out*imsize_out*n_outputs,batch_size,CV_32F);
   CvMat * target = cvCreateMat(imsize_out*imsize_out*n_outputs,batch_size,CV_32F);
@@ -177,9 +177,9 @@ TEST(ML_DenseLayer, gradcheck){
 void DenseLayerTest(int n_inputs, int n_outputs, int batch_size, 
                           int dtype, int norm_type, const char * actype)
 {
-  CvCNNLayer * layer = 
-    cvCreateCNNDenseLayer(dtype,"fc1",0,0,n_inputs,n_outputs,.01,1,actype,0);
-  ASSERT_TRUE(icvIsCNNDenseLayer(layer));
+  CvDNNLayer * layer = 
+    cvCreateDenseLayer(dtype,"fc1",0,0,n_inputs,n_outputs,.01,1,actype,0);
+  ASSERT_TRUE(icvIsDenseLayer(layer));
   CvMat * X = cvCreateMat(n_inputs,batch_size,dtype);
   CvMat * Y = cvCreateMat(n_outputs,batch_size,dtype);
   CvMat * target = cvCreateMat(Y->rows,Y->cols,dtype);

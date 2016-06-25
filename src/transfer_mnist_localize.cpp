@@ -94,7 +94,7 @@ int main(int argc, char * argv[])
     parser.printParams();return 0;
   }
   const char * solver_filename  = parser.get<string>("solver").c_str();
-  CvNetwork * cnn = new CvNetwork();
+  Network * cnn = new Network();
   cnn->loadSolver(solver_filename);
   const char * training_filename_xml = cnn->solver()->training_filename();
   const char * response_filename_xml = cnn->solver()->response_filename();

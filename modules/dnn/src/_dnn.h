@@ -41,42 +41,47 @@ void cvDebugGEMM(const char * src1name, const char * src2name, const char * src3
                  CvMat * src1, CvMat * src2, float alpha, CvMat * src3, float beta, CvMat * dst, int tABC);
     
 /*-------------- functions for input data layer -----------------------*/
-void icvCNNInputRelease( CvCNNLayer** p_layer );
-void icvCNNInputForward( CvCNNLayer* layer, const CvMat* X, CvMat* Y );
-void icvCNNInputBackward( CvCNNLayer* layer, int t, const CvMat*, const CvMat* dE_dY, CvMat* dE_dX );
+void icvCNNInputRelease( CvDNNLayer** p_layer );
+void icvCNNInputForward( CvDNNLayer* layer, const CvMat* X, CvMat* Y );
+void icvCNNInputBackward( CvDNNLayer* layer, int t, const CvMat*, const CvMat* dE_dY, CvMat* dE_dX );
+    
+/*-------------- functions for input data layer -----------------------*/
+void icvCNNRepeatVectorRelease( CvDNNLayer** p_layer );
+void icvCNNRepeatVectorForward( CvDNNLayer* layer, const CvMat* X, CvMat* Y );
+void icvCNNRepeatVectorBackward( CvDNNLayer* layer, int t, const CvMat*, const CvMat* dE_dY, CvMat* dE_dX );
 
 /*--------------- functions for convolutional layer --------------------*/
-void icvCNNConvolutionRelease( CvCNNLayer** p_layer );
-void icvCNNConvolutionForward( CvCNNLayer* layer, const CvMat* X, CvMat* Y );
-void icvCNNConvolutionBackward( CvCNNLayer*  layer, int t, const CvMat* X, const CvMat* dE_dY, CvMat* dE_dX );
+void icvCNNConvolutionRelease( CvDNNLayer** p_layer );
+void icvCNNConvolutionForward( CvDNNLayer* layer, const CvMat* X, CvMat* Y );
+void icvCNNConvolutionBackward( CvDNNLayer*  layer, int t, const CvMat* X, const CvMat* dE_dY, CvMat* dE_dX );
 
 /*------------------ functions for sub-sampling layer -------------------*/
-void icvCNNMaxPoolingRelease( CvCNNLayer** p_layer );
-void icvCNNMaxPoolingForward( CvCNNLayer* layer, const CvMat* X, CvMat* Y );
-void icvCNNMaxPoolingBackward( CvCNNLayer*  layer, int t, const CvMat* X, const CvMat* dE_dY, CvMat* dE_dX );
+void icvCNNMaxPoolingRelease( CvDNNLayer** p_layer );
+void icvCNNMaxPoolingForward( CvDNNLayer* layer, const CvMat* X, CvMat* Y );
+void icvCNNMaxPoolingBackward( CvDNNLayer*  layer, int t, const CvMat* X, const CvMat* dE_dY, CvMat* dE_dX );
 
 /*---------- functions for full connected layer -----------------------*/
-void icvCNNDenseRelease( CvCNNLayer** p_layer );
-void icvCNNDenseForward( CvCNNLayer* layer, const CvMat* X, CvMat* Y );
-void icvCNNDenseBackward( CvCNNLayer* layer, int t, const CvMat*, const CvMat* dE_dY, CvMat* dE_dX );
+void icvCNNDenseRelease( CvDNNLayer** p_layer );
+void icvCNNDenseForward( CvDNNLayer* layer, const CvMat* X, CvMat* Y );
+void icvCNNDenseBackward( CvDNNLayer* layer, int t, const CvMat*, const CvMat* dE_dY, CvMat* dE_dX );
 
 /*-------------- functions for recurrent layer -----------------------*/
-void icvCNNRecurrentRelease( CvCNNLayer** p_layer );
-void icvCNNRecurrentForward( CvCNNLayer* layer, const CvMat* X, CvMat* Y );
-void icvCNNRecurrentBackward( CvCNNLayer* layer, int t, const CvMat*, const CvMat* dE_dY, CvMat* dE_dX );
+void icvCNNRecurrentRelease( CvDNNLayer** p_layer );
+void icvCNNRecurrentForward( CvDNNLayer* layer, const CvMat* X, CvMat* Y );
+void icvCNNRecurrentBackward( CvDNNLayer* layer, int t, const CvMat*, const CvMat* dE_dY, CvMat* dE_dX );
 
 /*-------------- functions for multi target layer -----------------------*/
-void icvCNNMergeRelease( CvCNNLayer** p_layer );
-void icvCNNMergeForward( CvCNNLayer* layer, const CvMat* X, CvMat* Y );
-void icvCNNMergeBackward( CvCNNLayer* layer, int t, const CvMat*, const CvMat* dE_dY, CvMat* dE_dX );
+void icvCNNMergeRelease( CvDNNLayer** p_layer );
+void icvCNNMergeForward( CvDNNLayer* layer, const CvMat* X, CvMat* Y );
+void icvCNNMergeBackward( CvDNNLayer* layer, int t, const CvMat*, const CvMat* dE_dY, CvMat* dE_dX );
 
-CvCNNLayer* icvCreateCNNLayer( int layer_type, 
+CvDNNLayer* icvCreateLayer( int layer_type, 
     const int dtype, const char * name, int header_size,
     int n_input_planes, int input_height, int input_width,
     int n_output_planes, int output_height, int output_width,
     float init_learn_rate, int learn_rate_decrease_type,
-    CvCNNLayerRelease release, CvCNNLayerForward forward, CvCNNLayerBackward backward );
+    CvDNNLayerRelease release, CvDNNLayerForward forward, CvDNNLayerBackward backward );
 
-void icvVisualizeCNNLayer(CvCNNLayer * layer, const CvMat * Y);
+void icvVisualizeCNNLayer(CvDNNLayer * layer, const CvMat * Y);
 
 #endif // __DNN_H__

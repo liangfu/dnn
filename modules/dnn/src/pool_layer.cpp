@@ -26,16 +26,16 @@
 #include "_dnn.h" 
 
 /*************************************************************************/
-ML_IMPL CvCNNLayer* cvCreateCNNMaxPoolingLayer( 
+ML_IMPL CvDNNLayer* cvCreateMaxPoolingLayer( 
     const int dtype, const char * name, const int visualize,
     int n_input_planes, int input_height, int input_width,
     int sub_samp_scale, 
     float init_learn_rate, int learn_rate_decrease_type, CvMat* weights )
 
 {
-    CvCNNMaxPoolingLayer* layer = 0;
+    CvDNNMaxPoolingLayer* layer = 0;
 
-    CV_FUNCNAME("cvCreateCNNMaxPoolingLayer");
+    CV_FUNCNAME("cvCreateMaxPoolingLayer");
     __BEGIN__;
 
     const int output_height   = input_height/sub_samp_scale;
@@ -47,8 +47,8 @@ ML_IMPL CvCNNLayer* cvCreateCNNMaxPoolingLayer(
     if ( sub_samp_scale < 1 )
         CV_ERROR( CV_StsBadArg, "Incorrect parameters" );
 
-    CV_CALL(layer = (CvCNNMaxPoolingLayer*)icvCreateCNNLayer( 
-        ICV_CNN_MAXPOOLLING_LAYER, dtype, name, sizeof(CvCNNMaxPoolingLayer), 
+    CV_CALL(layer = (CvDNNMaxPoolingLayer*)icvCreateLayer( 
+        ICV_DNN_MAXPOOLLING_LAYER, dtype, name, sizeof(CvDNNMaxPoolingLayer), 
         n_input_planes, input_height, input_width,
         n_output_planes, output_height, output_width,
         init_learn_rate, learn_rate_decrease_type,
@@ -90,19 +90,19 @@ ML_IMPL CvCNNLayer* cvCreateCNNMaxPoolingLayer(
         cvFree( &layer );
     }
 
-    return (CvCNNLayer*)layer;
+    return (CvDNNLayer*)layer;
 }
 
-void icvCNNMaxPoolingForward( CvCNNLayer* _layer, const CvMat* X, CvMat* Y )
+void icvCNNMaxPoolingForward( CvDNNLayer* _layer, const CvMat* X, CvMat* Y )
 {
   CV_FUNCNAME("icvCNNMaxPoolingForward");
 
-  if ( !icvIsCNNMaxPoolingLayer(_layer) )
+  if ( !icvIsMaxPoolingLayer(_layer) )
       CV_ERROR( CV_StsBadArg, "Invalid layer" );
 
   __BEGIN__;
 
-  CvCNNMaxPoolingLayer * layer = (CvCNNMaxPoolingLayer*) _layer;
+  CvDNNMaxPoolingLayer * layer = (CvDNNMaxPoolingLayer*) _layer;
   // CvMat * Xt = 0;
   // CvMat * Yt = 0;
 
@@ -169,13 +169,13 @@ void icvCNNMaxPoolingForward( CvCNNLayer* _layer, const CvMat* X, CvMat* Y )
   // cvReleaseMat(&Xt);
   // cvReleaseMat(&Yt);
   if (layer->Y){cvCopy(Y,layer->Y);}else{layer->Y=cvCloneMat(Y);}
-  if (layer->visualize){icvVisualizeCNNLayer((CvCNNLayer*)layer,Y);}
+  if (layer->visualize){icvVisualizeCNNLayer((CvDNNLayer*)layer,Y);}
 
   __END__;
 }
 
 void icvCNNMaxPoolingBackward(
-    CvCNNLayer* _layer, int t, const CvMat* X, const CvMat* dE_dY, CvMat* dE_dX )
+    CvDNNLayer* _layer, int t, const CvMat* X, const CvMat* dE_dY, CvMat* dE_dX )
 {
   // derivative of activation function
   CvMat* dY_dX_elems = 0; // elements of matrix dY_dX
@@ -184,12 +184,12 @@ void icvCNNMaxPoolingBackward(
 
   CV_FUNCNAME("icvCNNMaxPoolingBackward");
 
-  if ( !icvIsCNNMaxPoolingLayer(_layer) ) {
+  if ( !icvIsMaxPoolingLayer(_layer) ) {
     CV_ERROR( CV_StsBadArg, "Invalid layer" );
   }
 
   __BEGIN__;
-  CvCNNMaxPoolingLayer* layer = (CvCNNMaxPoolingLayer*) _layer;
+  CvDNNMaxPoolingLayer* layer = (CvDNNMaxPoolingLayer*) _layer;
 
   const int Xwidth  = layer->input_width;
   const int Xheight = layer->input_height;
@@ -241,21 +241,21 @@ void icvCNNMaxPoolingBackward(
   if (dE_dW      ){cvReleaseMat( &dE_dW       );dE_dW      =0;}
 }
 
-void icvCNNMaxPoolingRelease( CvCNNLayer** p_layer )
+void icvCNNMaxPoolingRelease( CvDNNLayer** p_layer )
 {
   CV_FUNCNAME("icvCNNMaxPoolingRelease");
   __BEGIN__;
 
-  CvCNNMaxPoolingLayer* layer = 0;
+  CvDNNMaxPoolingLayer* layer = 0;
 
   if ( !p_layer )
       CV_ERROR( CV_StsNullPtr, "Null double pointer" );
 
-  layer = *(CvCNNMaxPoolingLayer**)p_layer;
+  layer = *(CvDNNMaxPoolingLayer**)p_layer;
 
   if ( !layer )
       return;
-  if ( !icvIsCNNMaxPoolingLayer((CvCNNLayer*)layer) )
+  if ( !icvIsMaxPoolingLayer((CvDNNLayer*)layer) )
       CV_ERROR( CV_StsBadArg, "Invalid layer" );
 
   if (layer->mask      ){cvReleaseMat( &layer->mask       ); layer->mask      =0;}

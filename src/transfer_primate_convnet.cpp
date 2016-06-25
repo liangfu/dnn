@@ -26,7 +26,7 @@ int main(int argc, char * argv[])
   const int display_help = parser.get<bool>("help");
   if (display_help){parser.printParams();return 0;}
   const char * solver_filename  = parser.get<string>("solver").c_str();
-  CvNetwork * cnn = new CvNetwork();
+  Network * cnn = new Network();
   cnn->loadSolver(solver_filename);
   const char * response_filename = "data/primate/train.yml";
   const char * expected_filename = "data/primate/test.yml";

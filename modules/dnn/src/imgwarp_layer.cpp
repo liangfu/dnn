@@ -27,40 +27,40 @@
 #include "cvimgwarp.h"
 
 /*-------------- functions for image cropping layer ------------------*/
-static void icvCNNSpatialTransformRelease( CvCNNLayer** p_layer );
-static void icvCNNSpatialTransformForward( CvCNNLayer* layer, const CvMat* X, CvMat* Y );
-static void icvCNNSpatialTransformBackward( CvCNNLayer* layer, int t, const CvMat*, const CvMat* dE_dY, CvMat* dE_dX );
+static void icvCNNSpatialTransformRelease( CvDNNLayer** p_layer );
+static void icvCNNSpatialTransformForward( CvDNNLayer* layer, const CvMat* X, CvMat* Y );
+static void icvCNNSpatialTransformBackward( CvDNNLayer* layer, int t, const CvMat*, const CvMat* dE_dY, CvMat* dE_dX );
 
-CvCNNLayer * cvCreateCNNSpatialTransformLayer( 
+CvDNNLayer * cvCreateSpatialTransformLayer( 
     const int dtype, const char * name, const int visualize, 
-    const CvCNNLayer * _image_layer,
+    const CvDNNLayer * _image_layer,
     int n_output_planes, int output_height, int output_width, int seq_length, int time_index,
     float init_learn_rate, int update_rule
 )
 {
-  CvCNNSpatialTransformLayer* layer = 0;
+  CvDNNSpatialTransformLayer* layer = 0;
   int n_inputs = _image_layer->n_input_planes;
   int n_outputs = n_output_planes;
-  CvCNNInputLayer * input_layer = (CvCNNInputLayer*)_image_layer;
+  CvDNNInputLayer * input_layer = (CvDNNInputLayer*)_image_layer;
 
-  CV_FUNCNAME("cvCreateCNNSpatialTransformLayer");
+  CV_FUNCNAME("cvCreateSpatialTransformLayer");
   __BEGIN__;
 
   if ( init_learn_rate <= 0) { CV_ERROR( CV_StsBadArg, "Incorrect parameters" ); }
-  CV_ASSERT(icvIsCNNInputLayer((CvCNNLayer*)_image_layer));
+  CV_ASSERT(icvIsInputLayer((CvDNNLayer*)_image_layer));
 
   fprintf(stderr,"SpatialTransformLayer(%s): "
           "input (%d@%dx%d), output (%d@%dx%d), seq_length: (%d), time_index: (%d)\n", name,
           n_inputs,input_layer->input_height,input_layer->input_width,
           n_outputs,output_height,output_width,input_layer->seq_length,time_index);
   
-  CV_CALL(layer = (CvCNNSpatialTransformLayer*)icvCreateCNNLayer( ICV_CNN_IMGWARPPING_LAYER, dtype, name, 
-      sizeof(CvCNNSpatialTransformLayer), 
+  CV_CALL(layer = (CvDNNSpatialTransformLayer*)icvCreateLayer( ICV_DNN_IMGWARPPING_LAYER, dtype, name, 
+      sizeof(CvDNNSpatialTransformLayer), 
       n_inputs, input_layer->input_height, input_layer->input_width, 
       n_outputs, output_height, output_width, init_learn_rate, update_rule,
       icvCNNSpatialTransformRelease, icvCNNSpatialTransformForward, icvCNNSpatialTransformBackward ));
 
-  layer->input_layers.push_back((CvCNNLayer*)_image_layer);
+  layer->input_layers.push_back((CvDNNLayer*)_image_layer);
   layer->seq_length = seq_length;
   layer->time_index = time_index;
   layer->visualize = visualize;
@@ -71,18 +71,18 @@ CvCNNLayer * cvCreateCNNSpatialTransformLayer(
     cvFree( &layer );
   }
 
-  return (CvCNNLayer*)layer;
+  return (CvDNNLayer*)layer;
 }
 
 
-static void icvCNNSpatialTransformForward( CvCNNLayer * _layer, const CvMat* X, CvMat* Y )
+static void icvCNNSpatialTransformForward( CvDNNLayer * _layer, const CvMat* X, CvMat* Y )
 {
   CV_FUNCNAME("icvCNNSpatialTransformForward");
-  if ( !icvIsCNNSpatialTransformLayer(_layer) ) { CV_ERROR( CV_StsBadArg, "Invalid layer" ); }
+  if ( !icvIsSpatialTransformLayer(_layer) ) { CV_ERROR( CV_StsBadArg, "Invalid layer" ); }
   __BEGIN__;
-  CvCNNSpatialTransformLayer * layer = (CvCNNSpatialTransformLayer*)_layer;
-  const CvCNNInputLayer * input_layer = 
-    (CvCNNInputLayer*)(layer->input_layers.size()>0?layer->input_layers[0]:0);
+  CvDNNSpatialTransformLayer * layer = (CvDNNSpatialTransformLayer*)_layer;
+  const CvDNNInputLayer * input_layer = 
+    (CvDNNInputLayer*)(layer->input_layers.size()>0?layer->input_layers[0]:0);
   const int time_index = layer->time_index;
   const int input_seqlen = input_layer->seq_length;
   const int input_height = layer->input_height;
@@ -145,13 +145,13 @@ static void icvCNNSpatialTransformForward( CvCNNLayer * _layer, const CvMat* X, 
     CV_Error(CV_StsBadArg,"invalid layer definition.");
   }
   if (layer->Y){cvCopy(Y,layer->Y);}else{layer->Y=cvCloneMat(Y);}
-  if (layer->visualize){ icvVisualizeCNNLayer((CvCNNLayer*)layer, Y); }
+  if (layer->visualize){ icvVisualizeCNNLayer((CvDNNLayer*)layer, Y); }
   __END__;
 }
 
-static void icvCNNSpatialTransformBackward( CvCNNLayer* layer, int t, 
+static void icvCNNSpatialTransformBackward( CvDNNLayer* layer, int t, 
                                        const CvMat * X, const CvMat* dE_dY, CvMat* dE_dX )
 {
 }
 
-static void icvCNNSpatialTransformRelease( CvCNNLayer** p_layer ){}
+static void icvCNNSpatialTransformRelease( CvDNNLayer** p_layer ){}

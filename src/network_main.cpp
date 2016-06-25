@@ -43,7 +43,7 @@ int main(int argc, char * argv[])
     LOGE("solver filename is empty."); exit(-1);
   }
 
-  CvNetwork * cnn = new CvNetwork();
+  Network * cnn = new Network();
   cnn->loadSolver(solver_filename);
   cnn->loadModel(cnn->solver()->model_filename());
 

@@ -26,17 +26,17 @@
 #include "_dnn.h"
 
 /*************************************************************************/
-ML_IMPL CvCNNLayer* cvCreateCNNConvolutionLayer( 
-    const int dtype, const char * name, const CvCNNLayer * ref_layer,
-    const int visualize, const CvCNNLayer * input_layer, 
+ML_IMPL CvDNNLayer* cvCreateConvolutionLayer( 
+    const int dtype, const char * name, const CvDNNLayer * ref_layer,
+    const int visualize, const CvDNNLayer * input_layer, 
     int n_input_planes, int input_height, int input_width, int n_output_planes, int K,
     float init_learn_rate, int update_rule, const char * activation,
     CvMat* connect_mask, CvMat* weights )
 
 {
-  CvCNNConvolutionLayer* layer = 0;
+  CvDNNConvolutionLayer* layer = 0;
 
-  CV_FUNCNAME("cvCreateCNNConvolutionLayer");
+  CV_FUNCNAME("cvCreateConvolutionLayer");
   __BEGIN__;
 
   const int output_height = input_height - K + 1;
@@ -49,8 +49,8 @@ ML_IMPL CvCNNLayer* cvCreateCNNConvolutionLayer(
     CV_ERROR( CV_StsBadArg, "Incorrect parameters" );
   }
 
-  CV_CALL(layer = (CvCNNConvolutionLayer*)icvCreateCNNLayer( 
-    ICV_CNN_CONVOLUTION_LAYER, dtype, name, sizeof(CvCNNConvolutionLayer), 
+  CV_CALL(layer = (CvDNNConvolutionLayer*)icvCreateLayer( 
+    ICV_DNN_CONVOLUTION_LAYER, dtype, name, sizeof(CvDNNConvolutionLayer), 
     n_input_planes, input_height, input_width,
     n_output_planes, output_height, output_width,
     init_learn_rate, update_rule, 
@@ -61,8 +61,8 @@ ML_IMPL CvCNNLayer* cvCreateCNNConvolutionLayer(
   layer->K = K;
   layer->seq_length = 1;
   layer->visualize = visualize;
-  layer->ref_layer = (CvCNNLayer*)ref_layer;
-  if (input_layer){layer->input_layers.push_back((CvCNNLayer*)input_layer);}
+  layer->ref_layer = (CvDNNLayer*)ref_layer;
+  if (input_layer){layer->input_layers.push_back((CvDNNLayer*)input_layer);}
   CV_CALL(layer->weights = cvCreateMat( n_output_planes, K*K+1, CV_32FC1 ));
   CV_CALL(layer->connect_mask = cvCreateMat( n_output_planes, n_input_planes, CV_8UC1));
 
@@ -109,19 +109,19 @@ ML_IMPL CvCNNLayer* cvCreateCNNConvolutionLayer(
     cvFree( &layer );
   }
 
-  return (CvCNNLayer*)layer;
+  return (CvDNNLayer*)layer;
 }
 
-void icvCNNConvolutionForward( CvCNNLayer* _layer, const CvMat* X, CvMat* Y )
+void icvCNNConvolutionForward( CvDNNLayer* _layer, const CvMat* X, CvMat* Y )
 {
   CV_FUNCNAME("icvCNNConvolutionForward");
 
-  if (!icvIsCNNConvolutionLayer(_layer)){CV_ERROR( CV_StsBadArg, "Invalid layer" );}
+  if (!icvIsConvolutionLayer(_layer)){CV_ERROR( CV_StsBadArg, "Invalid layer" );}
 
   __BEGIN__;
 
-  CvCNNConvolutionLayer* layer = (CvCNNConvolutionLayer*) _layer;
-  CvCNNLayer * ref_layer = layer->ref_layer;
+  CvDNNConvolutionLayer* layer = (CvDNNConvolutionLayer*) _layer;
+  CvDNNLayer * ref_layer = layer->ref_layer;
   CvMat * weights = ref_layer?ref_layer->weights:layer->weights;
   
   const int K = layer->K;
@@ -205,7 +205,7 @@ void icvCNNConvolutionForward( CvCNNLayer* _layer, const CvMat* X, CvMat* Y )
   // cvReleaseMat(&Yt);
   
   if (layer->Y){cvCopy(Y,layer->Y);}else{layer->Y=cvCloneMat(Y);}
-  if (layer->visualize){icvVisualizeCNNLayer((CvCNNLayer*)layer,Y);}
+  if (layer->visualize){icvVisualizeCNNLayer((CvDNNLayer*)layer,Y);}
 
   __END__;
 }
@@ -219,16 +219,16 @@ void icvCNNConvolutionForward( CvCNNLayer* _layer, const CvMat* X, CvMat* Y )
    loss function with respect to the planes components
    of the current layer. */
 void icvCNNConvolutionBackward(
-    CvCNNLayer * _layer, int t, const CvMat* X, const CvMat* _dE_dY, CvMat* dE_dX )
+    CvDNNLayer * _layer, int t, const CvMat* X, const CvMat* _dE_dY, CvMat* dE_dX )
 {
   CV_FUNCNAME("icvCNNConvolutionBackward");
-  if ( !icvIsCNNConvolutionLayer(_layer) ) { CV_ERROR( CV_StsBadArg, "Invalid layer" ); }
+  if ( !icvIsConvolutionLayer(_layer) ) { CV_ERROR( CV_StsBadArg, "Invalid layer" ); }
 
   __BEGIN__;
 
-  CvCNNConvolutionLayer * layer = (CvCNNConvolutionLayer*) _layer;
+  CvDNNConvolutionLayer * layer = (CvDNNConvolutionLayer*) _layer;
   int n_output_layers = layer->output_layers.size();
-  CvCNNLayer * ref_layer = layer->ref_layer;
+  CvDNNLayer * ref_layer = layer->ref_layer;
   CvMat * weights = ref_layer?ref_layer->weights:layer->weights;
   
   const int K = layer->K;
@@ -253,8 +253,8 @@ void icvCNNConvolutionBackward(
   if (n_output_layers){
     dE_dY = cvCreateMat(batch_size,Y_plane_size*n_Y_planes,CV_32F); cvZero(dE_dY);
     for (int li=0;li<n_output_layers;li++){
-      CvCNNLayer * output_layer = layer->output_layers[li];
-      if (icvIsCNNDenseLayer(output_layer)){
+      CvDNNLayer * output_layer = layer->output_layers[li];
+      if (icvIsDenseLayer(output_layer)){
         cvAddWeighted(dE_dY,1.f,output_layer->dE_dX,1.f/float(n_output_layers),0.f,dE_dY);
       }
     } // average loss from all task
@@ -338,9 +338,9 @@ void icvCNNConvolutionBackward(
   {
     CvMat dE_dW_mat;
     // float eta;
-    // if ( layer->decay_type == CV_CNN_LEARN_RATE_DECREASE_LOG_INV ) {
+    // if ( layer->decay_type == CV_DNN_LEARN_RATE_DECREASE_LOG_INV ) {
     //   eta = -layer->init_learn_rate/logf(1+(float)t);
-    // } else if ( layer->decay_type == CV_CNN_LEARN_RATE_DECREASE_SQRT_INV ) {
+    // } else if ( layer->decay_type == CV_DNN_LEARN_RATE_DECREASE_SQRT_INV ) {
     //   eta = -layer->init_learn_rate/sqrtf((float)t);
     // } else {
     //   eta = -layer->init_learn_rate/(float)t;
@@ -348,9 +348,9 @@ void icvCNNConvolutionBackward(
     float eta = -layer->init_learn_rate*cvInvSqrt((float)t);
     cvReshape( dE_dW, &dE_dW_mat, 0, weights->rows );
     if (!layer->dE_dW){
-      ((CvCNNLayer*)layer)->dE_dW = cvCloneMat(&dE_dW_mat);
+      ((CvDNNLayer*)layer)->dE_dW = cvCloneMat(&dE_dW_mat);
     }else{
-      cvCopy(&dE_dW_mat,((CvCNNLayer*)layer)->dE_dW);
+      cvCopy(&dE_dW_mat,((CvDNNLayer*)layer)->dE_dW);
     }
     cvScaleAdd( &dE_dW_mat, cvRealScalar(eta), weights, weights );
   }
@@ -364,21 +364,21 @@ void icvCNNConvolutionBackward(
   __END__;
 }
 
-void icvCNNConvolutionRelease( CvCNNLayer** p_layer )
+void icvCNNConvolutionRelease( CvDNNLayer** p_layer )
 {
   CV_FUNCNAME("icvCNNConvolutionRelease");
   __BEGIN__;
 
-  CvCNNConvolutionLayer* layer = 0;
+  CvDNNConvolutionLayer* layer = 0;
 
   if ( !p_layer )
       CV_ERROR( CV_StsNullPtr, "Null double pointer" );
 
-  layer = *(CvCNNConvolutionLayer**)p_layer;
+  layer = *(CvDNNConvolutionLayer**)p_layer;
 
   if ( !layer )
       return;
-  if ( !icvIsCNNConvolutionLayer((CvCNNLayer*)layer) )
+  if ( !icvIsConvolutionLayer((CvDNNLayer*)layer) )
       CV_ERROR( CV_StsBadArg, "Invalid layer" );
 
   if (layer->weights){cvReleaseMat( &layer->weights );layer->weights=0;}

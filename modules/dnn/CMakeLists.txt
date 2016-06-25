@@ -6,28 +6,24 @@ INCLUDE_DIRECTORIES(./include ../cxcore/include
   ../cvutil/include ../cv/include ../highgui/include ../ts/include)
 
 add_library(dnn SHARED
-	src/cnn.cpp
-	# src/inner_functions.cpp
-	src/combine_layer.cpp
+	src/dnn.cpp
+	src/merge_layer.cpp
 	src/conv_layer.cpp
 	src/fc_layer.cpp
 	src/input_layer.cpp
+	src/repeat_layer.cpp
 	src/pool_layer.cpp
 	src/relu_layer.cpp
 	src/rnn_layer.cpp
 	src/sigmoid_layer.cpp
 	src/softmax_layer.cpp
-	src/subsample_layer.cpp
+	src/imgwarp_layer.cpp
+	src/tdist_layer.cpp
 	src/utils.cpp
 	)
 
 add_executable(test_dnn
-	test/test_cnn.cpp
-	# test/test_mltests.cpp
-	# test/test_emknearestkmeans.cpp
-	# test/test_mltests2.cpp
-	# test/test_gbttest.cpp
-	# test/test_save_load.cpp
+	test/test_dnn.cpp
 	test/test_main.cpp
 	)
 target_link_libraries(test_dnn cxcore ts dnn)

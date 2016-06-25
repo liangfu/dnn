@@ -25,15 +25,15 @@
  
 #include "_dnn.h"
 
-ML_IMPL CvCNNLayer* cvCreateCNNSimpleRNNLayer( 
-    const int dtype, const char * name, const CvCNNLayer * ref_layer, 
+ML_IMPL CvDNNLayer* cvCreateSimpleRNNLayer( 
+    const int dtype, const char * name, const CvDNNLayer * ref_layer, 
     int n_inputs, int n_outputs, int n_hiddens, int seq_length, int time_index, 
     float init_learn_rate, int update_rule, const char * activation, 
     CvMat * Wxh, CvMat * Whh, CvMat * Why )
 {
-  CvCNNSimpleRNNLayer* layer = 0;
+  CvDNNSimpleRNNLayer* layer = 0;
 
-  CV_FUNCNAME("cvCreateCNNSimpleRNNLayer");
+  CV_FUNCNAME("cvCreateSimpleRNNLayer");
   __BEGIN__;
 
   if ( init_learn_rate <= 0) { CV_ERROR( CV_StsBadArg, "Incorrect parameters" ); }
@@ -42,12 +42,12 @@ ML_IMPL CvCNNLayer* cvCreateCNNSimpleRNNLayer(
           "seq_length(%d), time_index(%d)\n", name,
           n_inputs, n_hiddens, n_outputs, seq_length, time_index);
   
-  CV_CALL(layer = (CvCNNSimpleRNNLayer*)icvCreateCNNLayer( ICV_CNN_RECURRENTNN_LAYER, dtype, name, 
-      sizeof(CvCNNSimpleRNNLayer), n_inputs, 1, 1, n_outputs, 1, 1,
+  CV_CALL(layer = (CvDNNSimpleRNNLayer*)icvCreateLayer( ICV_DNN_RECURRENTNN_LAYER, dtype, name, 
+      sizeof(CvDNNSimpleRNNLayer), n_inputs, 1, 1, n_outputs, 1, 1,
       init_learn_rate, update_rule,
       icvCNNRecurrentRelease, icvCNNRecurrentForward, icvCNNRecurrentBackward ));
 
-  layer->ref_layer = (CvCNNLayer*)ref_layer;
+  layer->ref_layer = (CvDNNLayer*)ref_layer;
   layer->weights = 0; // we don't use this !
   layer->time_index = time_index;
   layer->seq_length = seq_length;
@@ -95,22 +95,22 @@ ML_IMPL CvCNNLayer* cvCreateCNNSimpleRNNLayer(
     cvFree( &layer );
   }
 
-  return (CvCNNLayer*)layer;
+  return (CvDNNLayer*)layer;
 }
 
-void icvCNNRecurrentRelease( CvCNNLayer** p_layer )
+void icvCNNRecurrentRelease( CvDNNLayer** p_layer )
 {
   CV_FUNCNAME("icvCNNRecurrentRelease");
   __BEGIN__;
 
-  CvCNNSimpleRNNLayer* layer = 0;
+  CvDNNSimpleRNNLayer* layer = 0;
 
   if ( !p_layer ) { CV_ERROR( CV_StsNullPtr, "Null double pointer" ); }
 
-  layer = *(CvCNNSimpleRNNLayer**)p_layer;
+  layer = *(CvDNNSimpleRNNLayer**)p_layer;
 
   if ( !layer ) { return; }
-  if ( !icvIsCNNSimpleRNNLayer((CvCNNLayer*)layer) ) { 
+  if ( !icvIsSimpleRNNLayer((CvDNNLayer*)layer) ) { 
     CV_ERROR( CV_StsBadArg, "Invalid layer" ); 
   }
 
@@ -124,14 +124,14 @@ void icvCNNRecurrentRelease( CvCNNLayer** p_layer )
 }
 
 /****************************************************************************************/
-void icvCNNRecurrentForward( CvCNNLayer* _layer, const CvMat* X, CvMat * Y) 
+void icvCNNRecurrentForward( CvDNNLayer* _layer, const CvMat* X, CvMat * Y) 
 {
   CV_FUNCNAME("icvCNNRecurrentForward");
-  if ( !icvIsCNNSimpleRNNLayer(_layer) ) { CV_ERROR( CV_StsBadArg, "Invalid layer" ); }
+  if ( !icvIsSimpleRNNLayer(_layer) ) { CV_ERROR( CV_StsBadArg, "Invalid layer" ); }
   __BEGIN__;
 
-  CvCNNSimpleRNNLayer * layer = (CvCNNSimpleRNNLayer*)_layer;
-  CvCNNSimpleRNNLayer * ref_layer = (CvCNNSimpleRNNLayer*)layer->ref_layer;
+  CvDNNSimpleRNNLayer * layer = (CvDNNSimpleRNNLayer*)_layer;
+  CvDNNSimpleRNNLayer * ref_layer = (CvDNNSimpleRNNLayer*)layer->ref_layer;
   CvMat Wxh_submat, Whh_submat, hbiascol, Why_submat, ybiascol;
   int time_index = layer->time_index;
   int seq_length = layer->seq_length;
@@ -273,16 +273,16 @@ void icvCNNRecurrentForward( CvCNNLayer* _layer, const CvMat* X, CvMat * Y)
    Input parameter <dE_dY> is the partial derivative of the
    loss function with respect to the planes components
    of the current layer. */
-void icvCNNRecurrentBackward( CvCNNLayer* _layer, int t,
+void icvCNNRecurrentBackward( CvDNNLayer* _layer, int t,
                                      const CvMat * X, const CvMat * _dE_dY, CvMat * dE_dX )
 {
   CV_FUNCNAME( "icvCNNRecurrentBackward" );
-  if ( !icvIsCNNSimpleRNNLayer(_layer) ) { CV_ERROR( CV_StsBadArg, "Invalid layer" ); }
+  if ( !icvIsSimpleRNNLayer(_layer) ) { CV_ERROR( CV_StsBadArg, "Invalid layer" ); }
 
   __BEGIN__;
 
-  CvCNNSimpleRNNLayer * layer = (CvCNNSimpleRNNLayer*)_layer;
-  CvCNNSimpleRNNLayer * ref_layer = (CvCNNSimpleRNNLayer*)layer->ref_layer;
+  CvDNNSimpleRNNLayer * layer = (CvDNNSimpleRNNLayer*)_layer;
+  CvDNNSimpleRNNLayer * ref_layer = (CvDNNSimpleRNNLayer*)layer->ref_layer;
   CvMat * dE_dY = (CvMat*)_dE_dY;
   
   // TODO: compute average from all output_layers
@@ -293,8 +293,8 @@ void icvCNNRecurrentBackward( CvCNNLayer* _layer, int t,
     const int Y_plane_size   = layer->output_height*layer->output_width;
     dE_dY = cvCreateMat(batch_size,Y_plane_size*n_Y_planes,CV_32F); cvZero(dE_dY);
     for (int li=0;li<n_output_layers;li++){
-      CvCNNLayer * output_layer = ref_layer?ref_layer->output_layers[li]:layer->output_layers[li];
-      if (icvIsCNNDenseLayer(output_layer)){
+      CvDNNLayer * output_layer = ref_layer?ref_layer->output_layers[li]:layer->output_layers[li];
+      if (icvIsDenseLayer(output_layer)){
         cvAddWeighted(dE_dY,1.f,output_layer->dE_dX,1.f/float(n_output_layers),0.f,dE_dY);
       }
     }

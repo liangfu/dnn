@@ -25,7 +25,7 @@
 #define CV_BOOST    "boost"
 #define CV_RTREES   "rtrees"
 #define CV_ERTREES  "ertrees"
-#define CV_CNN      "cnn"
+#define CV_DNN      "cnn"
 // 
 // class CV_MLBaseTest : public cvtest::BaseTest
 // {

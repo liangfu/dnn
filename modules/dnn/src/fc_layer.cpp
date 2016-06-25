@@ -27,15 +27,15 @@
 
 /*************************************************************************/
 ML_IMPL
-CvCNNLayer * cvCreateCNNDenseLayer( 
+CvDNNLayer * cvCreateDenseLayer( 
     const int dtype, const char * name, const int visualize,
-    const CvCNNLayer * input_layer, int n_inputs, int n_outputs, 
+    const CvDNNLayer * input_layer, int n_inputs, int n_outputs, 
     float init_learn_rate, int learn_rate_decrease_type, const char * activation,
     CvMat * weights )
 {
-  CvCNNDenseLayer* layer = 0;
+  CvDNNDenseLayer* layer = 0;
 
-  CV_FUNCNAME("cvCreateCNNDenseLayer");
+  CV_FUNCNAME("cvCreateDenseLayer");
   __BEGIN__;
 
   if ( init_learn_rate <= 0) {
@@ -45,8 +45,8 @@ CvCNNLayer * cvCreateCNNDenseLayer(
   fprintf(stderr,"DenseLayer(%s): input (%d), output (%d)\n", name,
           n_inputs,n_outputs);
   
-  CV_CALL(layer = (CvCNNDenseLayer*)icvCreateCNNLayer( ICV_CNN_FULLCONNECT_LAYER, dtype, name, 
-      sizeof(CvCNNDenseLayer), n_inputs, 1, 1, n_outputs, 1, 1,
+  CV_CALL(layer = (CvDNNDenseLayer*)icvCreateLayer( ICV_DNN_FULLCONNECT_LAYER, dtype, name, 
+      sizeof(CvDNNDenseLayer), n_inputs, 1, 1, n_outputs, 1, 1,
       init_learn_rate, learn_rate_decrease_type,
       icvCNNDenseRelease, icvCNNDenseForward, icvCNNDenseBackward ));
 
@@ -56,7 +56,7 @@ CvCNNLayer * cvCreateCNNDenseLayer(
 
   strcpy(layer->activation,activation);
   layer->visualize = visualize;
-  layer->input_layers.push_back((CvCNNLayer*)input_layer);
+  layer->input_layers.push_back((CvDNNLayer*)input_layer);
 
   CV_CALL(layer->weights = cvCreateMat( n_outputs, n_inputs+1, dtype ));
   if ( weights ){
@@ -83,22 +83,22 @@ CvCNNLayer * cvCreateCNNDenseLayer(
     cvFree( &layer );
   }
 
-  return (CvCNNLayer*)layer;
+  return (CvDNNLayer*)layer;
 }
 /****************************************************************************************/
-void icvCNNDenseForward( CvCNNLayer* _layer, const CvMat* _X, CvMat* _Y )
+void icvCNNDenseForward( CvDNNLayer* _layer, const CvMat* _X, CvMat* _Y )
 {
   CV_FUNCNAME("icvCNNDenseForward");
 
-  if ( !icvIsCNNDenseLayer(_layer) ) {
+  if ( !icvIsDenseLayer(_layer) ) {
     CV_ERROR( CV_StsBadArg, "Invalid layer" );
   }
 
   __BEGIN__;
 
-  CvCNNDenseLayer * layer = (CvCNNDenseLayer*)_layer;
+  CvDNNDenseLayer * layer = (CvDNNDenseLayer*)_layer;
   int dtype = layer->dtype;
-  CvCNNLayer * input_layer = layer->input_layers.size()>0?layer->input_layers[0]:0;
+  CvDNNLayer * input_layer = layer->input_layers.size()>0?layer->input_layers[0]:0;
   CvMat * weights = layer->weights;
   CvMat sub_weights, biascol;
   CvMat * X = (CvMat*)_X;
@@ -109,10 +109,10 @@ void icvCNNDenseForward( CvCNNLayer* _layer, const CvMat* _X, CvMat* _Y )
   int batch_size = X->rows;
   
   if (input_layer){
-    if (icvIsCNNSimpleRNNLayer(input_layer)){
-      seq_length = ((CvCNNSimpleRNNLayer*)input_layer)->seq_length;
+    if (icvIsSimpleRNNLayer(input_layer)){
+      seq_length = ((CvDNNSimpleRNNLayer*)input_layer)->seq_length;
       batch_size = X->rows/seq_length;
-    }else if (icvIsCNNMaxPoolingLayer(input_layer)){
+    }else if (icvIsMaxPoolingLayer(input_layer)){
       seq_length = 1;
       n_inputs = input_layer->n_output_planes*input_layer->output_height*input_layer->output_width;
     }
@@ -127,16 +127,16 @@ void icvCNNDenseForward( CvCNNLayer* _layer, const CvMat* _X, CvMat* _Y )
       X = cvCreateMat(batch_size,n_inputs,dtype);
       CV_ASSERT(n_inputs*seq_length*batch_size==Xsrc->rows*Xsrc->cols);
       CvMat X_submat; 
-      if (icvIsCNNSimpleRNNLayer(input_layer)){
-        cvGetRow(Xsrc,&X_submat,((CvCNNSimpleRNNLayer*)input_layer)->time_index);
+      if (icvIsSimpleRNNLayer(input_layer)){
+        cvGetRow(Xsrc,&X_submat,((CvDNNSimpleRNNLayer*)input_layer)->time_index);
       }else{
         cvGetRow(Xsrc,&X_submat,0);
       }
       cvCopy(&X_submat,X);
       seq_length=1;
     }
-  }else if (icvIsCNNSimpleRNNLayer(layer->prev_layer) && n_inputs*seq_length!=X->rows){
-    CvCNNSimpleRNNLayer * rnn_layer = ((CvCNNSimpleRNNLayer*)layer->prev_layer);
+  }else if (icvIsSimpleRNNLayer(layer->prev_layer) && n_inputs*seq_length!=X->rows){
+    CvDNNSimpleRNNLayer * rnn_layer = ((CvDNNSimpleRNNLayer*)layer->prev_layer);
     CV_ASSERT(X->cols==rnn_layer->seq_length*n_inputs);
     X = cvCreateMat(batch_size,n_inputs,dtype);
     CvMat X_submat;
@@ -165,11 +165,11 @@ void icvCNNDenseForward( CvCNNLayer* _layer, const CvMat* _X, CvMat* _Y )
   }else{CV_ERROR(CV_StsBadArg,"Unknown activation type");}
 
   if (layer->Y){cvCopy(Y,layer->Y);}else{layer->Y=cvCloneMat(Y);}
-  if (layer->visualize==1){icvVisualizeCNNLayer((CvCNNLayer*)layer,Y);}
+  if (layer->visualize==1){icvVisualizeCNNLayer((CvDNNLayer*)layer,Y);}
   else if (layer->visualize==2){fprintf(stderr,"\n");cvPrintf(stderr,"%f ",Y);}
 
-  if ( (input_layer && icvIsCNNSimpleRNNLayer(input_layer)) ||
-       (icvIsCNNSimpleRNNLayer(layer->prev_layer) && n_inputs*seq_length!=X->cols) ){
+  if ( (input_layer && icvIsSimpleRNNLayer(input_layer)) ||
+       (icvIsSimpleRNNLayer(layer->prev_layer) && n_inputs*seq_length!=X->cols) ){
     CV_ASSERT(X!=_X); if (X) { cvReleaseMat(&X); X = 0; }
   }
   __END__;
@@ -186,7 +186,7 @@ void icvCNNDenseForward( CvCNNLayer* _layer, const CvMat* _X, CvMat* _Y )
    Input parameter <dE_dY> is the partial derivative of the
    loss function with respect to the planes components
    of the current layer. */
-void icvCNNDenseBackward(CvCNNLayer * _layer, int t,
+void icvCNNDenseBackward(CvDNNLayer * _layer, int t,
                                const CvMat * _X, const CvMat * _dE_dY, CvMat * _dE_dX )
 {
   CvMat* dE_dY_afder = 0;
@@ -194,17 +194,17 @@ void icvCNNDenseBackward(CvCNNLayer * _layer, int t,
 
   CV_FUNCNAME( "icvCNNDenseBackward" );
 
-  if ( !icvIsCNNDenseLayer(_layer) ) {
+  if ( !icvIsDenseLayer(_layer) ) {
       CV_ERROR( CV_StsBadArg, "Invalid layer" );
   }
 
   __BEGIN__;
 
   int i;
-  CvCNNDenseLayer * layer = (CvCNNDenseLayer*)_layer;
+  CvDNNDenseLayer * layer = (CvDNNDenseLayer*)_layer;
   int dtype = layer->dtype;
-  CvCNNLayer * input_layer = layer->input_layers.size()>0?layer->input_layers[0]:0;
-  CvCNNLayer * output_layer = layer->output_layers.size()>0?layer->output_layers[0]:0;
+  CvDNNLayer * input_layer = layer->input_layers.size()>0?layer->input_layers[0]:0;
+  CvDNNLayer * output_layer = layer->output_layers.size()>0?layer->output_layers[0]:0;
   int n_outputs = layer->n_output_planes;
   int n_inputs  = layer->n_input_planes;
   CvMat * weights = layer->weights;
@@ -217,10 +217,10 @@ void icvCNNDenseBackward(CvCNNLayer * _layer, int t,
 
   if (input_layer){
     n_inputs = input_layer->n_output_planes;
-    if (icvIsCNNSimpleRNNLayer(input_layer)){
-      seq_length = ((CvCNNSimpleRNNLayer*)input_layer)->seq_length;
-      time_index = ((CvCNNSimpleRNNLayer*)input_layer)->time_index;
-    }else if (icvIsCNNMaxPoolingLayer(input_layer) || icvIsCNNConvolutionLayer(input_layer)){ 
+    if (icvIsSimpleRNNLayer(input_layer)){
+      seq_length = ((CvDNNSimpleRNNLayer*)input_layer)->seq_length;
+      time_index = ((CvDNNSimpleRNNLayer*)input_layer)->time_index;
+    }else if (icvIsMaxPoolingLayer(input_layer) || icvIsConvolutionLayer(input_layer)){ 
       seq_length = 1; time_index = 0; 
       n_inputs = input_layer->n_output_planes*input_layer->output_height*input_layer->output_width;
     }
@@ -235,8 +235,8 @@ void icvCNNDenseBackward(CvCNNLayer * _layer, int t,
     }else{CV_ASSERT(layer->dE_dX->rows==batch_size && layer->dE_dX->cols==n_inputs);}
     cvZero(layer->dE_dX);
     seq_length=1; dE_dX = layer->dE_dX;
-  }else if (icvIsCNNSimpleRNNLayer(layer->prev_layer)){
-    CvCNNSimpleRNNLayer * rnn_layer = (CvCNNSimpleRNNLayer*)layer->prev_layer;
+  }else if (icvIsSimpleRNNLayer(layer->prev_layer)){
+    CvDNNSimpleRNNLayer * rnn_layer = (CvDNNSimpleRNNLayer*)layer->prev_layer;
     if (X->rows!=n_inputs){
       CV_ASSERT(X->rows==rnn_layer->seq_length*n_inputs);
       X = cvCreateMat(n_inputs,batch_size,dtype);
@@ -253,17 +253,17 @@ void icvCNNDenseBackward(CvCNNLayer * _layer, int t,
   }
 
   if (output_layer){
-    if (icvIsCNNMergeLayer(output_layer)){
-      int n_input_layers = ((CvCNNMergeLayer*)output_layer)->input_layers.size();
+    if (icvIsMergeLayer(output_layer)){
+      int n_input_layers = ((CvDNNMergeLayer*)output_layer)->input_layers.size();
       int layer_index = -1;
       int output_layer_index = 0;
       int output_layer_size = 0;
       for (int lidx=0;lidx<n_input_layers;lidx++){
-        output_layer_index+=((CvCNNMergeLayer*)output_layer)->input_layers[lidx]->n_output_planes;
-        if (!strcmp(((CvCNNMergeLayer*)output_layer)->input_layers[lidx]->name,layer->name)){
+        output_layer_index+=((CvDNNMergeLayer*)output_layer)->input_layers[lidx]->n_output_planes;
+        if (!strcmp(((CvDNNMergeLayer*)output_layer)->input_layers[lidx]->name,layer->name)){
           layer_index=lidx;
-          output_layer_index-=((CvCNNMergeLayer*)output_layer)->input_layers[lidx]->n_output_planes;
-          output_layer_size=((CvCNNMergeLayer*)output_layer)->input_layers[lidx]->n_output_planes;
+          output_layer_index-=((CvDNNMergeLayer*)output_layer)->input_layers[lidx]->n_output_planes;
+          output_layer_size=((CvDNNMergeLayer*)output_layer)->input_layers[lidx]->n_output_planes;
           break;
         }
       }
@@ -322,9 +322,9 @@ void icvCNNDenseBackward(CvCNNLayer * _layer, int t,
 
   // 2) update weights
   float eta;
-  if ( layer->decay_type == CV_CNN_LEARN_RATE_DECREASE_LOG_INV ){
+  if ( layer->decay_type == CV_DNN_LEARN_RATE_DECREASE_LOG_INV ){
     eta = -layer->init_learn_rate/logf(1+(float)t);
-  }else if ( layer->decay_type == CV_CNN_LEARN_RATE_DECREASE_SQRT_INV ){
+  }else if ( layer->decay_type == CV_DNN_LEARN_RATE_DECREASE_SQRT_INV ){
     eta = -layer->init_learn_rate/sqrtf((float)t);
   }else{
     eta = -layer->init_learn_rate/(float)t;
@@ -341,21 +341,21 @@ void icvCNNDenseBackward(CvCNNLayer * _layer, int t,
 
 
 /****************************************************************************************/
-void icvCNNDenseRelease( CvCNNLayer** p_layer )
+void icvCNNDenseRelease( CvDNNLayer** p_layer )
 {
   CV_FUNCNAME("icvCNNDenseRelease");
   __BEGIN__;
 
-  CvCNNDenseLayer* layer = 0;
+  CvDNNDenseLayer* layer = 0;
 
   if ( !p_layer )
       CV_ERROR( CV_StsNullPtr, "Null double pointer" );
 
-  layer = *(CvCNNDenseLayer**)p_layer;
+  layer = *(CvDNNDenseLayer**)p_layer;
 
   if ( !layer )
       return;
-  if ( !icvIsCNNDenseLayer((CvCNNLayer*)layer) )
+  if ( !icvIsDenseLayer((CvDNNLayer*)layer) )
       CV_ERROR( CV_StsBadArg, "Invalid layer" );
 
   cvReleaseMat( &layer->WX );
