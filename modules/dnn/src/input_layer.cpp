@@ -69,14 +69,14 @@ void icvCNNInputForward( CvDNNLayer * _layer, const CvMat * X, CvMat * Y )
   if ( !icvIsInputLayer(_layer) ) { CV_ERROR( CV_StsBadArg, "Invalid layer" ); }
   __BEGIN__;
   CvDNNInputLayer * layer = (CvDNNInputLayer*)_layer;
-  if (!layer->input_data){
-    layer->input_data = cvCloneMat(X);
+  if (!layer->Y){
+    layer->Y = cvCloneMat(X);
   }else{
-    if (X->cols==layer->input_data->cols){
-      cvCopy(X,layer->input_data);
+    if (X->cols==layer->Y->cols){
+      cvCopy(X,layer->Y);
     }else{
-      cvReleaseMat(&layer->input_data);
-      layer->input_data = cvCloneMat(X);
+      cvReleaseMat(&layer->Y);
+      layer->Y = cvCloneMat(X);
     }
   }
   cvCopy(X,Y);

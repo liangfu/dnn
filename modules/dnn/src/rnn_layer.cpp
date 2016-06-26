@@ -228,6 +228,7 @@ void icvCNNRecurrentForward( CvDNNLayer* _layer, const CvMat* X, CvMat * Y)
     CV_CALL(cvReLU( &Y_curr_hdr, &Y_curr_hdr )); 
   }else if (!strcmp(layer->activation,"softmax")){
     CV_ASSERT(Y_curr->cols==n_outputs && Y_curr->rows==batch_size);
+    CV_ASSERT(cvSdv(Y_curr)<10.f);
     cvSoftmax(Y_curr,Y_curr);
   }else{
     CV_ERROR(CV_StsBadArg,"invalid output activation type for RNN layer, `softmax` is prefered.");
@@ -244,7 +245,9 @@ void icvCNNRecurrentForward( CvDNNLayer* _layer, const CvMat* X, CvMat * Y)
   for (int tidx=0;tidx<seq_length;tidx++){
   for (int bidx=0;bidx<batch_size;bidx++){
     cvGetSubRect(layerY,&layer_Y_submat_hdr,cvRect(bidx*n_outputs,tidx,n_outputs,1));
-    cvGetSubRect(Y,&Y_submat_hdr,cvRect(0,seq_length*bidx+tidx,n_outputs,1));
+    // cvGetSubRect(Y,&Y_submat_hdr,cvRect(0,seq_length*bidx+tidx,n_outputs,1));
+    // cvCopy(&layer_Y_submat_hdr,&Y_submat_hdr);
+    cvGetSubRect(Y,&Y_submat_hdr,cvRect(0,bidx,n_outputs,1));
     cvCopy(&layer_Y_submat_hdr,&Y_submat_hdr);
   }
   }
@@ -307,7 +310,7 @@ void icvCNNRecurrentBackward( CvDNNLayer* _layer, int t,
   CvMat * layerY = ref_layer?ref_layer->Y:layer->Y;
   CvMat * layer_WX = ref_layer?ref_layer->WX:layer->WX;
   CvMat * layer_WH = ref_layer?ref_layer->WH:layer->WH;
-  CvMat * layer_dE_dY = ref_layer?ref_layer->dE_dY:layer->dE_dY;
+  // CvMat * layer_dE_dY = ref_layer?ref_layer->dE_dY:layer->dE_dY;
   CvMat * layer_dH = ref_layer?ref_layer->dH:layer->dH;
   CvMat * layer_dWxh = ref_layer?ref_layer->dWxh:layer->dWxh;
   CvMat * layer_dWhh = ref_layer?ref_layer->dWhh:layer->dWhh;
@@ -329,10 +332,10 @@ void icvCNNRecurrentBackward( CvDNNLayer* _layer, int t,
   if ( !ref_layer ){ CV_ASSERT(layer->H && layer->Y && layer->WX && layer->WH); }
   if ( ref_layer ){
     if ( layer->time_index==seq_length-1 ){  // assuming last layer
-      if (!ref_layer->dE_dY){
-        CV_ASSERT(dE_dY->cols==n_outputs);
-        ref_layer->dE_dY = cvCloneMat(dE_dY); layer_dE_dY = ref_layer->dE_dY;
-      }else{ cvCopy(dE_dY,ref_layer->dE_dY); }
+      // if (!ref_layer->dE_dY){
+      //   CV_ASSERT(dE_dY->cols==n_outputs);
+      //   ref_layer->dE_dY = cvCloneMat(dE_dY); layer_dE_dY = ref_layer->dE_dY;
+      // }else{ cvCopy(dE_dY,ref_layer->dE_dY); }
       if (!ref_layer->dH){ 
         CV_ASSERT(!ref_layer->dWxh && !ref_layer->dWhh && !ref_layer->dWhy);
         ref_layer->dH   = cvCreateMat(layerH->rows,  layerH->cols,  CV_32F);
@@ -345,17 +348,18 @@ void icvCNNRecurrentBackward( CvDNNLayer* _layer, int t,
       cvZero(ref_layer->dWhh); layer_dWhh=ref_layer->dWhh;
       cvZero(ref_layer->dWhy); layer_dWhy=ref_layer->dWhy;
     }else{ 
-      CV_ASSERT(dE_dY->cols==n_outputs && layer_dE_dY==ref_layer->dE_dY && 
+      CV_ASSERT(dE_dY->cols==n_outputs && // layer_dE_dY==ref_layer->dE_dY && 
                 layer_dH==ref_layer->dH && layer_dWxh==ref_layer->dWxh && 
                 layer_dWhh==ref_layer->dWhh && layer_dWhy==ref_layer->dWhy);
       CV_ASSERT(layer_dH && layer_dWxh && layer_dWhh && layer_dWhy);
     }
   }else{
-    CV_ASSERT(dE_dY->cols==n_outputs && layer_dE_dY==layer->dE_dY && 
+    CV_ASSERT(dE_dY->cols==n_outputs && // layer_dE_dY==layer->dE_dY && 
               layer_dH==layer->dH && layer_dWxh==layer->dWxh &&
               layer_dWhh==layer->dWhh && layer_dWhy==layer->dWhy); 
-    CV_ASSERT(layer_dE_dY && layer_dH && layer_dWxh && layer_dWhh && layer_dWhy);
-    {CvScalar avg, sdv; cvAvgSdv(layer_dE_dY,&avg,&sdv); CV_ASSERT(sdv.val[0]>1e-5);}
+    CV_ASSERT(layer_dH && layer_dWxh && layer_dWhh && layer_dWhy); // layer_dE_dY && 
+    // {CvScalar avg, sdv; cvAvgSdv(layer_dE_dY,&avg,&sdv); CV_ASSERT(sdv.val[0]>1e-5);}
+    CV_ASSERT(cvSdv(dE_dY)>1e-5);
   }
   
   // memory allocation
@@ -422,6 +426,7 @@ void icvCNNRecurrentBackward( CvDNNLayer* _layer, int t,
   CV_ASSERT(cvCountNonZero(WH_curr)>1);
 
   // copy `layer_dE_dY` with current time_index, to variable `dE_dY_curr`
+#if 0
   CV_ASSERT(layer_dE_dY->rows*layer_dE_dY->cols==seq_length*n_outputs*batch_size);
   CV_ASSERT(CV_MAT_TYPE(layer_dE_dY->type)==CV_32F);
   CV_ASSERT(cvCountNAN(layer_dE_dY)<1);
@@ -432,7 +437,11 @@ void icvCNNRecurrentBackward( CvDNNLayer* _layer, int t,
     cvGetRow(dE_dY_curr,&dE_dY_curr_submat,bidx);
     cvCopy(&layer_dE_dY_submat, &dE_dY_curr_submat);
   }
-
+#else
+  CV_ASSERT(dE_dY->rows*dE_dY->cols==n_outputs*batch_size);
+  cvCopy(dE_dY, dE_dY_curr);
+#endif
+  
   // output activation derivative
   if (!strcmp(layer->activation,"sigmoid")){
     cvSigmoidDer(WH_curr,dE_dY_afder);

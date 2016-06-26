@@ -277,7 +277,7 @@ typedef struct CvDNNInputLayer
   // int seq_length;
   // original input data, default size: 
   //          (n_input_planes*n_input_width*n_input_height*seq_length, nsamples)
-  CvMat * input_data;
+  // CvMat * input_data;
   // original response matrix, default size:
   //          (1, nsamples)
   CvMat * response;
@@ -286,7 +286,7 @@ typedef struct CvDNNInputLayer
 typedef struct CvDNNRepeatVectorLayer
 {
   CV_DNN_LAYER_FIELDS();
-  CvMat * input_data;
+  // CvMat * input_data;
   CvMat * response;
 }CvDNNRepeatVectorLayer;
 
@@ -351,7 +351,7 @@ CVAPI(CvDNNLayer*) cvCreateInputLayer(
 
 CVAPI(CvDNNLayer*) cvCreateRepeatVectorLayer( 
     const int dtype, const char * name, 
-    int n_inputs, int input_height, int input_width, int seq_length,
+    int n_inputs, int input_height, int input_width, int seq_length, int time_index,
     float init_learn_rate, int update_rule);
 
 CVAPI(CvDNNLayer*) cvCreateMergeLayer( 

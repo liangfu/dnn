@@ -281,10 +281,13 @@ static void icvTrainNetwork( CvNetwork* network,const CvMat* images, const CvMat
   cvZero(X[0]); cvZero(dE_dX[0]); cvZero(X0);
   for ( k = 0, layer = first_layer; k < n_layers; k++, layer = layer->next_layer ){
     int n_outputs = layer->n_output_planes*layer->output_height*layer->output_width;
-    // CV_CALL(X[k+1] = cvCreateMat( batch_size*layer->seq_length, n_outputs, CV_32F )); 
-    // CV_CALL(dE_dX[k+1] = cvCreateMat( batch_size*layer->seq_length, X[k+1]->cols, CV_32F )); 
-    CV_CALL(X[k+1] = cvCreateMat( batch_size, n_outputs, CV_32F )); 
-    CV_CALL(dE_dX[k+1] = cvCreateMat( batch_size, X[k+1]->cols, CV_32F )); 
+    if (icvIsInputLayer(layer)){
+      CV_CALL(X[k+1] = cvCreateMat( batch_size*layer->seq_length, n_outputs, CV_32F )); 
+      CV_CALL(dE_dX[k+1] = cvCreateMat( batch_size*layer->seq_length, X[k+1]->cols, CV_32F ));
+    }else{
+      CV_CALL(X[k+1] = cvCreateMat( batch_size, n_outputs, CV_32F )); 
+      CV_CALL(dE_dX[k+1] = cvCreateMat( batch_size, X[k+1]->cols, CV_32F ));
+    }
     cvZero(X[k+1]); cvZero(dE_dX[k+1]);
   }
 

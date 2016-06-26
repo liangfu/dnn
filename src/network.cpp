@@ -226,8 +226,9 @@ void Network::loadModel(string inFile)
       input_height   = cvReadIntByName(fs,node,"input_height",input_height);
       input_width    = cvReadIntByName(fs,node,"input_width",input_width);
       const int seq_length = cvReadIntByName(fs,node,"seq_length",1);
+      const int time_index = cvReadIntByName(fs,node,"time_index",0);
       layer = cvCreateRepeatVectorLayer( dtype, name, 
-        n_input_planes, input_height, input_width, seq_length,
+        n_input_planes, input_height, input_width, seq_length, time_index, 
         lr_init, decay_type );
     }else if (!strcmp(type,"Merge")){ // merge multiple data source  layer
       int n_input_layers = 1;

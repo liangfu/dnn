@@ -94,7 +94,7 @@ static void icvCNNSpatialTransformForward( CvDNNLayer * _layer, const CvMat* X, 
   const int batch_size = X->rows/input_seqlen;
   CV_ASSERT(Y->cols==layer->n_output_planes*layer->output_height*layer->output_width);
   CV_ASSERT(batch_size*input_seqlen==X->rows && batch_size*output_seqlen==Y->rows); // batch_size
-  CvMat * input_data = input_layer->input_data;
+  CvMat * input_data = input_layer->Y;
   CV_ASSERT(CV_MAT_TYPE(input_data->type)==CV_32F);
   if (input_seqlen>output_seqlen){ // temporal sampling
     CvMat input_data_submat;
