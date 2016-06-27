@@ -28,6 +28,9 @@ SET(CMAKE_INSTALL_RPATH "$ORIGIN/../lib:$ORIGIN/")
 # which point to directories outside the build tree to the install RPATH
 SET(CMAKE_INSTALL_RPATH_USE_LINK_PATH FALSE)
 
+# add a custom "postfix" to static and shared libraries when in Debug build
+SET(CMAKE_DEBUG_POSTFIX "_debug")
+
 add_definitions(-DCVAPI_EXPORTS)
 
 add_subdirectory(thirdparty/zlib)
@@ -138,6 +141,9 @@ target_link_libraries(annotator cxcore cvutil cv highgui dnn ${FFMPEG_LIBRARIES}
 
 add_executable(network src/network_main.cpp src/network.cpp)
 target_link_libraries(network cxcore cvutil cv highgui dnn ${FFMPEG_LIBRARIES} ${OPENMP_LIBRARIES})
+if (CMAKE_BUILD_TYPE STREQUAL Debug)
+	set_target_properties(network PROPERTIES SUFFIX "_debug")
+endif()
 
 add_executable(transfer_mnist_lenet src/transfer_mnist_lenet.cpp  src/network.cpp)
 target_link_libraries(transfer_mnist_lenet cxcore cvutil cv highgui dnn 
