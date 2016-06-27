@@ -130,48 +130,53 @@ else( OPENMP_FOUND )
   set( OPENMP_LIBRARIES "")
 endif( OPENMP_FOUND )
 
-# add_executable(test044_cnn src/test044_cnn.cpp src/ConvNN.cpp)
-# target_link_libraries(test044_cnn cxcore cvutil cv highgui dnn ${FFMPEG_LIBRARIES} ${OPENMP_LIBRARIES})
-
-# add_executable(test046_dram src/test046_dram.cpp src/dram.cpp)
-# target_link_libraries(test046_dram cxcore cvutil cv highgui dnn ${FFMPEG_LIBRARIES} ${OPENMP_LIBRARIES}) # video
-
 add_executable(annotator src/annotator_main.cpp)
 target_link_libraries(annotator cxcore cvutil cv highgui dnn ${FFMPEG_LIBRARIES} ${OPENMP_LIBRARIES})
+set_target_properties(annotator PROPERTIES SUFFIX "_debug")
 
 add_executable(network src/network_main.cpp src/network.cpp)
 target_link_libraries(network cxcore cvutil cv highgui dnn ${FFMPEG_LIBRARIES} ${OPENMP_LIBRARIES})
-if (CMAKE_BUILD_TYPE STREQUAL Debug)
-	set_target_properties(network PROPERTIES SUFFIX "_debug")
-endif()
+set_target_properties(network PROPERTIES SUFFIX "_debug")
 
 add_executable(transfer_mnist_lenet src/transfer_mnist_lenet.cpp  src/network.cpp)
 target_link_libraries(transfer_mnist_lenet cxcore cvutil cv highgui dnn 
   ${FFMPEG_LIBRARIES} ${OPENMP_LIBRARIES})
+set_target_properties(transfer_mnist_lenet PROPERTIES SUFFIX "_debug")
 
 add_executable(transfer_mnist_twodigit src/transfer_mnist_twodigit.cpp  src/network.cpp)
 target_link_libraries(transfer_mnist_twodigit cxcore cvutil cv highgui dnn 
   ${FFMPEG_LIBRARIES} ${OPENMP_LIBRARIES})
+set_target_properties(transfer_mnist_twodigit PROPERTIES SUFFIX "_debug")
+
+add_executable(transfer_mnist_multi src/transfer_mnist_multi.cpp  src/network.cpp)
+target_link_libraries(transfer_mnist_multi cxcore cvutil cv highgui dnn 
+  ${FFMPEG_LIBRARIES} ${OPENMP_LIBRARIES})
+set_target_properties(transfer_mnist_multi PROPERTIES SUFFIX "_debug")
 
 add_executable(transfer_mnist_localize src/transfer_mnist_localize.cpp  src/network.cpp)
 target_link_libraries(transfer_mnist_localize cxcore cvutil cv highgui dnn 
   ${FFMPEG_LIBRARIES} ${OPENMP_LIBRARIES})
+set_target_properties(transfer_mnist_localize PROPERTIES SUFFIX "_debug")
 
 add_executable(transfer_mnist_addition src/transfer_mnist_addition.cpp  src/network.cpp)
 target_link_libraries(transfer_mnist_addition cxcore cvutil cv highgui dnn 
   ${FFMPEG_LIBRARIES} ${OPENMP_LIBRARIES})
+set_target_properties(transfer_mnist_addition PROPERTIES SUFFIX "_debug")
 
 add_executable(transfer_addition src/transfer_addition.cpp  src/network.cpp)
 target_link_libraries(transfer_addition cxcore cvutil cv highgui dnn 
   ${FFMPEG_LIBRARIES} ${OPENMP_LIBRARIES})
+set_target_properties(transfer_addition PROPERTIES SUFFIX "_debug")
 
 add_executable(transfer_svhn_dram src/transfer_svhn_dram.cpp  src/network.cpp)
 target_link_libraries(transfer_svhn_dram cxcore cvutil cv highgui dnn 
   ${FFMPEG_LIBRARIES} ${OPENMP_LIBRARIES})
+set_target_properties(transfer_svhn_dram PROPERTIES SUFFIX "_debug")
 
 add_executable(transfer_primate_convnet src/transfer_primate_convnet.cpp  src/network.cpp)
 target_link_libraries(transfer_primate_convnet cxcore cvutil cv highgui dnn 
   ${FFMPEG_LIBRARIES} ${OPENMP_LIBRARIES})
+set_target_properties(transfer_primate_convnet PROPERTIES SUFFIX "_debug")
 
 
 
