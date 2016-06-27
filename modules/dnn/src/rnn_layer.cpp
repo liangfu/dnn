@@ -242,7 +242,8 @@ void icvCNNRecurrentForward( CvDNNLayer* _layer, const CvMat* X, CvMat * Y)
   cvTranspose(layerY,Y);
 #else
   CvMat layer_Y_submat_hdr, Y_submat_hdr;
-  for (int tidx=0;tidx<seq_length;tidx++){
+  const int tidx = time_index;
+  // for (int tidx=0;tidx<seq_length;tidx++){
   for (int bidx=0;bidx<batch_size;bidx++){
     cvGetSubRect(layerY,&layer_Y_submat_hdr,cvRect(bidx*n_outputs,tidx,n_outputs,1));
     // cvGetSubRect(Y,&Y_submat_hdr,cvRect(0,seq_length*bidx+tidx,n_outputs,1));
@@ -250,7 +251,7 @@ void icvCNNRecurrentForward( CvDNNLayer* _layer, const CvMat* X, CvMat * Y)
     cvGetSubRect(Y,&Y_submat_hdr,cvRect(0,bidx,n_outputs,1));
     cvCopy(&layer_Y_submat_hdr,&Y_submat_hdr);
   }
-  }
+  // }
 #endif
     
   if (WX){cvReleaseMat(&WX);WX=0;}
