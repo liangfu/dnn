@@ -105,12 +105,12 @@ int main(int argc, char * argv[])
   assert(training->rows==response->rows && testing->rows==expected->rows);
 
   const int imsize = 64;
-  CvMat * training_multi = cvCreateMat(trainsize,imsize*imsize,CV_32F);
-  CvMat * response_multi = cvCreateMat(trainsize,20,CV_32F);
-  CvMat *  testing_multi = cvCreateMat( testsize,imsize*imsize,CV_32F);
-  CvMat * expected_multi = cvCreateMat( testsize,20,CV_32F);
-
   const int ndigits = 3;
+  CvMat * training_multi = cvCreateMat(trainsize,imsize*imsize,CV_32F);
+  CvMat * response_multi = cvCreateMat(trainsize,ndigits+10*ndigits,CV_32F);
+  CvMat *  testing_multi = cvCreateMat( testsize,imsize*imsize,CV_32F);
+  CvMat * expected_multi = cvCreateMat( testsize,ndigits+10*ndigits,CV_32F);
+
   cvGenerateMultiDigitMNIST(training, training_multi, response, response_multi, ndigits);
   cvGenerateMultiDigitMNIST( testing,  testing_multi, expected, expected_multi, ndigits);
 
@@ -142,55 +142,46 @@ void cvGenerateMultiDigitMNIST(CvMat * training, CvMat * training_multi,
   CV_ASSERT(CV_MAT_TYPE(training->type)==CV_32F);
   CV_ASSERT(CV_MAT_TYPE(response->type)==CV_8U);
   CV_ASSERT(CV_MAT_TYPE(response_multi->type)==CV_32F);
-  CV_ASSERT(response_multi->cols==20);
+  CV_ASSERT(response_multi->cols==(ndigits+10*ndigits));
   int imsize = sqrt(training_multi->cols);
   CvMat * sample = cvCreateMat(28,28,CV_32F);
   CvMat * target0 = cvCreateMat(imsize,imsize,CV_32F);
   CvMat * target = cvCreateMat(imsize,imsize,CV_32F);
   CvMat * warp_p = cvCreateMat(2,3,CV_32F);
   CvRNG rng = cvRNG(-1); int tidx = 0, nd = 0;
-  CvMat * vmat = cvCreateMat(1,2,CV_32S); cvZero(vmat); int * vptr = vmat->data.i;
+  CvMat * vmat = cvCreateMat(1,ndigits,CV_32S); cvZero(vmat); int * vptr = vmat->data.i;
   cvZero(response_multi);
   for (int idx=0;idx<training_multi->rows;idx++){
-    cvZero(target);
+    cvZero(target); cvSet(vmat,cvScalar(-1));
 
     nd = (cvRandInt(&rng)%ndigits)+1; // number of digits in current frame
+    CV_MAT_ELEM(*response_multi,float,idx,nd-1)=1;
 
     for (int diter=0;diter<nd;diter++){
       tidx = cvRandInt(&rng) % training->rows;
       vptr[diter] = CV_MAT_ELEM(*response,uchar,tidx,0);
       memcpy(sample->data.ptr,training->data.ptr+training->step*tidx,training->step);
       warp_p->data.fl[0]=warp_p->data.fl[4]=1;
-      warp_p->data.fl[2]=-cvRandReal(&rng)*(32-28);
-      warp_p->data.fl[5]=-cvRandReal(&rng)*(64-28); // cvPrintf(stderr,"%f ",warp_p);
+      warp_p->data.fl[2]=-cvRandReal(&rng)*2-20+9*(nd-1)-18*diter;
+      warp_p->data.fl[5]=-cvRandReal(&rng)*6-10; // cvPrintf(stderr,"%.1f ",warp_p);
       icvWarp(sample,target0,warp_p);
       cvAdd(target0, target, target); 
+      CV_MAT_ELEM(*response_multi,float,idx,ndigits+10*diter+vptr[diter])=1;
     }
-    
-    tidx = cvFloor(cvRandReal(&rng)*training->rows);
-    vptr[0] = CV_MAT_ELEM(*response,uchar,tidx,0);
-    memcpy(sample->data.ptr,training->data.ptr+training->step*tidx,training->step);
-    warp_p->data.fl[0]=warp_p->data.fl[4]=1;
-    warp_p->data.fl[2]=-cvRandReal(&rng)*(32-28);
-    warp_p->data.fl[5]=-cvRandReal(&rng)*(64-28); // cvPrintf(stderr,"%f ",warp_p);
-    icvWarp(sample,target0,warp_p);
-
-    tidx = cvFloor(cvRandReal(&rng)*training->rows);
-    vptr[1] = CV_MAT_ELEM(*response,uchar,tidx,0);
-    memcpy(sample->data.ptr,training->data.ptr+training->step*tidx,training->step);
-    warp_p->data.fl[0]=warp_p->data.fl[4]=1;
-    warp_p->data.fl[2]=-(cvRandReal(&rng)*(32-28))-32;
-    warp_p->data.fl[5]=-cvRandReal(&rng)*(64-28); // cvPrintf(stderr,"%f ",warp_p);
-    icvWarp(sample,target,warp_p);
-    
-    cvAdd(target0, target, target); 
-    CV_MAT_ELEM(*response_multi,float,idx,vptr[0])=1;
-    CV_MAT_ELEM(*response_multi,float,idx,vptr[1]+10)=1;
+    for (int diter=nd;diter<ndigits;diter++){
+    for (int ii=0;ii<10;ii++){
+      CV_MAT_ELEM(*response_multi,float,idx,ndigits+10*diter+ii)=.1f;
+    }
+    }
+    cvMinS(target,255,target);
     memcpy(training_multi->data.ptr+training_multi->step*idx,target->data.ptr,training_multi->step);
 
     // visualize
-    cvPrintf(stderr,"%d ",vmat);
-    CV_SHOW(target);
+    CvMat response_submat_hdr;
+    // cvGetRow(response_multi,&response_submat_hdr,idx);
+    // cvPrintf(stderr,"%.1f ", &response_submat_hdr);
+    // cvPrintf(stderr,"%d ",vmat);
+    // CV_SHOW(target);
   }
   cvReleaseMat(&vmat);
   cvReleaseMat(&sample);

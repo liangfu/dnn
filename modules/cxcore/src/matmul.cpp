@@ -149,19 +149,28 @@ GEMM_CopyBlock( const uchar* src, size_t src_step,
     for( ; size.height--; src += src_step, dst += dst_step )
     {
         j=0;
-         #if CV_ENABLE_UNROLLED
-        for( ; j <= size.width - 4; j += 4 )
+#if CV_ENABLE_UNROLLED
+        // for( ; j <= size.width - 4; j += 4 )
+        for( ; j <= size.width - 8; j += 8 )
         {
-            int t0 = ((const int*)src)[j];
-            int t1 = ((const int*)src)[j+1];
-            ((int*)dst)[j] = t0;
-            ((int*)dst)[j+1] = t1;
-            t0 = ((const int*)src)[j+2];
-            t1 = ((const int*)src)[j+3];
-            ((int*)dst)[j+2] = t0;
-            ((int*)dst)[j+3] = t1;
+            // int t0 = ((const int*)src)[j];
+            // int t1 = ((const int*)src)[j+1];
+            // ((int*)dst)[j] = t0;
+            // ((int*)dst)[j+1] = t1;
+            // t0 = ((const int*)src)[j+2];
+            // t1 = ((const int*)src)[j+3];
+            // ((int*)dst)[j+2] = t0;
+            // ((int*)dst)[j+3] = t1;
+          ((int*)dst)[j  ] = ((const int*)src)[j  ];
+          ((int*)dst)[j+1] = ((const int*)src)[j+1];
+          ((int*)dst)[j+2] = ((const int*)src)[j+2];
+          ((int*)dst)[j+3] = ((const int*)src)[j+3];
+          ((int*)dst)[j+4] = ((const int*)src)[j+4];
+          ((int*)dst)[j+5] = ((const int*)src)[j+5];
+          ((int*)dst)[j+6] = ((const int*)src)[j+6];
+          ((int*)dst)[j+7] = ((const int*)src)[j+7];
         }
-        #endif
+#endif
         for( ; j < size.width; j++ )
             ((int*)dst)[j] = ((const int*)src)[j];
     }

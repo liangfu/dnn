@@ -7,7 +7,11 @@ layers:
   - {type: MaxPooling, name: pool2, visualize: 0, ksize: 2, stride: 2}
   - {type: Convolution, name: conv3, visualize: 0, n_output_planes: 50, ksize: 5, stride: 1}
   - {type: Dense, name: fc1, input_layer: conv3, visualize: 0, n_output_planes: 200, activation: tanh}
-  - {type: Dense, name: fc2, visualize: 0, n_output_planes: 10, activation: softmax}
+  - {type: Dense, name: fc2, visualize: 0, n_output_planes: 3, activation: softmax}
   - {type: Dense, name: fc3, input_layer: conv3, visualize: 0, n_output_planes: 200, activation: tanh}
   - {type: Dense, name: fc4, visualize: 0, n_output_planes: 10, activation: softmax}
-  - {type: Merge, name: multi1, n_input_layers: 2, input_layers: "fc2,fc4", visualize: 0, n_output_planes: 20}
+  - {type: Dense, name: fc5, input_layer: conv3, visualize: 0, n_output_planes: 200, activation: tanh}
+  - {type: Dense, name: fc6, visualize: 0, n_output_planes: 10, activation: softmax}
+  - {type: Dense, name: fc7, input_layer: conv3, visualize: 0, n_output_planes: 200, activation: tanh}
+  - {type: Dense, name: fc8, visualize: 0, n_output_planes: 10, activation: softmax}
+  - {type: Merge, name: multi1, n_input_layers: 2, input_layers: "fc2,fc4,fc6,fc8", visualize: 0, n_output_planes: 33}
