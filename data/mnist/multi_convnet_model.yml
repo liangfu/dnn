@@ -6,7 +6,7 @@ layers:
   - {type: Convolution, name: conv2, visualize: 0, n_output_planes: 50, ksize: 5, stride: 1}
   - {type: MaxPooling, name: pool2, visualize: 0, ksize: 2, stride: 2}
   - {type: Convolution, name: conv3, visualize: 0, n_output_planes: 50, ksize: 5, stride: 1}
-  - {type: Dense, name: fc1, input_layer: conv3, visualize: 0, n_output_planes: 200, activation: tanh}
+  - {type: Dense, name: fc1, input_layer: conv3, visualize: 0, n_output_planes: 100, activation: tanh}
   - {type: Dense, name: fc2, visualize: 0, n_output_planes: 3, activation: softmax}
   - {type: Dense, name: fc3, input_layer: conv3, visualize: 0, n_output_planes: 200, activation: tanh}
   - {type: Dense, name: fc4, visualize: 0, n_output_planes: 10, activation: softmax}
