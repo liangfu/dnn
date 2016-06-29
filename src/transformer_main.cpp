@@ -93,7 +93,7 @@ int main(int argc, char * argv[])
     float sdv = cvSdv(out);
     cvSubS(out,cvScalar(avg),out);
     cvScale(out,out,127.f*0.4f/sdv);
-    cvAddS(out,cvScalar(60),out);
+    cvAddS(out,cvScalar(30),out);
 
     // clear boundary
     CvMat out_submat_hdr;
@@ -102,11 +102,11 @@ int main(int argc, char * argv[])
     cvGetRows(out,&out_submat_hdr,63-10,63); cvSet(&out_submat_hdr,cvScalar(0));
     
     // add speckle noise to target image
-    CvRNG rng = cvRNG(-1);
-    for (int iter=0;iter<500;iter++){ 
-      int ridx = cvRandInt(&rng)%64, cidx = cvRandInt(&rng)%64;
-      int val = cvRandInt(&rng)%255; cvmSet(out,ridx,cidx,val);
-    }
+    // CvRNG rng = cvRNG(-1);
+    // for (int iter=0;iter<500;iter++){ 
+    //   int ridx = cvRandInt(&rng)%64, cidx = cvRandInt(&rng)%64;
+    //   int val = cvRandInt(&rng)%255; cvmSet(out,ridx,cidx,val);
+    // }
 
     cvMinS(out,255,out); cvMaxS(out,0,out);
 

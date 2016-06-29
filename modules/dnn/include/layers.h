@@ -359,5 +359,7 @@ CVAPI(CvDNNLayer*) cvCreateMergeLayer(
     int n_input_layers, CvDNNLayer ** input_layers, int outputs,
     float init_learn_rate, int update_rule);
 
+CVAPI(void) cvPrintMergeLayerOutput(CvDNNLayer * layer, CvMat * Y);
+
 
 #endif // __COMMON_LAYER_H__

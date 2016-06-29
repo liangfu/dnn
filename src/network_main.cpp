@@ -72,7 +72,7 @@ int main(int argc, char * argv[])
     cvReleaseMat(&response);
   }else{
     CvMat * testing  = (CvMat*)cvLoad((char*) testing_filename);
-    CvMat * expected = (CvMat*)cvLoad((char*)expected_filename);
+    CvMat * expected = 0;//(CvMat*)cvLoad((char*)expected_filename);
     if (!testing){
       LOGE("error: testing file not available, try transfer data first.\n"); return -1;
     }
@@ -81,7 +81,7 @@ int main(int argc, char * argv[])
     fprintf(stderr,"%d Testing Images Loaded!\n",testing->rows);
     CV_TIMER_START();
     cnn->loadWeights(cnn->solver()->weights_filename());
-#if 1
+#if 0
     cnn->evaluate(testing,expected,testing->rows,predicted_filename);
 #else
     cnn->evaluate(testing,expected,5,predicted_filename);

@@ -1067,6 +1067,11 @@ static void icvNetworkWrite( CvNetwork * network, CvFileStorage * fs )
   __END__;
 }
 
+CVAPI(void) cvPrintMergeLayerOutput(CvDNNLayer * layer, CvMat * Y)
+{
+  
+}
+
 // static int icvRegisterCNNStatModelType()
 // {
 //   CvTypeInfo info;

@@ -333,20 +333,11 @@ float Network::evaluate(CvMat * testing, CvMat * expected, int nsamples, const c
   // testing data
   cvGetRows(testing,&samples,0,nsamples);
   m_cnn->predict(m_cnn,&samples,result);
-  if (predicted_filename){
-    CvMat * Xn_transpose =
-      cvCreateMat(last_layer->seq_length*nsamples,last_layer->n_output_planes,CV_32F);
-    cvTranspose(result,Xn_transpose);
-    // cvPrintf(stderr, "%.1f ",Xn_transpose);
-    cvSave(predicted_filename,Xn_transpose);
-    LOGI("prediction result saved to: %s.", predicted_filename);
-    cvReleaseMat(&Xn_transpose);
-  }
 
-  // 4) compute loss & accuracy, print progress
+  // compute loss & accuracy, print progress
+  CvMat * expected_transpose = cvCreateMat(last_layer->n_output_planes,nsamples*last_layer->seq_length,CV_32F);
+  CvMat expected_submat_hdr,expected_submat_reshape_hdr;
   if (expected){
-    CvMat * expected_transpose = cvCreateMat(last_layer->n_output_planes,nsamples*last_layer->seq_length,CV_32F);
-    CvMat expected_submat_hdr,expected_submat_reshape_hdr;
     CV_ASSERT(expected->cols==last_layer->n_output_planes*last_layer->seq_length);
     cvGetRows(expected,&expected_submat_hdr,0,nsamples);
     cvReshape(&expected_submat_hdr,&expected_submat_reshape_hdr,0,nsamples*last_layer->seq_length);
@@ -356,15 +347,37 @@ float Network::evaluate(CvMat * testing, CvMat * expected, int nsamples, const c
     static double sumloss = trloss;
     static double sumacc  = top1;
     fprintf(stderr, "sumacc: %.1f%%[%.1f%%], sumloss: %f\n", sumacc,top1,sumloss);
-    if (nsamples<=5){ // if there isn' too many samples to print
-      CvMat * Xn_transpose = cvCreateMat(last_layer->seq_length*nsamples,last_layer->n_output_planes,CV_32F);
-      cvTranspose(result,Xn_transpose);
-      {fprintf(stderr,"output:\n");cvPrintf(stderr,"%.1f ", Xn_transpose);}
-      {fprintf(stderr,"expect:\n");cvPrintf(stderr,"%.1f ", &expected_submat_reshape_hdr);}
-      cvReleaseMat(&Xn_transpose);
-    }
-    cvReleaseMat(&expected_transpose);
   }
+  if (nsamples<=5){
+    List<int> output_planes; int output_planes_count=0;
+    if (icvIsMergeLayer(last_layer)){
+      for (int ii=0;ii<last_layer->input_layers.size();ii++){
+        output_planes.push_back(output_planes_count+last_layer->input_layers[ii]->n_output_planes);
+        output_planes_count+=last_layer->input_layers[ii]->n_output_planes;
+      }
+    }
+    CvMat * Xn_transpose = cvCreateMat(last_layer->seq_length*nsamples,last_layer->n_output_planes,CV_32F);
+    cvTranspose(result,Xn_transpose);
+    fprintf(stderr,"output:\n");
+    CvMat result_submat_hdr;
+    for (int ii=0;ii<Xn_transpose->rows;ii++){
+      cvGetSubRect(Xn_transpose,&result_submat_hdr,cvRect(0,ii,output_planes[0],1));
+      cvPrintf(stderr,"%.1f ", &result_submat_hdr);
+      for (int jj=1;jj<output_planes.size();jj++){
+      cvGetSubRect(Xn_transpose,&result_submat_hdr,
+                   cvRect(output_planes[jj-1],ii,output_planes[jj]-output_planes[jj-1],1));
+      cvPrintf(stderr,"%.1f ", &result_submat_hdr);
+      }
+    }
+      // cvPrintf(stderr,"%.1f ", Xn_transpose);}
+    if (predicted_filename){
+      cvSave(predicted_filename,Xn_transpose);
+      LOGI("prediction result saved to: %s.", predicted_filename);
+    }
+    if (expected){fprintf(stderr,"expect:\n");cvPrintf(stderr,"%.1f ", &expected_submat_reshape_hdr);}
+    cvReleaseMat(&Xn_transpose);
+  }
+  cvReleaseMat(&expected_transpose);
   
   cvReleaseMat(&result);
   __END__;

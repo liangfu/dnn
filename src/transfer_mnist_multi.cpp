@@ -77,8 +77,8 @@ int main(int argc, char * argv[])
   char keys[1<<12];
   sprintf(keys,
           "{  s | solver  |       | location of solver file      }"
-          "{ tr | trainsize  | 10000  | number of training samples   }"
-          "{ ts | testsize   | 2000  | number of testing samples    }"
+          "{ tr | trainsize  | 5000  | number of training samples   }"
+          "{ ts | testsize   | 1000  | number of testing samples    }"
           "{  h | help    | false | display this help message    }");
   CvCommandLineParser parser(argc,argv,keys);
   const int display_help = parser.get<bool>("help");
@@ -157,29 +157,42 @@ void cvGenerateMultiDigitMNIST(CvMat * training, CvMat * training_multi,
     nd = (cvRandInt(&rng)%(ndigits-1))+2; // number of digits in current frame
     CV_MAT_ELEM(*response_multi,float,idx,nd-2)=1;
 
+    const float mnist_ratio = .5f;
     for (int diter=0;diter<nd;diter++){
-      tidx = cvRandInt(&rng) % training->rows;
-      vptr[diter] = CV_MAT_ELEM(*response,uchar,tidx,0);
-      memcpy(sample->data.ptr,training->data.ptr+training->step*tidx,training->step);
-      warp_p->data.fl[0]=warp_p->data.fl[4]=1;
-      warp_p->data.fl[2]=-cvRandReal(&rng)*2-20+9*(nd-1)-18*diter;
-      warp_p->data.fl[5]=-cvRandReal(&rng)*6-10; // cvPrintf(stderr,"%.1f ",warp_p);
-      icvWarp(sample,target0,warp_p);
+      float pmnist = cvRandReal(&rng);
+      float tx = -cvRandReal(&rng)*8-6+4*(nd-1)-18*diter;
+      float ty = -cvRandReal(&rng)*10-10;
+      if (pmnist<mnist_ratio){
+        tidx = cvRandInt(&rng) % training->rows;
+        vptr[diter] = CV_MAT_ELEM(*response,uchar,tidx,0);
+        memcpy(sample->data.ptr,training->data.ptr+training->step*tidx,training->step);
+        warp_p->data.fl[0]=warp_p->data.fl[4]=1;
+        warp_p->data.fl[2]=tx;
+        warp_p->data.fl[5]=ty; // cvPrintf(stderr,"%.1f ",warp_p);
+        icvWarp(sample,target0,warp_p);
+        CV_MAT_ELEM(*response_multi,float,idx,ndigits-1+10*diter+vptr[diter])=1;
+      }else{
+        vptr[diter] = cvRandInt(&rng) % 10; 
+        cvZero(target0); char pstr[20]; sprintf(pstr,"%d",vptr[diter]);
+        cvPutTextEx(target0,pstr,cvPoint(-tx+10,-ty+10),CV_WHITE,cvRandReal(&rng)*.2f+.6f,2);
+        CV_MAT_ELEM(*response_multi,float,idx,ndigits-1+10*diter+vptr[diter])=1;
+      }
       cvAdd(target0, target, target); 
-      CV_MAT_ELEM(*response_multi,float,idx,ndigits-1+10*diter+vptr[diter])=1;
     }
+
     // set unknown prediction to 0.1
     for (int diter=nd;diter<ndigits;diter++){
     for (int ii=0;ii<10;ii++){
       CV_MAT_ELEM(*response_multi,float,idx,ndigits-1+10*diter+ii)=.1f;
     }
     }
+
     // add speckle noise to target image
     for (int iter=0;iter<1000;iter++){ 
-      int ridx = cvRandInt(&rng)%64,cidx = cvRandInt(&rng)%64;
-      int val = cvRandInt(&rng)%255;
-      cvmSet(target,ridx,cidx,val);
+      int ridx = cvRandInt(&rng)%64, cidx = cvRandInt(&rng)%64;
+      int val = cvRandInt(&rng)%255; cvmSet(target,ridx,cidx,val);
     }
+
     cvMinS(target,255,target);
     memcpy(training_multi->data.ptr+training_multi->step*idx,target->data.ptr,training_multi->step);
 

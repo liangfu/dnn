@@ -152,7 +152,7 @@ CV_INLINE void cvDoNothing() { }
   }while(0)
 #define LOGI(fmt,...)                                   \
   do {                                                  \
-    fprintf(stderr,"%s: %d: info: " fmt "\n",__FILE__,__LINE__,##__VA_ARGS__);    \
+    fprintf(stderr,"info: " fmt "\n",##__VA_ARGS__);    \
   }while(0)
 #else 
 #endif
