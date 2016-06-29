@@ -443,6 +443,8 @@ CVAPI(int) cvCountNAN(CvMat * src);
  */
 CVAPI(float) cvQuantile(CvMat * src, float p);
 
+CVAPI(float) cvSdv(CvMat * src);
+
 /** 
  * convert between diagonal matrix and its vector form
  */

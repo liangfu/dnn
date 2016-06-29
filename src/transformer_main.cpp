@@ -41,13 +41,17 @@ int main(int argc, char * argv[])
           "{  s | scale   | 1           | ratio of scaled input image }"
           "{  t | move    | 0,0         | move image anchor to location }"
           "{  c | crop    | 64,64       | crop image to specified size }"
+          "{  a | angle   | 0           | rotate to specified angle }"
+          "{  v | visual  | 1           | visualize transformed image }"
           "{  h | help    | false       | display this help message    }");
   CvCommandLineParser parser(argc,argv,keys);
   const char * path = parser.get<string>("input").c_str();
   const char * output_filename = parser.get<string>("output").c_str();
   const int start_index = parser.get<int>("begin");
   const int display_help = parser.get<bool>("help");
+  const int visualize = parser.get<int>("visual");
   const float scale = parser.get<float>("scale");
+  const float theta = parser.get<float>("angle")/180.f*CV_PI;
   const char * move = parser.get<string>("move").c_str();
   const char * crop = parser.get<string>("crop").c_str();
   if (display_help){parser.printParams();return 0;}
@@ -69,15 +73,42 @@ int main(int argc, char * argv[])
   for (int idx=start_index;; idx++){
     sprintf(filepath,path,idx);
     IplImage * img = cvLoadImage(filepath,0);
-    if (!img){LOGW("File %s not found.",filepath);break;}else{fprintf(stderr,"info: File %s loaded.\n",filepath);}
+    if (!img){
+      LOGW("File %s not found.",filepath);break;
+    }else{fprintf(stderr,"info: File %s loaded.\n",filepath);}
     CvMat mat_hdr;
     CvMat * mat = cvCloneMat(cvGetMat(img,&mat_hdr));
     CvMat * mat2 = cvCreateMat(mat->rows,mat->cols,CV_32F);
     cvConvert(mat,mat2);
-    warp_p->data.fl[0]=warp_p->data.fl[4]=scale;
+    warp_p->data.fl[0]=scale*cos(theta);
+    warp_p->data.fl[1]=sin(theta);
+    warp_p->data.fl[3]=-sin(theta);
+    warp_p->data.fl[4]=scale*cos(theta);
     warp_p->data.fl[2]=tx;
     warp_p->data.fl[5]=ty;
     icvWarp(mat2,out,warp_p);
+
+    // contrast enhancement
+    float avg = cvAvg(out).val[0];
+    float sdv = cvSdv(out);
+    cvSubS(out,cvScalar(avg),out);
+    cvScale(out,out,127.f*0.4f/sdv);
+    cvAddS(out,cvScalar(60),out);
+
+    // clear boundary
+    CvMat out_submat_hdr;
+    cvGetRows(out,&out_submat_hdr,0,10); cvSet(&out_submat_hdr,cvScalar(0));
+    cvGetCols(out,&out_submat_hdr,0,10); cvSet(&out_submat_hdr,cvScalar(0));
+    cvGetRows(out,&out_submat_hdr,63-10,63); cvSet(&out_submat_hdr,cvScalar(0));
+    
+    // add speckle noise to target image
+    CvRNG rng = cvRNG(-1);
+    for (int iter=0;iter<500;iter++){ 
+      int ridx = cvRandInt(&rng)%64, cidx = cvRandInt(&rng)%64;
+      int val = cvRandInt(&rng)%255; cvmSet(out,ridx,cidx,val);
+    }
+
+    cvMinS(out,255,out); cvMaxS(out,0,out);
 
     CvMat testing_submat_hdr,out_reshape_hdr;
     cvGetRow(testing,&testing_submat_hdr,count);
@@ -85,7 +116,7 @@ int main(int argc, char * argv[])
     cvCopy(&out_reshape_hdr,&testing_submat_hdr);
 
     // visualize
-    // CV_SHOW(out);
+    if (visualize){CV_SHOW(out);}
     cvReleaseMat(&mat);cvReleaseMat(&mat2);
     count++;
   }

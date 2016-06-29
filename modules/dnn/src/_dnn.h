@@ -30,7 +30,6 @@
 #include "precomp.hpp"
 
 // void cvCopyEx(CvMat * src, CvMat * dst);
-double cvSdv(CvMat * src);
 
 CvMat * cvCloneTransposed(CvMat * src);
 

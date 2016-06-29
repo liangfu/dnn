@@ -12,7 +12,7 @@
 	<weights_filename>data/mnist/multi_convnet_weights.xml</weights_filename>
 	<lr_init>0.05</lr_init>
 	<decay_type>invsqrt</decay_type>
-	<maxiter>5000</maxiter>
+	<maxiter>20000</maxiter>
 	<batch_size>1</batch_size>
 	<validate_ratio>0.1</validate_ratio>
 </network>

@@ -461,7 +461,11 @@ static void icvCNNModelPredict( const CvDNNStatModel* model, const CvMat* testda
   cvZero(X[0]);
   for ( k = 0, layer = (CvDNNLayer*)first_layer; k < n_layers; k++, layer = layer->next_layer ){
     int n_outputs = layer->n_output_planes*layer->output_height*layer->output_width;
-    CV_CALL(X[k+1] = cvCreateMat( batch_size*layer->seq_length, n_outputs, CV_32F )); 
+    if (icvIsInputLayer(layer)){
+      CV_CALL(X[k+1] = cvCreateMat( batch_size*layer->seq_length, n_outputs, CV_32F ));
+    }else{
+      CV_CALL(X[k+1] = cvCreateMat( batch_size, n_outputs, CV_32F ));
+    }
     cvZero(X[k+1]);
   }
 

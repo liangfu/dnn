@@ -44,6 +44,13 @@ float cvQuantile(CvMat * src, float p)
   return retval;
 }
 
+float cvSdv(CvMat * src)
+{
+  CvScalar avg, sdv; 
+  cvAvgSdv(src,&avg,&sdv); 
+  return sdv.val[0];
+}
+
 /** 
  * Calculate gradient of source image.
  * In case of destinate image is CV_8UC1, the result would be

@@ -51,41 +51,45 @@ int main(int argc, char * argv[])
   const char * response_filename = cnn->solver()->response_filename();
   const char * testing_filename  = cnn->solver()->testing_filename();
   const char * expected_filename = cnn->solver()->expected_filename();
+  const char * predicted_filename = cnn->solver()->predicted_filename();
 
   fprintf(stderr,"Loading Dataset ...\n");
-  CvMat * response = (CvMat*)cvLoad((char*)response_filename);
-  CvMat * training = (CvMat*)cvLoad((char*)training_filename);
-  CvMat * expected = (CvMat*)cvLoad((char*)expected_filename);
-  CvMat * testing  = (CvMat*)cvLoad((char*) testing_filename);
-
-  if (!response || !training || !expected || !testing){
-    LOGE("Error: not all training/testing files available, try transfer data first.\n"); 
-    return 1;
-  }
   
-  assert(CV_MAT_TYPE(training->type)==CV_32F);
-  assert(training->rows==response->rows);
-  assert( testing->rows==expected->rows);
-  
-  fprintf(stderr,"%d Training Images Loaded!\n",training->rows);
-  fprintf(stderr,"%d Testing Images Loaded!\n",testing->rows);
-
-  CV_TIMER_START();
-
   if (!strcmp(task,"train")){
+    CvMat * training = (CvMat*)cvLoad((char*)training_filename);
+    CvMat * response = (CvMat*)cvLoad((char*)response_filename);
+    if (!response || !training){
+      LOGE("error: not all training files available, try transfer data first.\n"); return -1;
+    }
+    assert(CV_MAT_TYPE(training->type)==CV_32F);
+    assert(training->rows==response->rows);
+    fprintf(stderr,"%d Training Images Loaded!\n",training->rows);
+    CV_TIMER_START();
     cnn->train(training,response);
     cnn->saveWeights(cnn->solver()->weights_filename());
+    CV_TIMER_SHOW();
+    cvReleaseMat(&training);
+    cvReleaseMat(&response);
   }else{
+    CvMat * testing  = (CvMat*)cvLoad((char*) testing_filename);
+    CvMat * expected = (CvMat*)cvLoad((char*)expected_filename);
+    if (!testing){
+      LOGE("error: testing file not available, try transfer data first.\n"); return -1;
+    }
+    assert(CV_MAT_TYPE(testing->type)==CV_32F);
+    if (expected){assert( testing->rows==expected->rows);}
+    fprintf(stderr,"%d Testing Images Loaded!\n",testing->rows);
+    CV_TIMER_START();
     cnn->loadWeights(cnn->solver()->weights_filename());
-    cnn->evaluate(testing,expected,testing->rows);
+#if 1
+    cnn->evaluate(testing,expected,testing->rows,predicted_filename);
+#else
+    cnn->evaluate(testing,expected,5,predicted_filename);
+#endif
+    CV_TIMER_SHOW();
+    if (testing){cvReleaseMat(&testing);testing=0;}
+    if (expected){cvReleaseMat(&expected);expected=0;}
   }
-
-  CV_TIMER_SHOW();
-
-  cvReleaseMat(&training);
-  cvReleaseMat(&response);
-  cvReleaseMat(&testing);
-  cvReleaseMat(&expected);
 
   return 0;
 }

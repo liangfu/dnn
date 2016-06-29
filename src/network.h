@@ -34,6 +34,7 @@ class CvDNNSolver
   char m_response_filename[1<<10];
   char m_testing_filename[1<<10];
   char m_expected_filename[1<<10];
+  char m_predicted_filename[1<<10];
 public:
   CvDNNSolver(char * solver_filename):
     m_lr_init(.0001f),m_decay_type(CV_DNN_LEARN_RATE_DECREASE_SQRT_INV),
@@ -46,6 +47,7 @@ public:
     strcpy(m_response_filename,cvReadStringByName(fs,node,"response_filename"));
     strcpy(m_testing_filename, cvReadStringByName(fs,node,"testing_filename"));
     strcpy(m_expected_filename,cvReadStringByName(fs,node,"expected_filename"));
+    strcpy(m_predicted_filename,cvReadStringByName(fs,node,"predicted_filename"));
     node = cvGetFileNodeByName(fs,0,"network");
     strcpy(m_model_filename,cvReadStringByName(fs,node,"model_filename"));
     strcpy(m_weights_filename,cvReadStringByName(fs,node,"weights_filename"));
@@ -72,6 +74,7 @@ public:
   char * response_filename(){return (char*)m_response_filename;}
   char * testing_filename (){return (char*)m_testing_filename;}
   char * expected_filename(){return (char*)m_expected_filename;}
+  char * predicted_filename(){return (char*)m_predicted_filename;}
 };
 
 /** \class CvNetwork
@@ -127,7 +130,7 @@ public:
    */
   void train(CvMat *trainingData, CvMat *responseMat);
 
-  float evaluate(CvMat * testing, CvMat * expected, int nsamples);
+  float evaluate(CvMat * testing, CvMat * expected, int nsamples, const char * predicted_filename);
 };
 
 #endif // __CV_DNNETWORK_H__

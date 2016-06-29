@@ -25,13 +25,6 @@
  
 #include "_dnn.h"
 
-double cvSdv(CvMat * src)
-{
-  CvScalar avg, sdv; 
-  cvAvgSdv(src,&avg,&sdv); 
-  return sdv.val[0];
-}
-
 void cvDebugGEMM(const char * src1name, const char * src2name, const char * src3name, const char * dstname,
                  CvMat * src1, CvMat * src2, float alpha, CvMat * src3, float beta, CvMat * dst, int tABC)
 {

@@ -77,8 +77,8 @@ int main(int argc, char * argv[])
   char keys[1<<12];
   sprintf(keys,
           "{  s | solver  |       | location of solver file      }"
-          "{ tr | trainsize  | 5000  | number of training samples   }"
-          "{ ts | testsize   | 1000  | number of testing samples    }"
+          "{ tr | trainsize  | 10000  | number of training samples   }"
+          "{ ts | testsize   | 2000  | number of testing samples    }"
           "{  h | help    | false | display this help message    }");
   CvCommandLineParser parser(argc,argv,keys);
   const int display_help = parser.get<bool>("help");
@@ -107,9 +107,9 @@ int main(int argc, char * argv[])
   const int imsize = 64;
   const int ndigits = 3;
   CvMat * training_multi = cvCreateMat(trainsize,imsize*imsize,CV_32F);
-  CvMat * response_multi = cvCreateMat(trainsize,ndigits+10*ndigits,CV_32F);
+  CvMat * response_multi = cvCreateMat(trainsize,ndigits-1+10*ndigits,CV_32F);
   CvMat *  testing_multi = cvCreateMat( testsize,imsize*imsize,CV_32F);
-  CvMat * expected_multi = cvCreateMat( testsize,ndigits+10*ndigits,CV_32F);
+  CvMat * expected_multi = cvCreateMat( testsize,ndigits-1+10*ndigits,CV_32F);
 
   cvGenerateMultiDigitMNIST(training, training_multi, response, response_multi, ndigits);
   cvGenerateMultiDigitMNIST( testing,  testing_multi, expected, expected_multi, ndigits);
@@ -142,7 +142,7 @@ void cvGenerateMultiDigitMNIST(CvMat * training, CvMat * training_multi,
   CV_ASSERT(CV_MAT_TYPE(training->type)==CV_32F);
   CV_ASSERT(CV_MAT_TYPE(response->type)==CV_8U);
   CV_ASSERT(CV_MAT_TYPE(response_multi->type)==CV_32F);
-  CV_ASSERT(response_multi->cols==(ndigits+10*ndigits));
+  CV_ASSERT(response_multi->cols==(ndigits-1+10*ndigits));
   int imsize = sqrt(training_multi->cols);
   CvMat * sample = cvCreateMat(28,28,CV_32F);
   CvMat * target0 = cvCreateMat(imsize,imsize,CV_32F);
@@ -154,8 +154,8 @@ void cvGenerateMultiDigitMNIST(CvMat * training, CvMat * training_multi,
   for (int idx=0;idx<training_multi->rows;idx++){
     cvZero(target); cvSet(vmat,cvScalar(-1));
 
-    nd = (cvRandInt(&rng)%ndigits)+1; // number of digits in current frame
-    CV_MAT_ELEM(*response_multi,float,idx,nd-1)=1;
+    nd = (cvRandInt(&rng)%(ndigits-1))+2; // number of digits in current frame
+    CV_MAT_ELEM(*response_multi,float,idx,nd-2)=1;
 
     for (int diter=0;diter<nd;diter++){
       tidx = cvRandInt(&rng) % training->rows;
@@ -166,12 +166,19 @@ void cvGenerateMultiDigitMNIST(CvMat * training, CvMat * training_multi,
       warp_p->data.fl[5]=-cvRandReal(&rng)*6-10; // cvPrintf(stderr,"%.1f ",warp_p);
       icvWarp(sample,target0,warp_p);
       cvAdd(target0, target, target); 
-      CV_MAT_ELEM(*response_multi,float,idx,ndigits+10*diter+vptr[diter])=1;
+      CV_MAT_ELEM(*response_multi,float,idx,ndigits-1+10*diter+vptr[diter])=1;
     }
+    // set unknown prediction to 0.1
     for (int diter=nd;diter<ndigits;diter++){
     for (int ii=0;ii<10;ii++){
-      CV_MAT_ELEM(*response_multi,float,idx,ndigits+10*diter+ii)=.1f;
+      CV_MAT_ELEM(*response_multi,float,idx,ndigits-1+10*diter+ii)=.1f;
     }
+    }
+    // add speckle noise to target image
+    for (int iter=0;iter<1000;iter++){ 
+      int ridx = cvRandInt(&rng)%64,cidx = cvRandInt(&rng)%64;
+      int val = cvRandInt(&rng)%255;
+      cvmSet(target,ridx,cidx,val);
     }
     cvMinS(target,255,target);
     memcpy(training_multi->data.ptr+training_multi->step*idx,target->data.ptr,training_multi->step);
