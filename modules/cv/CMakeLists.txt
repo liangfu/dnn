@@ -5,48 +5,50 @@ project(cv)
 INCLUDE_DIRECTORIES(./include ../cxcore/include ../ts/include ../highgui/include)
 
 add_library(cv SHARED
-	# src/rotcalipers.cpp
-	# src/grabcut.cpp
-	# src/phasecorr.cpp
-	# src/floodfill.cpp
 	src/imgwarp.cpp
-	# src/pyramids.cpp
-	# src/shapedescr.cpp
 	src/morph.cpp
 	src/templmatch.cpp
-	# src/cornersubpix.cpp
 	src/deriv.cpp
 	src/filter.cpp
-	# src/samplers.cpp
-	# src/subdivision2d.cpp
-	# src/moments.cpp
-	# src/contours.cpp
-	# src/convhull.cpp
-	# src/segmentation.cpp
-	# src/clahe.cpp
 	src/distransform.cpp
 	src/accum.cpp
-	# src/linefit.cpp
 	src/avx/imgwarp_avx.cpp
 	src/avx2/imgwarp_avx2.cpp
 	src/tables.cpp
-	# src/sumpixels.cpp
 	src/color.cpp
 	src/smooth.cpp
-	# src/histogram.cpp
-	# src/geometry.cpp
 	src/thresh.cpp
-	# src/emd.cpp
-	# src/gabor.cpp
 	src/utils.cpp
-	# src/featureselect.cpp
-	# src/approx.cpp
 	src/generalized_hough.cpp
-	# src/matchcontours.cpp
-	# src/corner.cpp
-	# src/undistort.cpp
-	# src/hough.cpp
 	src/canny.cpp
+
+	src/grabcut.cpp
+	src/phasecorr.cpp
+	src/floodfill.cpp
+	src/pyramids.cpp
+	src/cornersubpix.cpp
+	src/samplers.cpp
+	src/subdivision2d.cpp
+	src/segmentation.cpp
+	src/clahe.cpp
+	src/linefit.cpp
+	src/sumpixels.cpp
+	src/histogram.cpp
+	src/emd.cpp
+	src/gabor.cpp
+	src/featureselect.cpp
+	src/corner.cpp
+	src/undistort.cpp
+	src/hough.cpp
+
+	# src/rotcalipers.cpp
+	# src/shapedescr.cpp
+	# src/moments.cpp
+	# src/contours.cpp
+	# src/convhull.cpp
+	# src/geometry.cpp
+	# src/approx.cpp
+	# src/matchcontours.cpp
 	)
 
 add_executable(test_cv

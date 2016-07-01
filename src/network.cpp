@@ -434,8 +434,7 @@ void cvSaveCategorialResult(CvDNNLayer * last_layer, CvMat * input, const char *
       cvMinMaxLoc(&input_submat_hdr,0,&maxvals->data.db[jj-1],0,&maxloc);
       maxlocs->data.i[jj-1]=maxloc.x;
     }
-    cvMinMaxLoc(maxvals,&minval,0,0,0);
-    if (minval>.3){cvPrintf(fp,"%d",maxlocs);}else{fprintf(fp,"--\n");}
+    if (cvAvg(maxvals).val[0]>.6){cvPrintf(fp,"%d",maxlocs);}else{fprintf(fp,"--\n");}
     cvReleaseMat(&maxvals);
     cvReleaseMat(&maxlocs);
   }

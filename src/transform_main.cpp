@@ -26,6 +26,7 @@
 #include "dnn.h"
 #include "highgui.h"
 #include "cxcore.h"
+#include "cv.h"
 #include "cvext.h"
 #include "network.h"
 
@@ -89,11 +90,14 @@ int main(int argc, char * argv[])
     icvWarp(mat2,out,warp_p);
 
     // contrast enhancement
-    float avg = cvAvg(out).val[0];
-    float sdv = cvSdv(out);
-    cvSubS(out,cvScalar(avg),out);
-    cvScale(out,out,127.f*0.4f/sdv);
-    cvAddS(out,cvScalar(30),out);
+    // float avg = cvAvg(out).val[0];
+    // float sdv = cvSdv(out);
+    // cvSubS(out,cvScalar(avg),out);
+    // cvScale(out,out,127.f*0.4f/sdv);
+    // cvAddS(out,cvScalar(30),out);
+
+    cvEqualizeHist(out,out);
+    cvErodeEx(out,7);
 
     // clear boundary
     CvMat out_submat_hdr;
