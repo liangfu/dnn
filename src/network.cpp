@@ -4,6 +4,8 @@
 
 using namespace std;
 
+void cvSaveCategorialResult(CvDNNLayer * last_layer, CvMat * input, const char * output_filename);
+
 Network::Network():m_solver(0),m_cnn(0)
 {
 }
@@ -348,7 +350,7 @@ float Network::evaluate(CvMat * testing, CvMat * expected, int nsamples, const c
     static double sumacc  = top1;
     fprintf(stderr, "sumacc: %.1f%%[%.1f%%], sumloss: %f\n", sumacc,top1,sumloss);
   }
-  if (nsamples<=5){
+  {
     List<int> output_planes; int output_planes_count=0;
     if (icvIsMergeLayer(last_layer)){
       for (int ii=0;ii<last_layer->input_layers.size();ii++){
@@ -358,20 +360,23 @@ float Network::evaluate(CvMat * testing, CvMat * expected, int nsamples, const c
     }
     CvMat * Xn_transpose = cvCreateMat(last_layer->seq_length*nsamples,last_layer->n_output_planes,CV_32F);
     cvTranspose(result,Xn_transpose);
-    fprintf(stderr,"output:\n");
-    CvMat result_submat_hdr;
-    for (int ii=0;ii<Xn_transpose->rows;ii++){
-      cvGetSubRect(Xn_transpose,&result_submat_hdr,cvRect(0,ii,output_planes[0],1));
-      cvPrintf(stderr,"%.1f ", &result_submat_hdr);
-      for (int jj=1;jj<output_planes.size();jj++){
-      cvGetSubRect(Xn_transpose,&result_submat_hdr,
-                   cvRect(output_planes[jj-1],ii,output_planes[jj]-output_planes[jj-1],1));
-      cvPrintf(stderr,"%.1f ", &result_submat_hdr);
+    if (nsamples<=5){fprintf(stderr,"output:\n");
+      CvMat result_submat_hdr;
+      for (int ii=0;ii<Xn_transpose->rows;ii++){
+        cvGetSubRect(Xn_transpose,&result_submat_hdr,cvRect(0,ii,output_planes[0],1));
+        cvPrintf(stderr,"%.1f ", &result_submat_hdr);
+        for (int jj=1;jj<output_planes.size();jj++){
+          cvGetSubRect(Xn_transpose,&result_submat_hdr,
+                       cvRect(output_planes[jj-1],ii,output_planes[jj]-output_planes[jj-1],1));
+          cvPrintf(stderr,"%.1f ", &result_submat_hdr);
+        }
       }
     }
-      // cvPrintf(stderr,"%.1f ", Xn_transpose);}
     if (predicted_filename){
       cvSave(predicted_filename,Xn_transpose);
+      char output_filename[1024]={0,}; 
+      cvGetBaseName((char*)predicted_filename,(char*)output_filename); strcat(output_filename,".txt");
+      cvSaveCategorialResult(last_layer, Xn_transpose, (char*)output_filename);
       LOGI("prediction result saved to: %s.", predicted_filename);
     }
     if (expected){fprintf(stderr,"expect:\n");cvPrintf(stderr,"%.1f ", &expected_submat_reshape_hdr);}
@@ -384,5 +389,57 @@ float Network::evaluate(CvMat * testing, CvMat * expected, int nsamples, const c
   return top1;
 }
 
+void cvSaveCategorialResult(CvDNNLayer * last_layer, CvMat * input, const char * output_filename)
+{
+  List<int> output_planes; int output_planes_count=0;
+  double minval,maxval; CvPoint minloc,maxloc;
+  if (icvIsMergeLayer(last_layer)){
+    for (int ii=0;ii<last_layer->input_layers.size();ii++){
+      output_planes.push_back(output_planes_count+last_layer->input_layers[ii]->n_output_planes);
+      output_planes_count+=last_layer->input_layers[ii]->n_output_planes;
+    }
+  }
 
+#if 0
+  CvMat * maxvals = cvCreateMat(1,output_planes.size(),CV_64F);
+  CvMat * maxlocs = cvCreateMat(1,output_planes.size(),CV_32S);
+  FILE * fp = fopen(output_filename,"wt");
+  CvMat input_submat_hdr;
+  for (int ii=0;ii<input->rows;ii++){
+    cvGetSubRect(input,&input_submat_hdr,cvRect(0,ii,output_planes[0],1));
+    cvMinMaxLoc(&input_submat_hdr,0,&maxvals->data.db[0],0,&maxloc);
+    maxlocs->data.i[0]=maxloc.x;
+    for (int jj=1;jj<output_planes.size();jj++){
+      cvGetSubRect(input,&input_submat_hdr,
+                   cvRect(output_planes[jj-1],ii,output_planes[jj]-output_planes[jj-1],1));
+      cvMinMaxLoc(&input_submat_hdr,0,&maxvals->data.db[jj],0,&maxloc);
+      maxlocs->data.i[jj]=maxloc.x;
+    }
+    cvPrintf(fp,"%d, ",maxlocs);
+  }
+  fclose(fp);
+  cvReleaseMat(&maxvals);
+  cvReleaseMat(&maxlocs);
+#else
+  FILE * fp = fopen(output_filename,"wt");
+  CvMat input_submat_hdr;
+  for (int ii=0;ii<input->rows;ii++){
+    cvGetSubRect(input,&input_submat_hdr,cvRect(0,ii,output_planes[0],1));
+    cvMinMaxLoc(&input_submat_hdr,0,&maxval,0,&maxloc);
+    CvMat * maxvals = cvCreateMat(1,maxloc.x+2,CV_64F);
+    CvMat * maxlocs = cvCreateMat(1,maxloc.x+2,CV_32S);
+    for (int jj=1;jj<maxlocs->cols+1;jj++){
+      cvGetSubRect(input,&input_submat_hdr,
+                   cvRect(output_planes[jj-1],ii,output_planes[jj]-output_planes[jj-1],1));
+      cvMinMaxLoc(&input_submat_hdr,0,&maxvals->data.db[jj-1],0,&maxloc);
+      maxlocs->data.i[jj-1]=maxloc.x;
+    }
+    cvMinMaxLoc(maxvals,&minval,0,0,0);
+    if (minval>.3){cvPrintf(fp,"%d",maxlocs);}else{fprintf(fp,"--\n");}
+    cvReleaseMat(&maxvals);
+    cvReleaseMat(&maxlocs);
+  }
+  fclose(fp);
+#endif
+}
 

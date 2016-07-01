@@ -81,7 +81,7 @@ int main(int argc, char * argv[])
     fprintf(stderr,"%d Testing Images Loaded!\n",testing->rows);
     CV_TIMER_START();
     cnn->loadWeights(cnn->solver()->weights_filename());
-#if 0
+#if 1
     cnn->evaluate(testing,expected,testing->rows,predicted_filename);
 #else
     cnn->evaluate(testing,expected,5,predicted_filename);

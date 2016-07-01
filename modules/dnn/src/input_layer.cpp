@@ -80,6 +80,7 @@ void icvCNNInputForward( CvDNNLayer * _layer, const CvMat * X, CvMat * Y )
     }
   }
   cvCopy(X,Y);
+  if (layer->visualize){icvVisualizeCNNLayer((CvDNNLayer*)layer,Y);}
   __END__;
 }
 

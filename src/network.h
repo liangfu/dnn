@@ -98,11 +98,7 @@ public:
    * a public variable.
    * Saved the CNN model in this variable.
    */
-  // int            m_clipHeight, m_clipWidth;
-  // int            m_nNode, m_connectNode;
-  // int            m_max_iter;
-  // double         m_learningRate;
-  // int            m_batch_size;
+  CvDNNStatModel * model(){return m_cnn;}
 
   void loadModel(string inFile);
   
