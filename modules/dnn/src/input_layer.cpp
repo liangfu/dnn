@@ -69,6 +69,7 @@ void icvCNNInputForward( CvDNNLayer * _layer, const CvMat * X, CvMat * Y )
   if ( !icvIsInputLayer(_layer) ) { CV_ERROR( CV_StsBadArg, "Invalid layer" ); }
   __BEGIN__;
   CvDNNInputLayer * layer = (CvDNNInputLayer*)_layer;
+  CV_ASSERT(cvCountNAN((CvMat*)X)<1);
   if (!layer->Y){
     layer->Y = cvCloneMat(X);
   }else{
@@ -80,6 +81,7 @@ void icvCNNInputForward( CvDNNLayer * _layer, const CvMat * X, CvMat * Y )
     }
   }
   cvCopy(X,Y);
+  CV_ASSERT(cvCountNAN(Y)<1);
   if (layer->visualize){icvVisualizeCNNLayer((CvDNNLayer*)layer,Y);}
   __END__;
 }

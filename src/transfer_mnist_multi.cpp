@@ -151,20 +151,26 @@ void cvGenerateMultiDigitMNIST(CvMat * training, CvMat * training_multi,
   CvRNG rng = cvRNG(-1); int tidx = 0, nd = 0;
   CvMat * vmat = cvCreateMat(1,ndigits,CV_32S); cvZero(vmat); int * vptr = vmat->data.i;
   cvZero(response_multi);
+  int font_faces[6]={
+    CV_FONT_HERSHEY_PLAIN,
+    CV_FONT_HERSHEY_SIMPLEX,CV_FONT_HERSHEY_COMPLEX,
+    CV_FONT_HERSHEY_DUPLEX,CV_FONT_HERSHEY_TRIPLEX,
+    CV_FONT_HERSHEY_SCRIPT_SIMPLEX
+  };
   for (int idx=0;idx<training_multi->rows;idx++){
     cvZero(target); cvSet(vmat,cvScalar(-1));
 
     nd = (cvRandInt(&rng)%(ndigits-1))+2; // number of digits in current frame
     CV_MAT_ELEM(*response_multi,float,idx,nd-2)=1;
 
-    const float mnist_ratio = .01f;
+    const float mnist_ratio = .1f;
     for (int diter=0;diter<nd;diter++){
       float pmnist = cvRandReal(&rng);
-      float xoff=8,yoff=18;
-      float tx = -cvRandReal(&rng)*2-xoff+1*(nd-1)-14*diter;
-      float ty = -cvRandReal(&rng)*2-yoff;
+      float xoff=6,yoff=19;
+      float tx = -cvRandReal(&rng)*2-xoff+1*(nd-1)-(cvRandReal(&rng)*2.f+13.f)*diter;
+      float ty = -cvRandReal(&rng)*1-yoff;
       float scale = 1.f;
-      if (pmnist<mnist_ratio){
+      if (0){ // pmnist<mnist_ratio){
         tidx = cvRandInt(&rng) % training->rows;
         vptr[diter] = CV_MAT_ELEM(*response,uchar,tidx,0);
         memcpy(sample->data.ptr,training->data.ptr+training->step*tidx,training->step);
@@ -174,9 +180,13 @@ void cvGenerateMultiDigitMNIST(CvMat * training, CvMat * training_multi,
         icvWarp(sample,target0,warp_p);
         CV_MAT_ELEM(*response_multi,float,idx,ndigits-1+10*diter+vptr[diter])=1;
       }else{
+        int fidx = cvRandInt(&rng)%3;
+        if (fidx==0){scale*=2.5f;}
+        float tscale = cvRandReal(&rng)*.05f+.7f*scale;
         vptr[diter] = cvRandInt(&rng) % 10; 
         cvZero(target0); char pstr[20]; sprintf(pstr,"%d",vptr[diter]);
-        cvPutTextEx(target0,pstr,cvPoint(-tx+xoff,-ty+yoff),CV_WHITE,cvRandReal(&rng)*.1f+.6f*scale,2);
+        cvPutTextEx(target0,pstr,cvPoint(-tx+xoff,-ty+yoff),
+                    CV_WHITE,tscale,2,font_faces[fidx]);
         CV_MAT_ELEM(*response_multi,float,idx,ndigits-1+10*diter+vptr[diter])=1;
       }
       cvAdd(target0, target, target); 
@@ -190,7 +200,7 @@ void cvGenerateMultiDigitMNIST(CvMat * training, CvMat * training_multi,
     }
 
     // add speckle noise to target image
-    for (int iter=0;iter<200;iter++){ 
+    for (int iter=0;iter<(cvRandInt(&rng)%400)+100;iter++){ 
       int ridx = cvRandInt(&rng)%64, cidx = cvRandInt(&rng)%64;
       int val = cvRandInt(&rng)%255; cvmSet(target,ridx,cidx,val);
     }
@@ -203,6 +213,7 @@ void cvGenerateMultiDigitMNIST(CvMat * training, CvMat * training_multi,
     cvGetRow(response_multi,&response_submat_hdr,idx);
     cvPrintf(stderr,"%.1f ", &response_submat_hdr);
     cvPrintf(stderr,"%d ",vmat);
+    cvRectangle(target,cvPoint(10,20),cvPoint(54,44),CV_WHITE);
     CV_SHOW(target);
   }
   cvReleaseMat(&vmat);

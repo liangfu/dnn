@@ -41,9 +41,12 @@ int main(int argc, char * argv[])
           "{  b | begin   | 1           | start index of input file format }"
           "{  s | scale   | 1           | ratio of scaled input image }"
           "{  t | move    | 0,0         | move image anchor to location }"
-          "{  c | crop    | 64,64       | crop image to specified size }"
+          "{ sz | size    | 64,64       | crop image to specified size }"
           "{  a | angle   | 0           | rotate to specified angle }"
           "{  v | visual  | 1           | visualize transformed image }"
+          "{  n | noise   | 0           | add speckle noise image to input }"
+          "{ eh | eqhist  | 1           | equalize image histogram }"
+          "{ er | erode   | 0           | erode input image }"
           "{  h | help    | false       | display this help message    }");
   CvCommandLineParser parser(argc,argv,keys);
   const char * path = parser.get<string>("input").c_str();
@@ -54,13 +57,17 @@ int main(int argc, char * argv[])
   const float scale = parser.get<float>("scale");
   const float theta = parser.get<float>("angle")/180.f*CV_PI;
   const char * move = parser.get<string>("move").c_str();
-  const char * crop = parser.get<string>("crop").c_str();
+  char crop[1024]={0,}; strcpy(crop,parser.get<string>("size").c_str());
+  const int noise = parser.get<int>("noise");
+  const int eh = parser.get<int>("eqhist");
+  const int er = parser.get<int>("erode");
   if (display_help){parser.printParams();return 0;}
   char filepath[1<<10]; memset(filepath,0,sizeof(filepath));
   const float tx = atof(strtok((char*)move,(char*)",")), ty = atof(strtok(0,(char*)","));
   const int nr = atoi(strtok((char*)crop,(char*)",")), nc = atoi(strtok(0,(char*)","));
   CvMat * out = cvCreateMat(nr,nc,CV_32F);
   CvMat * warp_p = cvCreateMat(2,3,CV_32F); cvZero(warp_p);
+  CvRNG rng = cvRNG(-1);
 
   int count=0;
   for (int idx=start_index;; idx++){
@@ -90,27 +97,37 @@ int main(int argc, char * argv[])
     icvWarp(mat2,out,warp_p);
 
     // contrast enhancement
-    // float avg = cvAvg(out).val[0];
-    // float sdv = cvSdv(out);
-    // cvSubS(out,cvScalar(avg),out);
-    // cvScale(out,out,127.f*0.4f/sdv);
-    // cvAddS(out,cvScalar(30),out);
-
-    cvEqualizeHist(out,out);
-    cvErodeEx(out,7);
+    float avg = cvAvg(out).val[0];
+    float sdv = cvSdv(out);
+    cvSubS(out,cvScalar(avg),out);
+    cvScale(out,out,127.f*0.4f/sdv);
+    cvAddS(out,cvScalar(30),out);
 
     // clear boundary
     CvMat out_submat_hdr;
     cvGetRows(out,&out_submat_hdr,0,20); cvSet(&out_submat_hdr,cvScalar(0));
     cvGetCols(out,&out_submat_hdr,0,10); cvSet(&out_submat_hdr,cvScalar(0));
     cvGetRows(out,&out_submat_hdr,63-20,63); cvSet(&out_submat_hdr,cvScalar(0));
+
+    if (eh){
+      cvMinS(out,255,out); cvMaxS(out,40,out);
+      cvEqualizeHistEx(out);
+      cvScale(out,out,1.6f);
+    }
+
+    if (er){
+      cvScale(out,out,2.2f);
+      cvMinS(out,255,out); cvMaxS(out,0,out);
+      cvErodeEx(out,1);
+    }
     
     // add speckle noise to target image
-    CvRNG rng = cvRNG(-1);
-    // for (int iter=0;iter<100;iter++){ 
-    //   int ridx = cvRandInt(&rng)%64, cidx = cvRandInt(&rng)%64;
-    //   int val = cvRandInt(&rng)%255; cvmSet(out,ridx,cidx,val);
-    // }
+    if (noise){
+      for (int iter=0;iter<100;iter++){ 
+        int ridx = cvRandInt(&rng)%64, cidx = cvRandInt(&rng)%64;
+        int val = cvRandInt(&rng)%255; cvmSet(out,ridx,cidx,val);
+      }
+    }
 
     cvMinS(out,255,out); cvMaxS(out,0,out);
 
@@ -120,7 +137,10 @@ int main(int argc, char * argv[])
     cvCopy(&out_reshape_hdr,&testing_submat_hdr);
 
     // visualize
-    if (visualize){CV_SHOW(out);}
+    if (visualize){
+      cvRectangle(out,cvPoint(10,20),cvPoint(54,44),CV_WHITE);
+      CV_SHOW(out);
+    }
     cvReleaseMat(&mat);cvReleaseMat(&mat2);
     count++;
   }

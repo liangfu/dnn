@@ -146,6 +146,7 @@ void icvCNNDenseForward( CvDNNLayer* _layer, const CvMat* _X, CvMat* _Y )
 
   CV_ASSERT(X->rows == batch_size && X->cols == layer->n_input_planes*seq_length);
   CV_ASSERT(Y->rows == batch_size && Y->cols == layer->n_output_planes);
+  CV_ASSERT(cvCountNAN(X)<1);
 
   CvRect roi = cvRect(0, 0, weights->cols-1, weights->rows );
   CV_CALL(cvGetSubRect( weights, &sub_weights, roi));

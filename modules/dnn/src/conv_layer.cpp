@@ -153,8 +153,6 @@ void icvCNNConvolutionForward( CvDNNLayer* _layer, const CvMat* X, CvMat* Y )
   // Yplane = Y->data.fl;
   // w = layer->weights->data.fl;
   connect_mask_data = layer->connect_mask->data.ptr;
-  // CvMat * Xt = cvCreateMat(X->cols,X->rows,CV_32F); cvTranspose(X,Xt);
-  // CvMat * Yt = cvCreateMat(Y->cols,Y->rows,CV_32F); cvTranspose(Y,Yt);
 
   // normalize input
   CvScalar avg,sdv;
@@ -164,9 +162,11 @@ void icvCNNConvolutionForward( CvDNNLayer* _layer, const CvMat* X, CvMat* Y )
     CvMat img = cvMat(Xsize,1,CV_32F,xptr);
     cvAvgSdv(&img,&avg,&sdv);
     cvSubS(&img,avg,&img);
-    cvScale(&img,&img,.5f/sdv.val[0]);
+    cvScale(&img,&img,.5f/(1e-5f+sdv.val[0]));
   }
   }
+  
+  // CV_ASSERT(cvCountNAN((CvMat*)X)<1);
   
   // for ( no = 0; no < nYplanes; no++, Yplane += Ysize, w += n_weights_for_Yplane ){
 #pragma omp parallel for
@@ -192,7 +192,6 @@ void icvCNNConvolutionForward( CvDNNLayer* _layer, const CvMat* X, CvMat* Y )
   } // si
 
   cvScale(Y,Y,1.f/float(K*K));
-  // cvTranspose(Yt,Y);
   if (!layer->WX){layer->WX=cvCloneMat(Y);}else{cvCopy(Y,layer->WX);}
 
   if (!strcmp(layer->activation,"none")){ // do nothing
@@ -200,9 +199,8 @@ void icvCNNConvolutionForward( CvDNNLayer* _layer, const CvMat* X, CvMat* Y )
   }else if (!strcmp(layer->activation,"sigmoid")){ CV_CALL(cvSigmoid( Y, Y ));
   }else if (!strcmp(layer->activation,"relu")){ CV_CALL(cvReLU( Y, Y ));
   }else{CV_ERROR(CV_StsBadArg,"Unknown activation type");}
-  
-  // cvReleaseMat(&Xt);
-  // cvReleaseMat(&Yt);
+
+  CV_ASSERT(cvCountNAN(Y)<1);
   
   if (layer->Y){cvCopy(Y,layer->Y);}else{layer->Y=cvCloneMat(Y);}
   if (layer->visualize){icvVisualizeCNNLayer((CvDNNLayer*)layer,Y);}

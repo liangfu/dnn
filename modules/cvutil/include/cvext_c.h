@@ -932,12 +932,13 @@ void cvPutTextEx(CvArr * _disp, const char* str,
                  const CvPoint pt, 
                  const CvScalar color = CV_RGB(0,0,255),
                  const float scale = 0.5,
-                 const int thickness = 1)
+                 const int thickness = 1,
+                 const int font_face = CV_FONT_HERSHEY_SIMPLEX)
 {
   CV_FUNCNAME("cvPutTextEx");
   __BEGIN__;
   CvFont font;
-  cvInitFont(&font,CV_FONT_HERSHEY_SIMPLEX, scale, scale, 0, thickness);
+  cvInitFont(&font,font_face, scale, scale, 0, thickness);
   IplImage * disp, disp_stub;
   if (!CV_IS_MAT(_disp))
     disp = (IplImage*)_disp;
