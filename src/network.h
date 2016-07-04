@@ -47,7 +47,8 @@ public:
     strcpy(m_response_filename,cvReadStringByName(fs,node,"response_filename"));
     strcpy(m_testing_filename, cvReadStringByName(fs,node,"testing_filename"));
     strcpy(m_expected_filename,cvReadStringByName(fs,node,"expected_filename"));
-    strcpy(m_predicted_filename,cvReadStringByName(fs,node,"predicted_filename"));
+    const char * _predicted_filename = cvReadStringByName(fs,node,"predicted_filename");
+    strcpy(m_predicted_filename,_predicted_filename?_predicted_filename:"");
     node = cvGetFileNodeByName(fs,0,"network");
     strcpy(m_model_filename,cvReadStringByName(fs,node,"model_filename"));
     strcpy(m_weights_filename,cvReadStringByName(fs,node,"weights_filename"));

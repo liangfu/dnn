@@ -96,53 +96,35 @@ static void icvCNNSpatialTransformForward( CvDNNLayer * _layer, const CvMat* X, 
   CV_ASSERT(batch_size*input_seqlen==X->rows && batch_size*output_seqlen==Y->rows); // batch_size
   CvMat * input_data = input_layer->Y;
   CV_ASSERT(CV_MAT_TYPE(input_data->type)==CV_32F);
-  if (input_seqlen>output_seqlen){ // temporal sampling
-    CvMat input_data_submat;
-#if 0
-    CvMat input_data_hdr = cvMat(input_seqlen*batch_size,n_outputs,CV_32F,input_data->data.ptr);
-    cvGetRows(&input_data_hdr,&input_data_submat,
-              batch_size*time_index,batch_size*time_index+batch_size);
-    cvTranspose(&input_data_submat,Y);
-#else
-    CvMat Y_submat_hdr;
-    for (int bidx=0;bidx<batch_size;bidx++){
-      // cvGetCol(input_data,&input_data_submat,bidx*input_seqlen+time_index);
-      // cvGetCol(Y,&Y_submat_hdr,bidx);
-      cvGetRow(input_data,&input_data_submat,bidx*input_seqlen+time_index);
-      cvGetRow(Y,&Y_submat_hdr,bidx);
-      cvCopy(&input_data_submat,&Y_submat_hdr);
-    }
-#endif
-  }else if (output_height==output_width && output_height>1 && output_width>1){ // image processing
+  CV_ASSERT(output_height==output_width && output_height>1 && output_width>1);
+  { // image processing
     CvMat * I = input_data;
     CvMat * p = cvCreateMat(2,3,CV_32F); cvZero(p);
-    if (X->rows==2){ CV_ASSERT(X->cols==1); // crop only
+    if (X->cols==2){ CV_ASSERT(X->rows==1); // crop only
       CV_ASSERT(CV_MAT_ELEM(*X,float,0,0)>=-1.f && CV_MAT_ELEM(*X,float,0,0)<=1.f && 
-                CV_MAT_ELEM(*X,float,1,0)>=-1.f && CV_MAT_ELEM(*X,float,1,0)<=1.f);
+                CV_MAT_ELEM(*X,float,0,1)>=-1.f && CV_MAT_ELEM(*X,float,0,1)<=1.f);
       float tx = float(input_width -output_width )*(CV_MAT_ELEM(*X,float,0,0)+1.f)*.5f;
-      float ty = float(input_height-output_height)*(CV_MAT_ELEM(*X,float,1,0)+1.f)*.5f;
+      float ty = float(input_height-output_height)*(CV_MAT_ELEM(*X,float,0,1)+1.f)*.5f;
       CV_MAT_ELEM(*p,float,0,0)=CV_MAT_ELEM(*p,float,1,1)=1.f;
       CV_MAT_ELEM(*p,float,0,2)=tx;
       CV_MAT_ELEM(*p,float,1,2)=ty; // fprintf(stderr,"--\n"); cvPrintf(stderr,"%f ",p);
-      CV_ASSERT(I->rows==input_height*input_width && CV_MAT_TYPE(I->type)==CV_32F);
-      CV_ASSERT(Y->rows==output_height*output_width && CV_MAT_TYPE(Y->type)==CV_32F);
+      CV_ASSERT(I->cols==input_height*input_width && CV_MAT_TYPE(I->type)==CV_32F);
+      CV_ASSERT(Y->cols==output_height*output_width && CV_MAT_TYPE(Y->type)==CV_32F);
       CvMat srchdr = cvMat(input_height,input_width,CV_32F,I->data.ptr);
       CvMat dsthdr = cvMat(output_height,output_width,CV_32F,Y->data.ptr);
       icvWarp(&srchdr,&dsthdr,p); // CV_SHOW(&srchdr); CV_SHOW(&dsthdr);
-    }else if (X->rows==3){ CV_ASSERT(X->cols==1); // crop and resize
+    }else if (X->cols==3){ CV_ASSERT(X->rows==1); // crop and resize
     }else{ // resize image
       float scale = float(output_height)/float(input_height);
       CV_MAT_ELEM(*p,float,0,0)=1./scale;
       CV_MAT_ELEM(*p,float,1,1)=1./scale;
-      CV_ASSERT(I->rows==input_height*input_width && CV_MAT_TYPE(I->type)==CV_32F);
-      CV_ASSERT(Y->rows==output_height*output_width && CV_MAT_TYPE(Y->type)==CV_32F);
+      CV_ASSERT(I->cols==input_height*input_width && CV_MAT_TYPE(I->type)==CV_32F);
+      CV_ASSERT(Y->cols==output_height*output_width && CV_MAT_TYPE(Y->type)==CV_32F);
       CvMat srchdr = cvMat(input_height,input_width,CV_32F,I->data.ptr);
       CvMat dsthdr = cvMat(output_height,output_width,CV_32F,Y->data.ptr);
       icvWarp(&srchdr,&dsthdr,p); // CV_SHOW(&srchdr); CV_SHOW(&dsthdr);
     }
     cvReleaseMat(&p);
-  }else{
-    CV_Error(CV_StsBadArg,"invalid layer definition.");
   }
   if (layer->Y){cvCopy(Y,layer->Y);}else{layer->Y=cvCloneMat(Y);}
   if (layer->visualize){ icvVisualizeCNNLayer((CvDNNLayer*)layer, Y); }

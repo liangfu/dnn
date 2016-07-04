@@ -255,6 +255,7 @@ void Network::loadModel(string inFile)
         n_input_layers, input_layers, n_output_planes, lr_init, decay_type );
       for (int lidx=0;lidx<n_input_layers;lidx++){input_layers[lidx]->output_layers.push_back(layer);}
       if (input_layers){delete [] input_layers; input_layers = 0;}
+      n_input_planes = n_output_planes;
     }else{
       fprintf(stderr,"ERROR: unknown layer type %s\n",type);
     }
