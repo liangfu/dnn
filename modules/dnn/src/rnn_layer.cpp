@@ -462,7 +462,7 @@ void icvCNNRecurrentBackward( CvDNNLayer* _layer, int t,
   // dWhy += dE_dY_afder * H_curr'
   CV_GEMM(dE_dY_afder,H_curr,1.f,0,1.f,&dWhy_submat,CV_GEMM_A_T);
   if (time_index==seq_length-1){CV_ASSERT(cvSdv(&layer_dWhy_submat)<1e-5f);}
-  else{CV_ASSERT(cvSdv(&layer_dWhy_submat)>1e-5f);}
+  else{CV_ASSERT(cvSdv(&layer_dWhy_submat)>1e-8f);}
   cvAdd(&layer_dWhy_submat,&dWhy_submat,&layer_dWhy_submat);
   
   // dby += dy

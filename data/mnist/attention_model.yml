@@ -5,19 +5,14 @@ layers:
   - {type: SimpleRNN, name: rnn1, n_output_planes: 128, seq_length: 2, time_index: 0, activation: tanh}
   - {type: RepeatVector, name: input2}
 
-  # GLIMPSE NETWORK
   - {type: Dense, name: fc2, input_layer: fc1, visualize: 0, n_output_planes: 2, activation: sigmoid} # localize 
   - {type: SpatialTransform, name: crop1, input_layer: input1, n_output_planes: 1, output_height: 8, output_width: 8}
-  # - {type: Convolution, name: conv1, visualize: 0, n_output_planes: 6, ksize: 3, stride: 1}
+  - {type: Convolution, name: conv1, visualize: 0, n_output_planes: 16, ksize: 3, stride: 1}
   # - {type: MaxPooling, name: pool1, visualize: 0, ksize: 2, stride: 2}
-  # - {type: Convolution, name: conv2, visualize: 0, n_output_planes: 16, ksize: 3, stride: 1}
   - {type: Dense, name: fc3, visualize: 0, n_output_planes: 128, activation: tanh}
-  # - {type: Merge, name: merge1, input_layers: "fc2,input2", n_output_planes: 130}
-
   - {predefined: rnn1, time_index: 1}
   - {type: RepeatVector, name: input3}
 
-  # CLASSIFICATION NETWORK
   - {type: Merge, name: merge1, input_layers: "input2,input3", n_output_planes: 256}
   - {type: Dense, name: fc4, visualize: 0, n_output_planes: 10, activation: softmax}
 
