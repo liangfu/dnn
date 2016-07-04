@@ -6,7 +6,7 @@ layers:
   - {type: RepeatVector, name: input2}
 
   # GLIMPSE NETWORK
-  - {type: Dense, name: fc2, input_layer: input1, visualize: 0, n_output_planes: 2, activation: sigmoid} # localize 
+  - {type: Dense, name: fc2, input_layer: fc1, visualize: 0, n_output_planes: 2, activation: sigmoid} # localize 
   - {type: SpatialTransform, name: crop1, input_layer: input1, n_output_planes: 1, output_height: 8, output_width: 8}
   # - {type: Convolution, name: conv1, visualize: 0, n_output_planes: 6, ksize: 3, stride: 1}
   # - {type: MaxPooling, name: pool1, visualize: 0, ksize: 2, stride: 2}
