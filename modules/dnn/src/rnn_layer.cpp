@@ -311,7 +311,6 @@ void icvCNNRecurrentBackward( CvDNNLayer* _layer, int t,
   CvMat * layerY = ref_layer?ref_layer->Y:layer->Y;
   CvMat * layer_WX = ref_layer?ref_layer->WX:layer->WX;
   CvMat * layer_WH = ref_layer?ref_layer->WH:layer->WH;
-  // CvMat * layer_dE_dY = ref_layer?ref_layer->dE_dY:layer->dE_dY;
   CvMat * layer_dH = ref_layer?ref_layer->dH:layer->dH;
   CvMat * layer_dWxh = ref_layer?ref_layer->dWxh:layer->dWxh;
   CvMat * layer_dWhh = ref_layer?ref_layer->dWhh:layer->dWhh;
@@ -333,10 +332,6 @@ void icvCNNRecurrentBackward( CvDNNLayer* _layer, int t,
   if ( !ref_layer ){ CV_ASSERT(layer->H && layer->Y && layer->WX && layer->WH); }
   if ( ref_layer ){
     if ( layer->time_index==seq_length-1 ){  // assuming last layer
-      // if (!ref_layer->dE_dY){
-      //   CV_ASSERT(dE_dY->cols==n_outputs);
-      //   ref_layer->dE_dY = cvCloneMat(dE_dY); layer_dE_dY = ref_layer->dE_dY;
-      // }else{ cvCopy(dE_dY,ref_layer->dE_dY); }
       if (!ref_layer->dH){ 
         CV_ASSERT(!ref_layer->dWxh && !ref_layer->dWhh && !ref_layer->dWhy);
         ref_layer->dH   = cvCreateMat(layerH->rows,  layerH->cols,  CV_32F);
@@ -349,18 +344,17 @@ void icvCNNRecurrentBackward( CvDNNLayer* _layer, int t,
       cvZero(ref_layer->dWhh); layer_dWhh=ref_layer->dWhh;
       cvZero(ref_layer->dWhy); layer_dWhy=ref_layer->dWhy;
     }else{ 
-      CV_ASSERT(dE_dY->cols==n_outputs && // layer_dE_dY==ref_layer->dE_dY && 
+      CV_ASSERT(dE_dY->cols==n_outputs && 
                 layer_dH==ref_layer->dH && layer_dWxh==ref_layer->dWxh && 
                 layer_dWhh==ref_layer->dWhh && layer_dWhy==ref_layer->dWhy);
       CV_ASSERT(layer_dH && layer_dWxh && layer_dWhh && layer_dWhy);
     }
   }else{
-    CV_ASSERT(dE_dY->cols==n_outputs && // layer_dE_dY==layer->dE_dY && 
+    CV_ASSERT(dE_dY->cols==n_outputs && 
               layer_dH==layer->dH && layer_dWxh==layer->dWxh &&
               layer_dWhh==layer->dWhh && layer_dWhy==layer->dWhy); 
-    CV_ASSERT(layer_dH && layer_dWxh && layer_dWhh && layer_dWhy); // layer_dE_dY && 
-    // {CvScalar avg, sdv; cvAvgSdv(layer_dE_dY,&avg,&sdv); CV_ASSERT(sdv.val[0]>1e-5);}
-    CV_ASSERT(cvSdv(dE_dY)>1e-5);
+    CV_ASSERT(layer_dH && layer_dWxh && layer_dWhh && layer_dWhy); 
+    CV_ASSERT(cvSdv(dE_dY)>1e-8);
   }
   
   // memory allocation
