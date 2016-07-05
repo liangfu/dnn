@@ -243,15 +243,11 @@ void icvCNNRecurrentForward( CvDNNLayer* _layer, const CvMat* X, CvMat * Y)
 #else
   CvMat layer_Y_submat_hdr, Y_submat_hdr;
   const int tidx = time_index;
-  // for (int tidx=0;tidx<seq_length;tidx++){
   for (int bidx=0;bidx<batch_size;bidx++){
     cvGetSubRect(layerY,&layer_Y_submat_hdr,cvRect(bidx*n_outputs,tidx,n_outputs,1));
-    // cvGetSubRect(Y,&Y_submat_hdr,cvRect(0,seq_length*bidx+tidx,n_outputs,1));
-    // cvCopy(&layer_Y_submat_hdr,&Y_submat_hdr);
     cvGetSubRect(Y,&Y_submat_hdr,cvRect(0,bidx,n_outputs,1));
     cvCopy(&layer_Y_submat_hdr,&Y_submat_hdr);
   }
-  // }
 #endif
     
   if (WX){cvReleaseMat(&WX);WX=0;}
@@ -347,7 +343,9 @@ void icvCNNRecurrentBackward( CvDNNLayer* _layer, int t,
       CV_ASSERT(dE_dY->cols==n_outputs && 
                 layer_dH==ref_layer->dH && layer_dWxh==ref_layer->dWxh && 
                 layer_dWhh==ref_layer->dWhh && layer_dWhy==ref_layer->dWhy);
-      CV_ASSERT(layer_dH && layer_dWxh && layer_dWhh && layer_dWhy);
+      if (!(layer_dH && layer_dWxh && layer_dWhh && layer_dWhy)){
+        CV_ERROR(CV_StsBadArg,"invalid layer definition.");
+      } CV_ASSERT(layer_dH && layer_dWxh && layer_dWhh && layer_dWhy);
     }
   }else{
     CV_ASSERT(dE_dY->cols==n_outputs && 
