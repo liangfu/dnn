@@ -46,8 +46,8 @@
 #include "ippversion.h"
 #endif
 
-#include <pmmintrin.h>
-#include <immintrin.h>
+// #include <pmmintrin.h>
+// #include <immintrin.h>
 
 namespace cv
 {
