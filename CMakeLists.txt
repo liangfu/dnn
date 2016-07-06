@@ -136,6 +136,12 @@ if (CMAKE_BUILD_TYPE STREQUAL Debug)
 	set_target_properties(annotator PROPERTIES SUFFIX "_debug")
 endif()
 
+add_executable(review src/review_main.cpp)
+target_link_libraries(review cxcore cvutil cv highgui dnn ${FFMPEG_LIBRARIES} ${OPENMP_LIBRARIES})
+if (CMAKE_BUILD_TYPE STREQUAL Debug)
+	set_target_properties(review PROPERTIES SUFFIX "_debug")
+endif()
+
 add_executable(transform src/transform_main.cpp)
 target_link_libraries(transform cxcore cvutil cv highgui dnn ${FFMPEG_LIBRARIES} ${OPENMP_LIBRARIES})
 if (CMAKE_BUILD_TYPE STREQUAL Debug)

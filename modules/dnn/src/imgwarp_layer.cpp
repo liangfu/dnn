@@ -144,22 +144,21 @@ static void icvCNNSpatialTransformBackward( CvDNNLayer* _layer, int t,
   const int input_seqlen = input_layer->seq_length;
   const int input_height = layer->input_height;
   const int input_width = layer->input_width;
-  const int n_outputs = Y->cols;
-  const int output_seqlen = layer->seq_length;
-  const int output_height = layer->output_height;
-  const int output_width = layer->output_width;
-  const int batch_size = X->rows/input_seqlen;
-  CV_ASSERT(Y->cols==layer->n_output_planes*layer->output_height*layer->output_width);
-  CV_ASSERT(batch_size*input_seqlen==X->rows && batch_size*output_seqlen==Y->rows); // batch_size
-  CvMat * input_data = input_layer->Y;
-  CV_ASSERT(CV_MAT_TYPE(input_data->type)==CV_32F);
-  CV_ASSERT(output_height==output_width && output_height>1 && output_width>1);
-  CvMat * I = input_data;
-  CvMat * p = cvCreateMat(2,3,CV_32F); cvZero(p);
-  if (X->cols==2){ CV_ASSERT(X->rows==1); // crop only
-    
-  }
-  cvReleaseMat(&p);
+  // const int n_outputs = Y->cols;
+  // const int output_seqlen = layer->seq_length;
+  // const int output_height = layer->output_height;
+  // const int output_width = layer->output_width;
+  // const int batch_size = X->rows/input_seqlen;
+  // CV_ASSERT(Y->cols==layer->n_output_planes*layer->output_height*layer->output_width);
+  // CV_ASSERT(batch_size*input_seqlen==X->rows && batch_size*output_seqlen==Y->rows); // batch_size
+  // CvMat * input_data = input_layer->Y;
+  // CV_ASSERT(CV_MAT_TYPE(input_data->type)==CV_32F);
+  // CV_ASSERT(output_height==output_width && output_height>1 && output_width>1);
+  // CvMat * I = input_data;
+  // CvMat * p = cvCreateMat(2,3,CV_32F); cvZero(p);
+  // if (X->cols==2){ CV_ASSERT(X->rows==1); // crop only
+  // }
+  // cvReleaseMat(&p);
   __END__;
 }
 
