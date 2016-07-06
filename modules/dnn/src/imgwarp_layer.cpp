@@ -100,11 +100,11 @@ static void icvCNNSpatialTransformForward( CvDNNLayer * _layer, const CvMat* X, 
   { // image processing
     CvMat * I = input_data;
     CvMat * p = cvCreateMat(2,3,CV_32F); cvZero(p);
-    if (X->cols==2){ CV_ASSERT(X->rows==1); // crop only
-      CV_ASSERT(CV_MAT_ELEM(*X,float,0,0)>=-1.f && CV_MAT_ELEM(*X,float,0,0)<=1.f && 
-                CV_MAT_ELEM(*X,float,0,1)>=-1.f && CV_MAT_ELEM(*X,float,0,1)<=1.f);
-      float tx = float(input_width -output_width )*(CV_MAT_ELEM(*X,float,0,0)+1.f)*.5f;
-      float ty = float(input_height-output_height)*(CV_MAT_ELEM(*X,float,0,1)+1.f)*.5f;
+    if (X->cols==2){ CV_ASSERT(X->rows==1); // translation only
+      CV_ASSERT(CV_MAT_ELEM(*X,float,0,0)>=0.f && CV_MAT_ELEM(*X,float,0,0)<=1.f && 
+                CV_MAT_ELEM(*X,float,0,1)>=0.f && CV_MAT_ELEM(*X,float,0,1)<=1.f);
+      float tx = float(input_width -output_width )*CV_MAT_ELEM(*X,float,0,0);
+      float ty = float(input_height-output_height)*CV_MAT_ELEM(*X,float,0,1);
       CV_MAT_ELEM(*p,float,0,0)=CV_MAT_ELEM(*p,float,1,1)=1.f;
       CV_MAT_ELEM(*p,float,0,2)=tx;
       CV_MAT_ELEM(*p,float,1,2)=ty; // fprintf(stderr,"--\n"); cvPrintf(stderr,"%f ",p);
@@ -140,25 +140,40 @@ static void icvCNNSpatialTransformBackward( CvDNNLayer* _layer, int t,
   CvDNNSpatialTransformLayer * layer = (CvDNNSpatialTransformLayer*)_layer;
   const CvDNNInputLayer * input_layer = 
     (CvDNNInputLayer*)(layer->input_layers.size()>0?layer->input_layers[0]:0);
+  const CvMat * I = input_layer->Y;
+  // CV_ASSERT(I->rows==dE_dX->rows && I->cols==dE_dX->cols);
   const int time_index = layer->time_index;
   const int input_seqlen = input_layer->seq_length;
   const int input_height = layer->input_height;
   const int input_width = layer->input_width;
-  // const int n_outputs = Y->cols;
-  // const int output_seqlen = layer->seq_length;
-  // const int output_height = layer->output_height;
-  // const int output_width = layer->output_width;
-  // const int batch_size = X->rows/input_seqlen;
-  // CV_ASSERT(Y->cols==layer->n_output_planes*layer->output_height*layer->output_width);
-  // CV_ASSERT(batch_size*input_seqlen==X->rows && batch_size*output_seqlen==Y->rows); // batch_size
-  // CvMat * input_data = input_layer->Y;
-  // CV_ASSERT(CV_MAT_TYPE(input_data->type)==CV_32F);
-  // CV_ASSERT(output_height==output_width && output_height>1 && output_width>1);
-  // CvMat * I = input_data;
-  // CvMat * p = cvCreateMat(2,3,CV_32F); cvZero(p);
-  // if (X->cols==2){ CV_ASSERT(X->rows==1); // crop only
-  // }
-  // cvReleaseMat(&p);
+  const int n_outputs = dE_dY->cols;
+  const int output_seqlen = layer->seq_length;
+  const int output_height = layer->output_height;
+  const int output_width = layer->output_width;
+  const int batch_size = X->rows/input_seqlen;
+  CV_ASSERT(dE_dY->cols==layer->n_output_planes*layer->output_height*layer->output_width);
+  CV_ASSERT(batch_size*input_seqlen==X->rows && batch_size*output_seqlen==dE_dY->rows);
+  CV_ASSERT(CV_MAT_TYPE(I->type)==CV_32F);
+  CV_ASSERT(output_height==output_width && output_height>1 && output_width>1);
+  CvMat * p = cvCreateMat(2,3,CV_32F); cvZero(p);
+  CvMat * M = cvCreateMat(3,3,CV_32F); cvZero(M);
+  CvMat * invM = cvCreateMat(3,3,CV_32F); cvZero(invM);
+  if (X->cols==2){ CV_ASSERT(X->rows==1); // translation only
+    CV_ASSERT(CV_MAT_ELEM(*X,float,0,0)>=0.f && CV_MAT_ELEM(*X,float,0,0)<=1.f && 
+              CV_MAT_ELEM(*X,float,0,1)>=0.f && CV_MAT_ELEM(*X,float,0,1)<=1.f);
+    float tx=float(input_width -output_width )*CV_MAT_ELEM(*X,float,0,0);
+    float ty=float(input_height-output_height)*CV_MAT_ELEM(*X,float,0,1);
+    CV_MAT_ELEM(*M,float,0,0)=CV_MAT_ELEM(*M,float,1,1)=CV_MAT_ELEM(*M,float,2,2)=1.f;
+    CV_MAT_ELEM(*M,float,0,2)=tx; CV_MAT_ELEM(*M,float,1,2)=ty;
+    cvInvert(M,invM);
+    memcpy(p->data.fl,M->data.fl,sizeof(float)*6); // cvPrintf(stderr,"%f ",p);
+    // CvMat srchdr = cvMat(input_height,input_width,CV_32F,I->data.ptr);
+    // CvMat dsthdr = cvMat(output_height,output_width,CV_32F,Y->data.ptr);
+    // icvWarp(&srchdr,&dsthdr,p); // CV_SHOW(&srchdr); CV_SHOW(&dsthdr);
+  }else{CV_ERROR(CV_StsBadArg,"invalid layer definition.");}
+  cvReleaseMat(&M);
+  cvReleaseMat(&invM);
+  cvReleaseMat(&p);
   __END__;
 }
 
