@@ -375,12 +375,16 @@ float Network::evaluate(CvMat * testing, CvMat * expected, int nsamples, const c
     }
     if (predicted_filename){
       cvSave(predicted_filename,Xn_transpose);
+#if 0
       char output_filename[1024]={0,}; 
       cvGetBaseName((char*)predicted_filename,(char*)output_filename); strcat(output_filename,".txt");
       cvSaveCategorialResult(last_layer, Xn_transpose, (char*)output_filename);
+#endif      
       LOGI("prediction result saved to: %s.", predicted_filename);
     }
-    if (expected){fprintf(stderr,"expect:\n");cvPrintf(stderr,"%.1f ", &expected_submat_reshape_hdr);}
+    if (expected && nsamples<=5){
+      fprintf(stderr,"expected:\n");cvPrintf(stderr,"%.1f ", &expected_submat_reshape_hdr);
+    }
     cvReleaseMat(&Xn_transpose);
   }
   cvReleaseMat(&expected_transpose);
