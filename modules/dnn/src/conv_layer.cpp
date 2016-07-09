@@ -326,7 +326,7 @@ void icvCNNConvolutionBackward(
   // dE_dW = sum( dE_dY * dY_dW )
   CvMat * dE_dW_ = cvCreateMat( batch_size, dY_dW->cols, CV_32FC1 );
   CV_CALL(cvGEMM( dE_dY_afder, dY_dW, 1.f,0,1.f,dE_dW_ )); 
-  cvReduce(dE_dW_,dE_dW,-1,CV_REDUCE_AVG);
+  cvReduce(dE_dW_,dE_dW,-1,CV_REDUCE_SUM);
   cvReleaseMat(&dE_dW_);
 
   // dE_dX = dE_dY * dY_dX
