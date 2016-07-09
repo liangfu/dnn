@@ -230,7 +230,7 @@ GEMMSingleMul( const T* a_data, size_t a_step,
                Size a_size, Size d_size,
                double alpha, double beta, int flags )
 {
-    int i, j, k, n = a_size.width, m = d_size.width, drows = d_size.height;
+    int n = a_size.width, m = d_size.width, drows = d_size.height;
     const T *_a_data = a_data, *_b_data = b_data, *_c_data = c_data;
     cv::AutoBuffer<T> _a_buf;
     T* a_buf = 0;
@@ -265,6 +265,7 @@ GEMMSingleMul( const T* a_data, size_t a_step,
     {
         cv::AutoBuffer<T> _b_buf;
         T* b_buf = 0;
+        int i,j,k;
 
         if( a_step > 1 && a_size.height > 1 )
         {
@@ -316,6 +317,7 @@ GEMMSingleMul( const T* a_data, size_t a_step,
     }
     else if( flags & GEMM_2_T ) /* A * Bt */
     {
+        int i,j,k;
         for( i = 0; i < drows; i++, _a_data += a_step0, _c_data += c_step0, d_data += d_step )
         {
             a_data = _a_data;
@@ -356,6 +358,7 @@ GEMMSingleMul( const T* a_data, size_t a_step,
     }
     else if( d_size.width*sizeof(d_data[0]) <= 1600 )
     {
+        int i,j,k;
         for( i = 0; i < drows; i++, _a_data += a_step0,
                                     _c_data += c_step0,
                                     d_data += d_step )
@@ -417,62 +420,45 @@ GEMMSingleMul( const T* a_data, size_t a_step,
     }
     else
     {
-        cv::AutoBuffer<T> _d_buf(m);
-        T * d_buf = _d_buf;
-        cv::AutoBuffer<T> _b_buf(m);
-        T * b_buf = _b_buf;
+        cv::AutoBuffer<T> _d_buf(m); T * d_buf = _d_buf;
 
-        for( i = 0; i < drows; i++, _a_data += a_step0, _c_data += c_step0, d_data += d_step )
+        for( int i = 0; i < drows; i++, _a_data += a_step0, _c_data += c_step0, d_data += d_step )
         {
             a_data = _a_data;
             b_data = _b_data;
             c_data = _c_data;
-
-            if( a_buf )
-            {
-                for( k = 0; k < n; k++ )
-                    a_buf[k] = _a_data[a_step1*k];
-                a_data = a_buf;
+            if( a_buf ){
+              for( int k = 0; k < n; k++ ) { a_buf[k] = _a_data[a_step1*k]; }
+              a_data = a_buf;
             }
-
-            for( j = 0; j < m; j++ )
-                d_buf[j] = WT(0);
-
-            for( k = 0; k < n; k++, b_data += b_step )
-            {
-                T al(a_data[k]);
-                j=0;
+            for( int j = 0; j < m; j++ ) { d_buf[j] = WT(0); }
+            for( int k = 0; k < n; k++, b_data += b_step ){
+              T al(a_data[k]);
+              int j=0;
 #if CV_ENABLE_UNROLLED
-#if 1
-                for(; j <= m - 8; j += 8 )
-                {
-                  d_buf[j] += T(b_data[j])*(al);
-                  d_buf[j+1] += T(b_data[j+1])*(al);
-                  d_buf[j+2] += T(b_data[j+2])*(al);
-                  d_buf[j+3] += T(b_data[j+3])*(al);
-                  d_buf[j+4] += T(b_data[j+4])*(al);
-                  d_buf[j+5] += T(b_data[j+5])*(al);
-                  d_buf[j+6] += T(b_data[j+6])*(al);
-                  d_buf[j+7] += T(b_data[j+7])*(al);
-                }
-#else
-                memcpy(b_buf,b_data,sizeof(T)*m);
-                mmul_sse_dot( b_buf, al, d_buf, m, j);
-#endif                
+              for(; j <= m - 8; j += 8 ){
+                d_buf[j] += T(b_data[j])*(al);
+                d_buf[j+1] += T(b_data[j+1])*(al);
+                d_buf[j+2] += T(b_data[j+2])*(al);
+                d_buf[j+3] += T(b_data[j+3])*(al);
+                d_buf[j+4] += T(b_data[j+4])*(al);
+                d_buf[j+5] += T(b_data[j+5])*(al);
+                d_buf[j+6] += T(b_data[j+6])*(al);
+                d_buf[j+7] += T(b_data[j+7])*(al);
+              }
 #endif
-                for( ; j < m; j++ )
-                  d_buf[j] += T(b_data[j])*T(al);
+              for( ; j < m; j++ ) {
+                d_buf[j] += T(b_data[j])*T(al);
+              }
             }
-
-            if( !c_data )
-                for( j = 0; j < m; j++ )
-                  d_data[j] = T(WT(d_buf[j])*alpha);
-            else
-                for( j = 0; j < m; j++, c_data += c_step1 )
-                {
-                  WT t = WT(d_buf[j])*alpha;
-                    d_data[j] = T(t + WT(c_data[0])*beta);
-                }
+            if( !c_data ) {
+              for( int j = 0; j < m; j++ ) { d_data[j] = T(WT(d_buf[j])*alpha); }
+            }else{
+              for( int j = 0; j < m; j++, c_data += c_step1 ){
+                WT t = WT(d_buf[j])*alpha;
+                d_data[j] = T(t + WT(c_data[0])*beta);
+              }
+            }
         }
     }
 }
