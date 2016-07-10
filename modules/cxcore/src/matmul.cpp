@@ -145,22 +145,12 @@ GEMM_CopyBlock( const uchar* src, size_t src_step,
 {
     int j;
     size.width *= (int)(pix_size / sizeof(int));
-
     for( ; size.height--; src += src_step, dst += dst_step )
     {
         j=0;
 #if CV_ENABLE_UNROLLED
-        // for( ; j <= size.width - 4; j += 4 )
         for( ; j <= size.width - 8; j += 8 )
         {
-            // int t0 = ((const int*)src)[j];
-            // int t1 = ((const int*)src)[j+1];
-            // ((int*)dst)[j] = t0;
-            // ((int*)dst)[j+1] = t1;
-            // t0 = ((const int*)src)[j+2];
-            // t1 = ((const int*)src)[j+3];
-            // ((int*)dst)[j+2] = t0;
-            // ((int*)dst)[j+3] = t1;
           ((int*)dst)[j  ] = ((const int*)src)[j  ];
           ((int*)dst)[j+1] = ((const int*)src)[j+1];
           ((int*)dst)[j+2] = ((const int*)src)[j+2];
@@ -434,7 +424,7 @@ GEMMSingleMul( const T* a_data, size_t a_step,
             }
             for( int j = 0; j < m; j++ ) { d_buf[j] = WT(0); }
             for( int k = 0; k < n; k++, bptr += b_step ){
-              T al(a_data[k]); int j=0;
+              T al(aptr[k]); int j=0;
 #if CV_ENABLE_UNROLLED
               for(; j <= m - 8; j += 8 ){
                 d_buf[j]   += T(bptr[j  ])*(al);
