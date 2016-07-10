@@ -410,6 +410,48 @@ GEMMSingleMul( const T* a_data, size_t a_step,
     }
     else
     {
+#if 0
+        cv::AutoBuffer<T> _d_buf(m); T * d_buf = _d_buf;
+
+        for( int i = 0; i < drows; i++, _a_data += a_step0, _c_data += c_step0, d_data += d_step )
+        {
+            a_data = _a_data;
+            b_data = _b_data;
+            c_data = _c_data;
+            if( a_buf ){
+              for( int k = 0; k < n; k++ ) { a_buf[k] = _a_data[a_step1*k]; }
+              a_data = a_buf;
+            }
+            for( int j = 0; j < m; j++ ) { d_buf[j] = WT(0); }
+            for( int k = 0; k < n; k++, b_data += b_step ){
+              T al(a_data[k]);
+              int j=0;
+#if CV_ENABLE_UNROLLED
+              for(; j <= m - 8; j += 8 ){
+                d_buf[j] += T(b_data[j])*(al);
+                d_buf[j+1] += T(b_data[j+1])*(al);
+                d_buf[j+2] += T(b_data[j+2])*(al);
+                d_buf[j+3] += T(b_data[j+3])*(al);
+                d_buf[j+4] += T(b_data[j+4])*(al);
+                d_buf[j+5] += T(b_data[j+5])*(al);
+                d_buf[j+6] += T(b_data[j+6])*(al);
+                d_buf[j+7] += T(b_data[j+7])*(al);
+              }
+#endif
+              for( ; j < m; j++ ) {
+                d_buf[j] += T(b_data[j])*T(al);
+              }
+            }
+            if( !c_data ) {
+              for( int j = 0; j < m; j++ ) { d_data[j] = T(WT(d_buf[j])*alpha); }
+            }else{
+              for( int j = 0; j < m; j++, c_data += c_step1 ){
+                WT t = WT(d_buf[j])*alpha;
+                d_data[j] = T(t + WT(c_data[0])*beta);
+              }
+            }
+        }
+#else // using parallel for
 #pragma omp parallel for
         for( int i = 0; i < drows; i++ )
         {
@@ -447,6 +489,7 @@ GEMMSingleMul( const T* a_data, size_t a_step,
               }
             }
         }
+#endif
     }
 }
 
