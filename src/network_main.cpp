@@ -35,6 +35,7 @@ int main(int argc, char * argv[])
   }
   
   fprintf(stderr, "MAX_THREADS=%d\n",max_threads);
+  omp_set_num_threads(max_threads);
 
   char solver_filename[1<<10]={0,};
   if (parser.get<string>("solver").length()>0){
