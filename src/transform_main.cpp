@@ -56,15 +56,15 @@ int main(int argc, char * argv[])
   const int visualize = parser.get<int>("visual");
   const float scale = parser.get<float>("scale");
   const float theta = parser.get<float>("angle")/180.f*CV_PI;
-  const char * move = parser.get<string>("move").c_str();
+  char move[1024]={0,}; strcpy(move,parser.get<string>("move").c_str());
+  const float tx = atof(strtok((char*)move,(char*)",")), ty = atof(strtok(0,(char*)","));
   char crop[1024]={0,}; strcpy(crop,parser.get<string>("size").c_str());
+  const int nr = atoi(strtok((char*)crop,(char*)",")), nc = atoi(strtok(0,(char*)","));
   const int noise = parser.get<int>("noise");
   const int eh = parser.get<int>("eqhist");
   const int er = parser.get<int>("erode");
   if (display_help){parser.printParams();return 0;}
   char filepath[1<<10]; memset(filepath,0,sizeof(filepath));
-  const float tx = atof(strtok((char*)move,(char*)",")), ty = atof(strtok(0,(char*)","));
-  const int nr = atoi(strtok((char*)crop,(char*)",")), nc = atoi(strtok(0,(char*)","));
   CvMat * out = cvCreateMat(nr,nc,CV_32F);
   CvMat * warp_p = cvCreateMat(2,3,CV_32F); cvZero(warp_p);
   CvRNG rng = cvRNG(-1);
@@ -94,7 +94,7 @@ int main(int argc, char * argv[])
     warp_p->data.fl[4]=scale*cos(theta);
     warp_p->data.fl[2]=tx;
     warp_p->data.fl[5]=ty;
-    icvWarp(mat2,out,warp_p);
+    icvWarp(mat2,out,warp_p); // cvPrintf(stderr,"%.1f ",warp_p);
 
     // contrast enhancement
     float avg = cvAvg(out).val[0];
@@ -112,11 +112,11 @@ int main(int argc, char * argv[])
     if (eh){
       cvMinS(out,255,out); cvMaxS(out,40,out);
       cvEqualizeHistEx(out);
-      cvScale(out,out,1.6f);
+      cvScale(out,out,2.2f);
     }
 
     if (er){
-      cvScale(out,out,2.2f);
+      cvScale(out,out,1.6f);
       cvMinS(out,255,out); cvMaxS(out,0,out);
       cvErodeEx(out,1);
     }

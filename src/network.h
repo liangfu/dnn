@@ -43,18 +43,16 @@ public:
     CvFileStorage * fs = cvOpenFileStorage(solver_filename,0,CV_STORAGE_READ);
     if (!fs){fprintf(stderr,"error: solver file %s not exist!\n",solver_filename); exit(-1);}
     CvFileNode * node = cvGetFileNodeByName(fs,0,"data");
-    strcpy(m_training_filename,cvReadStringByName(fs,node,"training_filename"));
-    strcpy(m_response_filename,cvReadStringByName(fs,node,"response_filename"));
-    strcpy(m_testing_filename, cvReadStringByName(fs,node,"testing_filename"));
-    strcpy(m_expected_filename,cvReadStringByName(fs,node,"expected_filename"));
+    strcpy(m_training_filename,cvReadStringByName(fs,node,"training_filename",""));
+    strcpy(m_response_filename,cvReadStringByName(fs,node,"response_filename",""));
+    strcpy(m_testing_filename, cvReadStringByName(fs,node,"testing_filename",""));
+    strcpy(m_expected_filename,cvReadStringByName(fs,node,"expected_filename",""));
     const char * _predicted_filename = cvReadStringByName(fs,node,"predicted_filename");
     strcpy(m_predicted_filename,_predicted_filename?_predicted_filename:"");
     node = cvGetFileNodeByName(fs,0,"network");
     strcpy(m_model_filename,cvReadStringByName(fs,node,"model_filename"));
     strcpy(m_weights_filename,cvReadStringByName(fs,node,"weights_filename"));
     m_lr_init = cvReadRealByName(fs,node,"lr_init");
-    // const char * decay_desc = cvReadStringByName(fs,node,"decay_type");
-    // if (!strcmp(decay_desc,"invsqrt")){m_decay_type=CV_DNN_LEARN_RATE_DECREASE_SQRT_INV;}
     m_maxiter = cvReadIntByName(fs,node,"maxiter");
     m_batch_size = cvReadIntByName(fs,node,"batch_size");
     m_validate_ratio = cvReadRealByName(fs,node,"validate_ratio");
