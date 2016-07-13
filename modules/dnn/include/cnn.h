@@ -141,7 +141,7 @@ typedef struct CvDNNStatModelParams
 // this macro is added by lxts on jun/22/2008
 struct CvDNNStatModel;
 
-typedef void (CV_CDECL *CvDNNStatModelPredict) (const CvDNNStatModel *,const CvMat *,CvMat *);
+typedef void (CV_CDECL *CvDNNStatModelPredict) (const CvDNNStatModel *,const CvMat *,CvMat *, const int);
 typedef void (CV_CDECL *CvDNNStatModelUpdate)(
         CvDNNStatModel* _cnn_model, const CvMat* _train_data, int tflag,
         const CvMat* _responses, const CvStatModelParams* _params,

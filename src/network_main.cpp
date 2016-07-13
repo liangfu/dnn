@@ -73,7 +73,7 @@ int main(int argc, char * argv[])
     cvReleaseMat(&response);
   }else{
     CvMat * testing  = (CvMat*)cvLoad((char*) testing_filename);
-    CvMat * expected = (CvMat*)cvLoad((char*)expected_filename);
+    CvMat * expected = strlen(expected_filename)<1?0:(CvMat*)cvLoad((char*)expected_filename);
     if (!testing){
       LOGE("error: testing file not available, try transfer data first.\n"); return -1;
     }
