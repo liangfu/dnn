@@ -192,7 +192,9 @@ void icvCNNConvolutionForward( CvDNNLayer* _layer, const CvMat* X, CvMat* Y )
   } // si
 
   cvScale(Y,Y,1.f/float(K*K));
-  if (!layer->WX){layer->WX=cvCloneMat(Y);}else{cvCopy(Y,layer->WX);}
+  if (!layer->WX){layer->WX=cvCloneMat(Y);}
+  else if (layer->WX->rows==Y->rows){cvCopy(Y,layer->WX);}
+  else{cvReleaseMat(&layer->WX);layer->WX=cvCloneMat(Y);}
 
   if (!strcmp(layer->activation,"none")){ // do nothing
   }else if (!strcmp(layer->activation,"tanh")){ CV_CALL(cvTanh( Y, Y ));
@@ -202,7 +204,9 @@ void icvCNNConvolutionForward( CvDNNLayer* _layer, const CvMat* X, CvMat* Y )
 
   CV_ASSERT(cvCountNAN(Y)<1);
   
-  if (layer->Y){cvCopy(Y,layer->Y);}else{layer->Y=cvCloneMat(Y);}
+  if (layer->Y){
+    if (layer->Y->rows==Y->rows){cvCopy(Y,layer->Y);}else{cvReleaseMat(&layer->Y);layer->Y=cvCloneMat(Y);}
+  }else{layer->Y=cvCloneMat(Y);}
   if (layer->visualize){icvVisualizeCNNLayer((CvDNNLayer*)layer,Y);}
 
   __END__;

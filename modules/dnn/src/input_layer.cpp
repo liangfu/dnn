@@ -73,7 +73,7 @@ void icvCNNInputForward( CvDNNLayer * _layer, const CvMat * X, CvMat * Y )
   if (!layer->Y){
     layer->Y = cvCloneMat(X);
   }else{
-    if (X->cols==layer->Y->cols){
+    if (X->cols==layer->Y->cols && X->rows==layer->Y->rows){
       cvCopy(X,layer->Y);
     }else{
       cvReleaseMat(&layer->Y);

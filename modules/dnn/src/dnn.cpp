@@ -447,7 +447,7 @@ void icvCNNModelPredict( const CvDNNStatModel* model, const CvMat* testdata, CvM
   }
 
   CvMat samples_reshape_hdr;
-  cvReshape(samples,&samples_reshape_hdr,0,nsamples*first_layer->seq_length);
+  cvReshape(samples,&samples_reshape_hdr,0,testdata->rows*first_layer->seq_length);
 
   CV_CALL(X = (CvMat**)cvAlloc( (n_layers+1)*sizeof(CvMat*) ));
   memset( X, 0, (n_layers+1)*sizeof(CvMat*) );
@@ -473,7 +473,7 @@ void icvCNNModelPredict( const CvDNNStatModel* model, const CvMat* testdata, CvM
   }
   for ( k = 0; k <= n_layers; k++ ) { cvReleaseMat( &X[k] ); }
 
-  // rest of the data set that can't divide by given batch_size
+  // rest of the data set
   int bsize = nsamples-sidx;
   X[0] = cvCreateMat( bsize*first_layer->seq_length, n_inputs, CV_32F ); cvZero(X[0]);
   for ( k = 0, layer = (CvDNNLayer*)first_layer; k < n_layers; k++, layer = layer->next_layer ){

@@ -402,16 +402,16 @@ void cvSaveCategorialResult(CvDNNLayer * last_layer, CvMat * input, const char *
 
   FILE * fp = fopen(output_filename,"wt");
   CvMat input_submat_hdr;
-  for (int ii=0;ii<input->cols;ii++){
-    cvGetSubRect(input,&input_submat_hdr,cvRect(ii,0,1,output_planes[0]));
+  for (int ii=0;ii<input->rows;ii++){
+    cvGetSubRect(input,&input_submat_hdr,cvRect(0,ii,output_planes[0],1));
     cvMinMaxLoc(&input_submat_hdr,0,&maxval,0,&maxloc);
-    CvMat * maxvals = cvCreateMat(1,maxloc.y+2,CV_64F);
-    CvMat * maxlocs = cvCreateMat(1,maxloc.y+2,CV_32S);
+    CvMat * maxvals = cvCreateMat(1,maxloc.x+2,CV_64F);
+    CvMat * maxlocs = cvCreateMat(1,maxloc.x+2,CV_32S);
     for (int jj=1;jj<maxlocs->cols+1;jj++){
       cvGetSubRect(input,&input_submat_hdr,
-                   cvRect(ii,output_planes[jj-1],1,output_planes[jj]-output_planes[jj-1]));
+                   cvRect(output_planes[jj-1],ii,output_planes[jj]-output_planes[jj-1],1));
       cvMinMaxLoc(&input_submat_hdr,0,&maxvals->data.db[jj-1],0,&maxloc);
-      maxlocs->data.i[jj-1]=maxloc.y;
+      maxlocs->data.i[jj-1]=maxloc.x;
     }
     cvMinMaxLoc(maxvals,&minval,0,0,0);
     float avgval=cvAvg(maxvals).val[0];

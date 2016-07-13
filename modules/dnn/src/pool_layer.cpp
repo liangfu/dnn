@@ -138,8 +138,6 @@ void icvCNNMaxPoolingForward( CvDNNLayer* _layer, const CvMat* X, CvMat* Y )
   CV_ASSERT(Y->rows==layer->mask->rows && Y->cols==layer->mask->cols);
   CV_ASSERT(CV_MAT_TYPE(layer->mask->type)==CV_32S);
 
-  // Xt = cvCreateMat(X->cols,X->rows,CV_32F); cvTranspose(X,Xt);
-  // Yt = cvCreateMat(Y->cols,Y->rows,CV_32F); cvTranspose(Y,Yt);
   for ( int si = 0; si < batch_size; si++ ){
   float * xptr = X->data.fl+Xsize*nplanes*si;
   float * yptr = Y->data.fl+Ysize*nplanes*si;
@@ -165,10 +163,10 @@ void icvCNNMaxPoolingForward( CvDNNLayer* _layer, const CvMat* X, CvMat* Y )
     } // yy
   } // ni
   } // si
-  // cvTranspose(Yt,Y);
-  // cvReleaseMat(&Xt);
-  // cvReleaseMat(&Yt);
-  if (layer->Y){cvCopy(Y,layer->Y);}else{layer->Y=cvCloneMat(Y);}
+
+  if (layer->Y){
+    if (layer->Y->rows==Y->rows){cvCopy(Y,layer->Y);}else{cvReleaseMat(&layer->Y);layer->Y=cvCloneMat(Y);}
+  }else{layer->Y=cvCloneMat(Y);}
   if (layer->visualize){icvVisualizeCNNLayer((CvDNNLayer*)layer,Y);}
 
   __END__;
@@ -209,10 +207,8 @@ void icvCNNMaxPoolingBackward(
   int batch_size = X->rows;
   int stride_size = layer->sub_samp_scale;
   CV_ASSERT(layer->mask->rows==batch_size && layer->mask->cols==n_outputs*Ysize);
-
-  // CvMat * maskT = cvCreateMat(dE_dY->rows,dE_dY->cols,CV_32S);
-  // cvTranspose(layer->mask,maskT);
   cvZero(dE_dX);
+
   for ( int si = 0; si < batch_size; si++ ){
   float * dxptr = dE_dX->data.fl+dE_dX->cols*si;
   float * dyptr = dE_dY->data.fl+dE_dY->cols*si;
@@ -231,7 +227,6 @@ void icvCNNMaxPoolingBackward(
     }
   }
   }
-  // cvReleaseMat(&maskT);
   
   if (layer->mask){cvReleaseMat(&layer->mask);layer->mask=0;}
   __END__;

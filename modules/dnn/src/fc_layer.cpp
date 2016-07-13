@@ -165,7 +165,9 @@ void icvCNNDenseForward( CvDNNLayer* _layer, const CvMat* _X, CvMat* _Y )
     cvSoftmax( layer->WX, Y ); CV_ASSERT(Y->rows == batch_size && Y->cols == layer->n_output_planes);
   }else{CV_ERROR(CV_StsBadArg,"Unknown activation type");}
 
-  if (layer->Y){cvCopy(Y,layer->Y);}else{layer->Y=cvCloneMat(Y);}
+  if (layer->Y){
+    if (layer->Y->rows==Y->rows){cvCopy(Y,layer->Y);}else{cvReleaseMat(&layer->Y);layer->Y=cvCloneMat(Y);}
+  }else{layer->Y=cvCloneMat(Y);}
   if (layer->visualize==1){icvVisualizeCNNLayer((CvDNNLayer*)layer,Y);}
   else if (layer->visualize==2){fprintf(stderr,"\n");cvPrintf(stderr,"%f ",Y);}
 
