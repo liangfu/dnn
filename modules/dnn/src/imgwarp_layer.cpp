@@ -60,6 +60,14 @@ CvDNNLayer * cvCreateSpatialTransformLayer(
       n_outputs, output_height, output_width, init_learn_rate, update_rule,
       icvCNNSpatialTransformRelease, icvCNNSpatialTransformForward, icvCNNSpatialTransformBackward ));
 
+  char layername_fc1[20]; sprintf(layername_fc1,"%s_fc1",name);
+  char layername_fc2[20]; sprintf(layername_fc2,"%s_fc2",name);
+  const int n_hiddens = exp((log(n_inputs)+log(n_outputs))*.5f);
+  layer->fc1_layer = cvCreateDenseLayer(dtype,layername_fc1,0,_image_layer,
+    n_inputs,n_hiddens,init_learn_rate,CV_DNN_LEARN_RATE_DECREASE_SQRT_INV,"tanh",0);
+  layer->fc2_layer = cvCreateDenseLayer(dtype,layername_fc1,0,0,
+    n_hiddens,n_outputs,init_learn_rate,CV_DNN_LEARN_RATE_DECREASE_SQRT_INV,"none",0);
+  layer->G = 0; // sampling grid -- initalized in forward pass
   layer->input_layers.push_back((CvDNNLayer*)_image_layer);
   layer->seq_length = seq_length;
   layer->time_index = time_index;

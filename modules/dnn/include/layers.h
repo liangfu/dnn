@@ -226,9 +226,9 @@ typedef struct CvDNNDenseLayer
 typedef struct CvDNNSpatialTransformLayer
 {
   CV_DNN_LAYER_FIELDS();
-  // WX = (W*X) - is the vector used in computing of the 
-  // activation function and it's derivative by the formulae
-  CvMat * WX;
+  CvDNNLayer * fc1_layer;
+  CvDNNLayer * fc2_layer;
+  CvMat * G; // sampling grid
 }CvDNNSpatialTransformLayer;
 
 typedef struct CvDNNTimeDistributedLayer
