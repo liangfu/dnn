@@ -226,8 +226,9 @@ typedef struct CvDNNDenseLayer
 typedef struct CvDNNSpatialTransformLayer
 {
   CV_DNN_LAYER_FIELDS();
-  // crop specified time index for next layer
-  // int time_index;
+  // WX = (W*X) - is the vector used in computing of the 
+  // activation function and it's derivative by the formulae
+  CvMat * WX;
 }CvDNNSpatialTransformLayer;
 
 typedef struct CvDNNTimeDistributedLayer

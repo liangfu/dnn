@@ -27,9 +27,9 @@
 #include "cvimgwarp.h"
 
 /*-------------- functions for image cropping layer ------------------*/
-static void icvCNNSpatialTransformRelease( CvDNNLayer** p_layer );
-static void icvCNNSpatialTransformForward( CvDNNLayer* layer, const CvMat* X, CvMat* Y );
-static void icvCNNSpatialTransformBackward( CvDNNLayer* layer, int t, const CvMat*, const CvMat* dE_dY, CvMat* dE_dX );
+void icvCNNSpatialTransformRelease( CvDNNLayer** p_layer );
+void icvCNNSpatialTransformForward( CvDNNLayer* layer, const CvMat* X, CvMat* Y );
+void icvCNNSpatialTransformBackward( CvDNNLayer* layer, int t, const CvMat*, const CvMat* dE_dY, CvMat* dE_dX );
 
 CvDNNLayer * cvCreateSpatialTransformLayer( 
     const int dtype, const char * name, const int visualize, 
@@ -75,7 +75,7 @@ CvDNNLayer * cvCreateSpatialTransformLayer(
 }
 
 
-static void icvCNNSpatialTransformForward( CvDNNLayer * _layer, const CvMat* X, CvMat* Y )
+void icvCNNSpatialTransformForward( CvDNNLayer * _layer, const CvMat* X, CvMat* Y )
 {
   CV_FUNCNAME("icvCNNSpatialTransformForward");
   if ( !icvIsSpatialTransformLayer(_layer) ) { CV_ERROR( CV_StsBadArg, "Invalid layer" ); }
@@ -97,6 +97,9 @@ static void icvCNNSpatialTransformForward( CvDNNLayer * _layer, const CvMat* X, 
   CvMat * input_data = input_layer->Y;
   CV_ASSERT(CV_MAT_TYPE(input_data->type)==CV_32F);
   CV_ASSERT(output_height==output_width && output_height>1 && output_width>1);
+
+  // icvCNNDenseForward(_layer,X,Y);
+  
   { // image processing
     CvMat * I = input_data;
     CvMat * p = cvCreateMat(2,3,CV_32F); cvZero(p);
@@ -131,7 +134,7 @@ static void icvCNNSpatialTransformForward( CvDNNLayer * _layer, const CvMat* X, 
   __END__;
 }
 
-static void icvCNNSpatialTransformBackward( CvDNNLayer* _layer, int t, 
+void icvCNNSpatialTransformBackward( CvDNNLayer* _layer, int t, 
                                        const CvMat * X, const CvMat* dE_dY, CvMat* dE_dX )
 {
   CV_FUNCNAME("icvCNNSpatialTransformBackward");
@@ -177,4 +180,4 @@ static void icvCNNSpatialTransformBackward( CvDNNLayer* _layer, int t,
   __END__;
 }
 
-static void icvCNNSpatialTransformRelease( CvDNNLayer** p_layer ){}
+void icvCNNSpatialTransformRelease( CvDNNLayer** p_layer ){}
