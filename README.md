@@ -26,12 +26,12 @@ The following modules are implemented in current version:
 
  Module Name           | Description
  ---                   | ---
- `InputDataLayer`      | Data Container Layer, for storing original input images
- `ConvolutionLayer`    | Convolutional Neural Network Layer, performs 2d convolution upon images
- `SubSamplingLayer`    | Sub-Sampling Layer, performs max-pooling operation
- `FullConnectLayer`    | Fully Connected Layer, with activation options, e.g. tanh, sigmoid, softmax, relu etc.
- `RecurrentNNLayer`    | vallina Recurrent Neural Network (RNN) Layer, for processing sequence data
- `CombineLayer`        | Combine Layer, for combining output results from multiple different layers
+ `InputLayer`          | for storing original input images
+ `ConvolutionLayer`    | performs 2d convolution upon images
+ `MaxPoolingLayer`     | performs max-pooling operation
+ `DenseLayer`          | fully connected Layer (with activation options, e.g. tanh, sigmoid, softmax, relu etc.)
+ `SimpleRNNLayer`      | for processing sequence data
+ `MergeLayer`          | for combining output results from multiple different layers
 
 More modules will be available online !
 
@@ -39,25 +39,25 @@ More modules will be available online !
 
 Layer Type | Attributes
 --- | ---
-`InputData` | `name`,`n_input_planes`,`input_height`,`input_width`,`seq_length`
+`Input` | `name`,`n_input_planes`,`input_height`,`input_width`,`seq_length`
 `Convolution` | `name`,`visualize`,`n_output_planes`,`ksize`
-`SubSampling` | `name`,`visualize`,`ksize`
-`FullConnect` | `name`,`input_layer(optional)`,`visualize`,`n_output_planes`,`activation_type`
-`RecurrentNN` | `name`,`n_output_planes`,`seq_length`,`time_index`,`activation_type`
-`Combine` | `name`,`input_layers`,`visualize`,`n_output_planes`
+`MaxPooling` | `name`,`visualize`,`ksize`
+`Dense` | `name`,`input_layer(optional)`,`visualize`,`n_output_planes`,`activation_type`
+`SimpleRNN` | `name`,`n_output_planes`,`seq_length`,`time_index`,`activation_type`
+`Merge` | `name`,`input_layers`,`visualize`,`n_output_planes`
 
 With the above parameters given in YAML format, one can simply define a network. 
-For instance, a modifed lenet can be:
+For instance, a lenet model can be:
 
 ```yaml
 %YAML:1.0
 layers:
-  - {type: InputData, name: input1, n_input_planes: 1, input_height: 28, input_width: 28, seq_length: 1}
+  - {type: Input, name: input1, n_input_planes: 1, input_height: 28, input_width: 28, seq_length: 1}
   - {type: Convolution, name: conv1, visualize: 0, n_output_planes: 6, ksize: 5, stride: 1}
-  - {type: SubSampling, name: pool1, visualize: 0, ksize: 2, stride: 2}
+  - {type: MaxPooling, name: pool1, visualize: 0, ksize: 2, stride: 2}
   - {type: Convolution, name: conv2, visualize: 0, n_output_planes: 16, ksize: 5, stride: 1}
-  - {type: SubSampling, name: pool2, visualize: 0, ksize: 2, stride: 2}
-  - {type: FullConnect, name: fc1, visualize: 0, n_output_planes: 10, activation_type: tanh}
+  - {type: MaxPooling, name: pool2, visualize: 0, ksize: 2, stride: 2}
+  - {type: Dense, name: fc1, visualize: 0, n_output_planes: 10, activation_type: tanh}
 ```
 
 Then, by ruuning network training program:
