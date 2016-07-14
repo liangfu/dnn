@@ -1,0 +1,39 @@
+%YAML:1.0
+layers:
+  - {type: Input, name: input1, n_input_planes: 1, input_height: 64, input_width: 64, seq_length: 1}
+  - {type: Convolution, name: conv1, visualize: 0, n_output_planes: 6, ksize: 7, stride: 1}
+  - {type: MaxPooling, name: pool1, visualize: 0, ksize: 3, stride: 3}
+  - {type: Convolution, name: conv2, visualize: 0, n_output_planes: 16, ksize: 7, stride: 1}
+  - {type: MaxPooling, name: pool2, visualize: 0, ksize: 3, stride: 3}
+  - {type: Dense, name: fc1, visualize: 0, n_output_planes: 64, activation: tanh}
+  - {type: Dense, name: fc2, visualize: 0, n_output_planes: 2, activation: softmax}
+  
+  - {type: SpatialTransform, name: st1, input_layer: input1, n_output_planes: 1, output_height: 28, output_width: 28}
+  - {type: Convolution, name: conv3, visualize: 0, activation: tanh, n_output_planes: 6, ksize: 5, stride: 1}
+  - {type: MaxPooling, name: pool3, visualize: 0, ksize: 2, stride: 2}
+  - {type: Convolution, name: conv4, visualize: 0, activation: tanh, n_output_planes: 16, ksize: 5, stride: 1}
+  - {type: MaxPooling, name: pool4, visualize: 0, ksize: 2, stride: 2}
+  - {type: Dense, name: fc3, visualize: 0, n_output_planes: 80, activation: tanh}
+  - {type: Dense, name: fc4, visualize: 0, n_output_planes: 10, activation: softmax}
+  - {type: RepeatVector, name: input2}
+
+  - {type: SpatialTransform, name: st2, input_layer: input1, n_output_planes: 1, output_height: 28, output_width: 28}
+  - {predefined: conv3}
+  - {type: MaxPooling, name: pool5, visualize: 0, ksize: 2, stride: 2}
+  - {predefined: conv4}
+  - {type: MaxPooling, name: pool6, visualize: 0, ksize: 2, stride: 2}
+  - {predefined: fc3}
+  - {predefined: fc4}
+  - {type: RepeatVector, name: input3}
+
+  - {type: SpatialTransform, name: st3, input_layer: input1, n_output_planes: 1, output_height: 28, output_width: 28}
+  - {predefined: conv3}
+  - {type: MaxPooling, name: pool7, visualize: 0, ksize: 2, stride: 2}
+  - {predefined: conv4}
+  - {type: MaxPooling, name: pool8, visualize: 0, ksize: 2, stride: 2}
+  - {predefined: fc3}
+  - {predefined: fc4}
+  - {type: RepeatVector, name: input4}
+  
+  - {type: Merge, name: multi1, n_input_layers: 2, input_layers: "fc2,input2,input3,input4", visualize: 0, n_output_planes: 32}
+

@@ -50,9 +50,9 @@ CvDNNLayer * cvCreateSpatialTransformLayer(
   CV_ASSERT(icvIsInputLayer((CvDNNLayer*)_image_layer));
 
   fprintf(stderr,"SpatialTransformLayer(%s): "
-          "input (%d@%dx%d), output (%d@%dx%d), seq_length: (%d), time_index: (%d)\n", name,
+          "input (%d@%dx%d), output (%d@%dx%d)\n", name,
           n_inputs,input_layer->input_height,input_layer->input_width,
-          n_outputs,output_height,output_width,input_layer->seq_length,time_index);
+          n_outputs,output_height,output_width);
   
   CV_CALL(layer = (CvDNNSpatialTransformLayer*)icvCreateLayer( ICV_DNN_IMGWARPPING_LAYER, dtype, name, 
       sizeof(CvDNNSpatialTransformLayer), 
