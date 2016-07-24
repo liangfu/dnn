@@ -59,7 +59,11 @@
 #endif
 
 #ifdef HAVE_LIBPNG_PNG_H
-#include <libpng/png.h>
+#ifndef __APPLE__
+#  include <libpng/png.h>
+#else
+#  include <libpng16/png.h>
+#endif
 #else
 #include <png.h>
 #endif

@@ -41,7 +41,7 @@
 
 #include "precomp.hpp"
 
-#ifndef WIN32
+#if !defined(WIN32) && !defined(__APPLE__)
 
 #ifdef HAVE_GTK
 

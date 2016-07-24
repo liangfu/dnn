@@ -85,6 +85,8 @@ if( OPENMP_FOUND )
   set( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}" )
 	IF(WIN32)
 		TARGET_LINK_LIBRARIES(highgui cxcore cv ${FFMPEG_LIBRARIES} )
+	ELSEIF(APPLE)
+		TARGET_LINK_LIBRARIES(highgui pthread cxcore cv png jpeg tiff jasper iomp5)
 	ELSE(WIN32)
 		TARGET_LINK_LIBRARIES(highgui pthread rt cxcore cv png jpeg tiff jasper v4l1 
 			${FFMPEG_LIBRARIES} ${GTK2_LIBRARIES} gomp) # ${GSTREAMER_LIBRARIES} 
