@@ -31,6 +31,12 @@ SET(CMAKE_INSTALL_RPATH_USE_LINK_PATH FALSE)
 # add a custom "postfix" to static and shared libraries when in Debug build
 SET(CMAKE_DEBUG_POSTFIX "_debug")
 
+IF(APPLE)
+#   SET(CMAKE_XCODE_ATTRIBUTE_GCC_VERSION "com.apple.compilers.llvmgcc42")
+include_directories(/usr/local/include)
+link_directories(/usr/local/lib)
+endif()
+
 add_definitions(-DCVAPI_EXPORTS)
 
 add_subdirectory(thirdparty/zlib)
@@ -121,6 +127,8 @@ if( OPENMP_FOUND )
 	IF(WIN32)
     # target_link_libraries(test044_cnn cxcore cvutil cv highgui dnn ${FFMPEG_LIBRARIES}) # video
 		set( OPENMP_LIBRARIES "")
+  ELSEIF(APPLE)
+	  SET( OPENMP_LIBRARIES iomp5)
 	ELSE(WIN32)
 	  # target_link_libraries(test044_cnn cxcore cvutil cv highgui dnn ${FFMPEG_LIBRARIES} gomp) # video
 		set( OPENMP_LIBRARIES gomp)

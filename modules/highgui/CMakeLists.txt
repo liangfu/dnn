@@ -17,7 +17,7 @@ MESSAGE( STATUS "GTK2_INCLUDE_DIRS: " ${GTK2_INCLUDE_DIRS} )
 INCLUDE_DIRECTORIES(./include ../cxcore/include ../cv/include ../ts/include
 	${FFMPEG_INCLUDE_DIR} ${GTK2_INCLUDE_DIRS}) # ${GSTREAMER_INCLUDE_DIRS} 
 
-add_library(highgui SHARED
+set(Srcs 
 	src/bitstrm.cpp
 	src/cap_android.cpp
 	src/cap_cmu.cpp
@@ -58,8 +58,20 @@ add_library(highgui SHARED
 	# src/window_carbon.cpp
 	src/window_gtk.cpp
 	# src/window_QT.cpp
-	# src/window_w32.cpp
-	)
+  src/window_w32.cpp
+)
+
+if (APPLE)
+  set(Srcs ${Srcs} src/window_cocoa.mm)
+  FIND_LIBRARY(COCOA_LIBRARY Cocoa)
+  FIND_LIBRARY(APPKIT_LIBRARY AppKit)
+  MARK_AS_ADVANCED (COCOA_LIBRARY APPKIT_LIBRARY)
+  SET(EXTRA_LIBS ${COCOA_LIBRARY} ${APPKIT_LIBRARY})
+	message(${EXTRA_LIBS})
+  set_source_files_properties(${Srcs} PROPERTIES COMPILE_FLAGS "-x objective-c++")
+endif()
+
+add_library(highgui SHARED ${Srcs})
 
 add_executable(test_highgui
 	test/test_fourcc.cpp
@@ -86,7 +98,7 @@ if( OPENMP_FOUND )
 	IF(WIN32)
 		TARGET_LINK_LIBRARIES(highgui cxcore cv ${FFMPEG_LIBRARIES} )
 	ELSEIF(APPLE)
-		TARGET_LINK_LIBRARIES(highgui pthread cxcore cv png jpeg tiff jasper iomp5)
+		TARGET_LINK_LIBRARIES(highgui pthread cxcore cv ${EXTRA_LIBS} png jpeg tiff jasper iomp5)
 	ELSE(WIN32)
 		TARGET_LINK_LIBRARIES(highgui pthread rt cxcore cv png jpeg tiff jasper v4l1 
 			${FFMPEG_LIBRARIES} ${GTK2_LIBRARIES} gomp) # ${GSTREAMER_LIBRARIES} 

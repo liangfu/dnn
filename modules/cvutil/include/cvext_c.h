@@ -141,7 +141,7 @@ CV_INLINE void cvDoNothing() { }
     __android_log_print(ANDROID_LOG_INFO,LOG_TAG,       \
                         "INFO: " fmt,##__VA_ARGS__);    \
   }while(0)
-#elif defined(__linux__)
+#elif defined(__linux__) || defined(__APPLE__)
 #define LOGE(fmt,...)                                   \
   do {                                                  \
     fprintf(stderr,"%s: %d: error: " fmt "\n",__FILE__,__LINE__,##__VA_ARGS__); \

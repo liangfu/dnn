@@ -16,11 +16,13 @@
 /* AVFoundation video libraries */
 /* #undef HAVE_AVFOUNDATION */
 
+#if defined(__linux__)
 /* V4L capturing support */
 /* #undef HAVE_CAMV4L */
 
 /* V4L2 capturing support */
 #define HAVE_CAMV4L2
+#endif // defined(__linux__)
 
 /* Carbon windowing environment */
 /* #undef HAVE_CARBON */
@@ -31,8 +33,11 @@
 /* AMD's OpenCL Fast Fourier Transform Library*/
 /* #undef HAVE_CLAMDFFT */
 
+#if defined(__APPLE__)
 /* Cocoa API */
 /* #undef HAVE_COCOA */
+#define HAVE_COCOA
+#endif
 
 /* C= */
 /* #undef HAVE_CSTRIPES */
@@ -74,14 +79,17 @@
 /* GTK+ 2.0 Thread support */
 #define HAVE_GTHREAD
 
+/* GTK+ 2.x toolkit */
+#define HAVE_GTK
+#endif
+
+#if defined(WIN32)
 /* Windows Runtime support */
 /* #undef HAVE_WINRT */
 
 /* Win32 UI */
 /* #undef HAVE_WIN32UI */
-
-/* GTK+ 2.x toolkit */
-#define HAVE_GTK
+#define HAVE_WIN32UI
 #endif
 
 #if defined(__APPLE__)
