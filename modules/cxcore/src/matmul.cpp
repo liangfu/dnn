@@ -52,6 +52,7 @@
 namespace cv
 {
 
+#if CV_SSE2
 inline void mmul_sse_dot(const float * b_data, const float al, float * d_buf, const int m, int & j){
   __m128 dptr,bptr,aptr;
   for(; j <= m - 16; j += 16 ){
@@ -75,6 +76,7 @@ inline void mmul_sse_dot(const double * b_data, const double al, double * d_buf,
     _mm_store_pd(&d_buf[j],dptr);
   }
 }
+#endif
 
 inline void mmul_sse_dot(const float * b_data, const double al, double * d_buf, const int m, int & j){
   for(; j <= m - 4; j += 4 ){
