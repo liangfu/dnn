@@ -8,7 +8,7 @@ if(POLICY CMP0025)
   cmake_policy(SET CMP0025 NEW) # CMake 3.0
 endif()
 
-project(DeepNerualNets)
+project(DNNLAB)
 
 # this is EXTREMELY important to put these setting before add_library/executable
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/lib)
