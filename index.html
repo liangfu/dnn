@@ -8,14 +8,6 @@
     <link href='https://fonts.googleapis.com/css?family=Open+Sans:400,700' rel='stylesheet' type='text/css'>
     <link rel="stylesheet" type="text/css" href="stylesheets/stylesheet.css" media="screen">
     <link rel="stylesheet" type="text/css" href="stylesheets/github-light.css" media="screen">
-    <script>
-  (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
-  (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
-  m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
-  })(window,document,'script','https://www.google-analytics.com/analytics.js','ga');
-  ga('create', 'UA-8286931-2', 'auto');
-  ga('send', 'pageview');
-</script>
   </head>
   <body>
     <section class="page-header">
@@ -36,7 +28,8 @@
 <h2>
 <a id="introduction" class="anchor" href="#introduction" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Introduction</h2>
 
-<p>The Deep Neural Nets (DNN) library is a deep learning framework designed to be small in size, computationally efficient and portable.</p>
+<p>The Deep Neural Nets (DNN) library is a deep learning framework designed to be small in size, 
+computationally efficient and portable.</p>
 
 <p>We started the project as a fork of the popular <a href="http://opencv.org/">OpenCV</a> library,
 while removing some components that is not tightly related to the deep learning framework.
@@ -66,28 +59,28 @@ and it can be more easily portable to mobile systems, like iOS, Android and Rasp
 </thead>
 <tbody>
 <tr>
-<td><code>InputDataLayer</code></td>
-<td>Data Container Layer, for storing original input images</td>
+<td><code>InputLayer</code></td>
+<td>for storing original input images</td>
 </tr>
 <tr>
 <td><code>ConvolutionLayer</code></td>
-<td>Convolutional Neural Network Layer, performs 2d convolution upon images</td>
+<td>performs 2d convolution upon images</td>
 </tr>
 <tr>
-<td><code>SubSamplingLayer</code></td>
-<td>Sub-Sampling Layer, performs max-pooling operation</td>
+<td><code>MaxPoolingLayer</code></td>
+<td>performs max-pooling operation</td>
 </tr>
 <tr>
-<td><code>FullConnectLayer</code></td>
-<td>Fully Connected Layer, with activation options, e.g. tanh, sigmoid, softmax, relu etc.</td>
+<td><code>DenseLayer</code></td>
+<td>fully connected Layer (with activation options, e.g. tanh, sigmoid, softmax, relu etc.)</td>
 </tr>
 <tr>
-<td><code>RecurrentNNLayer</code></td>
-<td>vallina Recurrent Neural Network (RNN) Layer, for processing sequence data</td>
+<td><code>SimpleRNNLayer</code></td>
+<td>for processing sequence data</td>
 </tr>
 <tr>
-<td><code>CombineLayer</code></td>
-<td>Combine Layer, for combining output results from multiple different layers</td>
+<td><code>MergeLayer</code></td>
+<td>for combining output results from multiple different layers</td>
 </tr>
 </tbody>
 </table>
@@ -106,7 +99,7 @@ and it can be more easily portable to mobile systems, like iOS, Android and Rasp
 </thead>
 <tbody>
 <tr>
-<td><code>InputData</code></td>
+<td><code>Input</code></td>
 <td>
 <code>name</code>,<code>n_input_planes</code>,<code>input_height</code>,<code>input_width</code>,<code>seq_length</code>
 </td>
@@ -118,25 +111,25 @@ and it can be more easily portable to mobile systems, like iOS, Android and Rasp
 </td>
 </tr>
 <tr>
-<td><code>SubSampling</code></td>
+<td><code>MaxPooling</code></td>
 <td>
 <code>name</code>,<code>visualize</code>,<code>ksize</code>
 </td>
 </tr>
 <tr>
-<td><code>FullConnect</code></td>
+<td><code>Dense</code></td>
 <td>
 <code>name</code>,<code>input_layer(optional)</code>,<code>visualize</code>,<code>n_output_planes</code>,<code>activation_type</code>
 </td>
 </tr>
 <tr>
-<td><code>RecurrentNN</code></td>
+<td><code>SimpleRNN</code></td>
 <td>
 <code>name</code>,<code>n_output_planes</code>,<code>seq_length</code>,<code>time_index</code>,<code>activation_type</code>
 </td>
 </tr>
 <tr>
-<td><code>Combine</code></td>
+<td><code>Merge</code></td>
 <td>
 <code>name</code>,<code>input_layers</code>,<code>visualize</code>,<code>n_output_planes</code>
 </td>
@@ -145,22 +138,24 @@ and it can be more easily portable to mobile systems, like iOS, Android and Rasp
 </table>
 
 <p>With the above parameters given in YAML format, one can simply define a network. 
-For instance, a modifed lenet can be:</p>
+For instance, a lenet model can be:</p>
 
 <div class="highlight highlight-source-yaml"><pre>%<span class="pl-ent">YAML</span>:1.0
 <span class="pl-s"><span class="pl-ent">layers:</span></span>
-  <span class="pl-s">- <span class="pl-ent">{type:</span> <span class="pl-s">InputData, name: input1, n_input_planes: 1, input_height: 28, input_width: 28, seq_length: 1}</span></span>
+  <span class="pl-s">- <span class="pl-ent">{type:</span> <span class="pl-s">Input, name: input1, n_input_planes: 1, input_height: 28, input_width: 28, seq_length: 1}</span></span>
   <span class="pl-s">- <span class="pl-ent">{type:</span> <span class="pl-s">Convolution, name: conv1, visualize: 0, n_output_planes: 6, ksize: 5, stride: 1}</span></span>
-  <span class="pl-s">- <span class="pl-ent">{type:</span> <span class="pl-s">SubSampling, name: pool1, visualize: 0, ksize: 2, stride: 2}</span></span>
+  <span class="pl-s">- <span class="pl-ent">{type:</span> <span class="pl-s">MaxPooling, name: pool1, visualize: 0, ksize: 2, stride: 2}</span></span>
   <span class="pl-s">- <span class="pl-ent">{type:</span> <span class="pl-s">Convolution, name: conv2, visualize: 0, n_output_planes: 16, ksize: 5, stride: 1}</span></span>
-  <span class="pl-s">- <span class="pl-ent">{type:</span> <span class="pl-s">SubSampling, name: pool2, visualize: 0, ksize: 2, stride: 2}</span></span>
-  <span class="pl-s">- <span class="pl-ent">{type:</span> <span class="pl-s">FullConnect, name: fc1, visualize: 0, n_output_planes: 10, activation_type: tanh}</span></span></pre></div>
+  <span class="pl-s">- <span class="pl-ent">{type:</span> <span class="pl-s">MaxPooling, name: pool2, visualize: 0, ksize: 2, stride: 2}</span></span>
+  <span class="pl-s">- <span class="pl-ent">{type:</span> <span class="pl-s">Dense, name: fc1, visualize: 0, n_output_planes: 10, activation_type: tanh}</span></span></pre></div>
 
 <p>Then, by ruuning network training program:</p>
 
 <div class="highlight highlight-source-shell"><pre>$ network train --solver data/mnist/lenet_solver.xml</pre></div>
 
-<p>one can start to train a simple network right away. And this is the way the source code and data models are tested in Travis-Ci. (See <a href="https://github.com/liangfu/dnn/blob/master/.travis.yml">.travis.yml</a> in the root directory)</p>
+<p>one can start to train a simple network right away. And this is the way the source code 
+and data models are tested in Travis-Ci. 
+(See <a href="https://github.com/liangfu/dnn/blob/master/.travis.yml">.travis.yml</a> in the root directory)</p>
 
 <h2>
 <a id="compilation" class="anchor" href="#compilation" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Compilation</h2>
