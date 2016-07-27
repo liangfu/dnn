@@ -10,31 +10,33 @@ endif()
 
 project(DNNLAB)
 
-# this is EXTREMELY important to put these setting before add_library/executable
-set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/lib)
-set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/lib)
-set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/bin)
-
-# use, i.e. don't skip the full RPATH for the build tree
-SET(CMAKE_SKIP_BUILD_RPATH  FALSE)
-
-# when building, don't use the install RPATH already
-# (but later on when installing)
-SET(CMAKE_BUILD_WITH_INSTALL_RPATH TRUE) 
-
-SET(CMAKE_INSTALL_RPATH "$ORIGIN/../lib:$ORIGIN/")
-
-# add the automatically determined parts of the RPATH
-# which point to directories outside the build tree to the install RPATH
-SET(CMAKE_INSTALL_RPATH_USE_LINK_PATH FALSE)
+if(APPLE)
+  SET(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/lib)
+  SET(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/lib)
+  SET(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/bin)
+	SET(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
+else()
+  # this is EXTREMELY important to put these setting before add_library/executable
+  set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/lib)
+  set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/lib)
+  set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/bin)
+  # use, i.e. don't skip the full RPATH for the build tree
+  SET(CMAKE_SKIP_BUILD_RPATH  FALSE)
+  # when building, don't use the install RPATH already
+  # (but later on when installing)
+  SET(CMAKE_BUILD_WITH_INSTALL_RPATH TRUE) 
+  # add the automatically determined parts of the RPATH
+  # which point to directories outside the build tree to the install RPATH
+  SET(CMAKE_INSTALL_RPATH "$ORIGIN/../lib:$ORIGIN/")
+  SET(CMAKE_INSTALL_RPATH_USE_LINK_PATH FALSE)
+endif()
 
 # add a custom "postfix" to static and shared libraries when in Debug build
 SET(CMAKE_DEBUG_POSTFIX "_debug")
 
 IF(APPLE)
-#   SET(CMAKE_XCODE_ATTRIBUTE_GCC_VERSION "com.apple.compilers.llvmgcc42")
-include_directories(/usr/local/include)
-link_directories(/usr/local/lib)
+  INCLUDE_DIRECTORIES(/usr/local/include)
+  LINK_DIRECTORIES(/usr/local/lib)
 endif()
 
 add_definitions(-DCVAPI_EXPORTS)
