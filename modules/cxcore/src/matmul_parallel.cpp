@@ -46,9 +46,94 @@
 #include "ippversion.h"
 #endif
 
+// #include <pmmintrin.h>
+// #include <immintrin.h>
+
 namespace cv
 {
 
+inline void mmul_sse_dot(const float * b_data, const float al, float * d_buf, const int m, int & j){
+  __m128 dptr,bptr,aptr;
+  for(; j <= m - 16; j += 16 ){
+    dptr = _mm_load_ps(d_buf+j);  bptr = _mm_load_ps(b_data+j);  aptr = _mm_set1_ps(al);
+    dptr = _mm_add_ps(dptr,_mm_mul_ps(bptr,aptr));_mm_store_ps(&d_buf[j],dptr);
+    dptr = _mm_load_ps(d_buf+j+4);bptr = _mm_load_ps(b_data+j+4);aptr = _mm_set1_ps(al);
+    dptr = _mm_add_ps(dptr,_mm_mul_ps(bptr,aptr));_mm_store_ps(&d_buf[j+4],dptr);
+    dptr = _mm_load_ps(d_buf+j+8);bptr = _mm_load_ps(b_data+j+8);aptr = _mm_set1_ps(al);
+    dptr = _mm_add_ps(dptr,_mm_mul_ps(bptr,aptr));_mm_store_ps(&d_buf[j+8],dptr);
+    dptr = _mm_load_ps(d_buf+j+12);bptr = _mm_load_ps(b_data+j+12);aptr = _mm_set1_ps(al);
+    dptr = _mm_add_ps(dptr,_mm_mul_ps(bptr,aptr));_mm_store_ps(&d_buf[j+12],dptr);
+  }
+}
+
+inline void mmul_sse_dot(const double * b_data, const double al, double * d_buf, const int m, int & j){
+  for(; j <= m - 2; j += 2 ){
+    __m128d dptr = _mm_load_pd(d_buf+j);
+    __m128d bptr = _mm_load_pd(b_data+j);
+    __m128d aptr = _mm_set1_pd(al);
+    dptr = _mm_add_pd(dptr,_mm_mul_pd(bptr,aptr));
+    _mm_store_pd(&d_buf[j],dptr);
+  }
+}
+
+inline void mmul_sse_dot(const float * b_data, const double al, double * d_buf, const int m, int & j){
+  for(; j <= m - 4; j += 4 ){
+    double t0 = d_buf[j] + double(b_data[j])*al;
+    double t1 = d_buf[j+1] + double(b_data[j+1])*al;
+    d_buf[j] = t0;
+    d_buf[j+1] = t1;
+    t0 = d_buf[j+2] + double(b_data[j+2])*al;
+    t1 = d_buf[j+3] + double(b_data[j+3])*al;
+    d_buf[j+2] = t0;
+    d_buf[j+3] = t1;
+  }
+}
+
+void mmul_sse_dot(const Complex<float> * b_data, const Complex<double> al, Complex<double> * d_buf,
+                  const int m, int & j)
+{
+  for(; j <= m - 4; j += 4 ){
+    Complex<double> t0 = d_buf[j] + Complex<double>(b_data[j])*al;
+    Complex<double> t1 = d_buf[j+1] + Complex<double>(b_data[j+1])*al;
+    d_buf[j] = t0;
+    d_buf[j+1] = t1;
+    t0 = d_buf[j+2] + Complex<double>(b_data[j+2])*al;
+    t1 = d_buf[j+3] + Complex<double>(b_data[j+3])*al;
+    d_buf[j+2] = t0;
+    d_buf[j+3] = t1;
+  }
+}
+
+void mmul_sse_dot(const Complex<float> * b_data, const Complex<float> al, Complex<float> * d_buf,
+                  const int m, int & j)
+{
+  for(; j <= m - 4; j += 4 ){
+    Complex<float> t0 = d_buf[j] + Complex<float>(b_data[j])*al;
+    Complex<float> t1 = d_buf[j+1] + Complex<float>(b_data[j+1])*al;
+    d_buf[j] = t0;
+    d_buf[j+1] = t1;
+    t0 = d_buf[j+2] + Complex<float>(b_data[j+2])*al;
+    t1 = d_buf[j+3] + Complex<float>(b_data[j+3])*al;
+    d_buf[j+2] = t0;
+    d_buf[j+3] = t1;
+  }
+}
+
+void mmul_sse_dot(const Complex<double> * b_data, const Complex<double> al, Complex<double> * d_buf,
+                  const int m, int & j)
+{
+  for(; j <= m - 4; j += 4 ){
+    Complex<double> t0 = d_buf[j] + Complex<double>(b_data[j])*al;
+    Complex<double> t1 = d_buf[j+1] + Complex<double>(b_data[j+1])*al;
+    d_buf[j] = t0;
+    d_buf[j+1] = t1;
+    t0 = d_buf[j+2] + Complex<double>(b_data[j+2])*al;
+    t1 = d_buf[j+3] + Complex<double>(b_data[j+3])*al;
+    d_buf[j+2] = t0;
+    d_buf[j+3] = t1;
+  }
+}
+  
 /****************************************************************************************\
 *                                         GEMM                                           *
 \****************************************************************************************/
@@ -60,23 +145,22 @@ GEMM_CopyBlock( const uchar* src, size_t src_step,
 {
     int j;
     size.width *= (int)(pix_size / sizeof(int));
-
     for( ; size.height--; src += src_step, dst += dst_step )
     {
         j=0;
-         #if CV_ENABLE_UNROLLED
-        for( ; j <= size.width - 4; j += 4 )
+#if CV_ENABLE_UNROLLED
+        for( ; j <= size.width - 8; j += 8 )
         {
-            int t0 = ((const int*)src)[j];
-            int t1 = ((const int*)src)[j+1];
-            ((int*)dst)[j] = t0;
-            ((int*)dst)[j+1] = t1;
-            t0 = ((const int*)src)[j+2];
-            t1 = ((const int*)src)[j+3];
-            ((int*)dst)[j+2] = t0;
-            ((int*)dst)[j+3] = t1;
+          ((int*)dst)[j  ] = ((const int*)src)[j  ];
+          ((int*)dst)[j+1] = ((const int*)src)[j+1];
+          ((int*)dst)[j+2] = ((const int*)src)[j+2];
+          ((int*)dst)[j+3] = ((const int*)src)[j+3];
+          ((int*)dst)[j+4] = ((const int*)src)[j+4];
+          ((int*)dst)[j+5] = ((const int*)src)[j+5];
+          ((int*)dst)[j+6] = ((const int*)src)[j+6];
+          ((int*)dst)[j+7] = ((const int*)src)[j+7];
         }
-        #endif
+#endif
         for( ; j < size.width; j++ )
             ((int*)dst)[j] = ((const int*)src)[j];
     }
@@ -136,7 +220,7 @@ GEMMSingleMul( const T* a_data, size_t a_step,
                Size a_size, Size d_size,
                double alpha, double beta, int flags )
 {
-    int i, j, k, n = a_size.width, m = d_size.width, drows = d_size.height;
+    int n = a_size.width, m = d_size.width, drows = d_size.height;
     const T *_a_data = a_data, *_b_data = b_data, *_c_data = c_data;
     cv::AutoBuffer<T> _a_buf;
     T* a_buf = 0;
@@ -171,6 +255,7 @@ GEMMSingleMul( const T* a_data, size_t a_step,
     {
         cv::AutoBuffer<T> _b_buf;
         T* b_buf = 0;
+        int i,j,k;
 
         if( a_step > 1 && a_size.height > 1 )
         {
@@ -222,6 +307,7 @@ GEMMSingleMul( const T* a_data, size_t a_step,
     }
     else if( flags & GEMM_2_T ) /* A * Bt */
     {
+        int i,j,k;
         for( i = 0; i < drows; i++, _a_data += a_step0, _c_data += c_step0, d_data += d_step )
         {
             a_data = _a_data;
@@ -240,7 +326,7 @@ GEMMSingleMul( const T* a_data, size_t a_step,
             {
                 WT s0(0), s1(0), s2(0), s3(0);
                 k = 0;
-                 #if CV_ENABLE_UNROLLED
+#if CV_ENABLE_UNROLLED
                 for( ; k <= n - 4; k += 4 )
                 {
                     s0 += WT(a_data[k])*WT(b_data[k]);
@@ -248,7 +334,7 @@ GEMMSingleMul( const T* a_data, size_t a_step,
                     s2 += WT(a_data[k+2])*WT(b_data[k+2]);
                     s3 += WT(a_data[k+3])*WT(b_data[k+3]);
                 }
-                #endif
+#endif
                 for( ; k < n; k++ )
                     s0 += WT(a_data[k])*WT(b_data[k]);
                 s0 = (s0+s1+s2+s3)*alpha;
@@ -262,6 +348,7 @@ GEMMSingleMul( const T* a_data, size_t a_step,
     }
     else if( d_size.width*sizeof(d_data[0]) <= 1600 )
     {
+        int i,j,k;
         for( i = 0; i < drows; i++, _a_data += a_step0,
                                     _c_data += c_step0,
                                     d_data += d_step )
@@ -323,56 +410,86 @@ GEMMSingleMul( const T* a_data, size_t a_step,
     }
     else
     {
-        cv::AutoBuffer<WT> _d_buf(m);
-        WT* d_buf = _d_buf;
+#if 0
+        cv::AutoBuffer<T> _d_buf(m); T * d_buf = _d_buf;
 
-        for( i = 0; i < drows; i++, _a_data += a_step0, _c_data += c_step0, d_data += d_step )
+        for( int i = 0; i < drows; i++, _a_data += a_step0, _c_data += c_step0, d_data += d_step )
         {
             a_data = _a_data;
             b_data = _b_data;
             c_data = _c_data;
-
-            if( a_buf )
-            {
-                for( k = 0; k < n; k++ )
-                    a_buf[k] = _a_data[a_step1*k];
-                a_data = a_buf;
+            if( a_buf ){
+              for( int k = 0; k < n; k++ ) { a_buf[k] = _a_data[a_step1*k]; }
+              a_data = a_buf;
             }
-
-            for( j = 0; j < m; j++ )
-                d_buf[j] = WT(0);
-
-            for( k = 0; k < n; k++, b_data += b_step )
-            {
-                WT al(a_data[k]);
-                j=0;
-                 #if CV_ENABLE_UNROLLED
-                for(; j <= m - 4; j += 4 )
-                {
-                    WT t0 = d_buf[j] + WT(b_data[j])*al;
-                    WT t1 = d_buf[j+1] + WT(b_data[j+1])*al;
-                    d_buf[j] = t0;
-                    d_buf[j+1] = t1;
-                    t0 = d_buf[j+2] + WT(b_data[j+2])*al;
-                    t1 = d_buf[j+3] + WT(b_data[j+3])*al;
-                    d_buf[j+2] = t0;
-                    d_buf[j+3] = t1;
-                }
-                #endif
-                for( ; j < m; j++ )
-                    d_buf[j] += WT(b_data[j])*al;
+            for( int j = 0; j < m; j++ ) { d_buf[j] = WT(0); }
+            for( int k = 0; k < n; k++, b_data += b_step ){
+              T al(a_data[k]);
+              int j=0;
+#if CV_ENABLE_UNROLLED
+              for(; j <= m - 8; j += 8 ){
+                d_buf[j] += T(b_data[j])*(al);
+                d_buf[j+1] += T(b_data[j+1])*(al);
+                d_buf[j+2] += T(b_data[j+2])*(al);
+                d_buf[j+3] += T(b_data[j+3])*(al);
+                d_buf[j+4] += T(b_data[j+4])*(al);
+                d_buf[j+5] += T(b_data[j+5])*(al);
+                d_buf[j+6] += T(b_data[j+6])*(al);
+                d_buf[j+7] += T(b_data[j+7])*(al);
+              }
+#endif
+              for( ; j < m; j++ ) {
+                d_buf[j] += T(b_data[j])*T(al);
+              }
             }
-
-            if( !c_data )
-                for( j = 0; j < m; j++ )
-                    d_data[j] = T(d_buf[j]*alpha);
-            else
-                for( j = 0; j < m; j++, c_data += c_step1 )
-                {
-                    WT t = d_buf[j]*alpha;
-                    d_data[j] = T(t + WT(c_data[0])*beta);
-                }
+            if( !c_data ) {
+              for( int j = 0; j < m; j++ ) { d_data[j] = T(WT(d_buf[j])*alpha); }
+            }else{
+              for( int j = 0; j < m; j++, c_data += c_step1 ){
+                WT t = WT(d_buf[j])*alpha;
+                d_data[j] = T(t + WT(c_data[0])*beta);
+              }
+            }
         }
+#else // using parallel for
+#pragma omp parallel for
+        for( int i = 0; i < drows; i++ )
+        {
+            cv::AutoBuffer<T> _d_buf(m); T * d_buf = _d_buf;
+            const T * aptr = _a_data+i*a_step0;
+            const T * bptr = _b_data;
+            const T * cptr = _c_data+i*c_step0;
+            T * dptr =  d_data+i*d_step;
+            if( a_buf ){
+              for( int k = 0; k < n; k++ ) { a_buf[k] = _a_data[a_step1*k]; }
+              aptr = a_buf;
+            }
+            for( int j = 0; j < m; j++ ) { d_buf[j] = WT(0); }
+            for( int k = 0; k < n; k++, bptr += b_step ){
+              T al(aptr[k]); int j=0;
+#if CV_ENABLE_UNROLLED
+              for(; j <= m - 8; j += 8 ){
+                d_buf[j]   += T(bptr[j  ])*(al);
+                d_buf[j+1] += T(bptr[j+1])*(al);
+                d_buf[j+2] += T(bptr[j+2])*(al);
+                d_buf[j+3] += T(bptr[j+3])*(al);
+                d_buf[j+4] += T(bptr[j+4])*(al);
+                d_buf[j+5] += T(bptr[j+5])*(al);
+                d_buf[j+6] += T(bptr[j+6])*(al);
+                d_buf[j+7] += T(bptr[j+7])*(al);
+              }
+#endif
+              for( ; j < m; j++ ) { d_buf[j] += T(bptr[j])*T(al); }
+            }
+            if( !cptr ) {
+              for( int j = 0; j < m; j++ ) { dptr[j] = T(WT(d_buf[j])*alpha); }
+            }else{
+              for( int j = 0; j < m; j++, cptr += c_step1 ){
+                dptr[j] = T((WT(d_buf[j])*alpha) + WT(cptr[0])*beta);
+              }
+            }
+        }
+#endif
     }
 }
 
