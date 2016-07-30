@@ -135,7 +135,9 @@ typedef struct CvDNNStatModelParams
   int max_iter;
   int start_iter;
   int grad_estim_type;
-  int batch_size;
+  int batch_size;       // typically 16~128, to enable mini-batch based gradient update
+  float validate_ratio; // typically 0.1, to split validation data from training dataset
+  float momentum_ratio; // typically 0.9, to update momentum term to speed up training
 }CvDNNStatModelParams;
 
 // this macro is added by lxts on jun/22/2008

@@ -66,8 +66,8 @@ void icvCNNModelUpdate(
 void icvCNNModelRelease( CvDNNStatModel** cnn_model );
 
 void icvTrainNetwork( CvNetwork* network,
-        const CvMat* images, const CvMat* responses, 
-        int grad_estim_type, int max_iter, int start_iter, int batch_size);
+                     const CvMat* images, const CvMat* responses, CvDNNStatModelParams * params);
+//        int grad_estim_type, int max_iter, int start_iter, int batch_size);
 
 /*-------------- functions for the CNN network -------------------------*/
 void icvNetworkAddLayer( CvNetwork* network, CvDNNLayer* layer );
@@ -231,9 +231,7 @@ cvTrainCNNClassifier( const CvMat* _train_data, int tflag,
   cnn_model->network = params->network;
   CV_CALL(cnn_model->etalons = cvCloneMat( params->etalons ));
 
-  CV_CALL( icvTrainNetwork( cnn_model->network, train_data, responses,
-                              params->grad_estim_type, 
-                              params->max_iter, params->start_iter, params->batch_size ));
+  CV_CALL( icvTrainNetwork( cnn_model->network, train_data, responses, params) );
   __END__;
 
   if ( cvGetErrStatus() < 0 && cnn_model ){
@@ -246,9 +244,14 @@ cvTrainCNNClassifier( const CvMat* _train_data, int tflag,
 }
 
 /*************************************************************************/
-void icvTrainNetwork( CvNetwork* network,const CvMat* images, const CvMat* responses,
-                               int grad_estim_type, int max_iter, int start_iter, int batch_size )
+void icvTrainNetwork( CvNetwork* network,const CvMat* images, const CvMat* responses, CvDNNStatModelParams * params)
 {
+  // const int grad_estim_type=params->grad_estim_type;
+  const int max_iter=params->max_iter;
+  const int start_iter=params->start_iter;
+  const int batch_size=params->batch_size;
+  const float validate_ratio=params->validate_ratio; // split validation data from training set
+  const float momentum_ratio=params->momentum_ratio; // smooth gradient update between iteration
   CvMat** X     = 0;
   CvMat** dE_dX = 0;
   const int n_layers = network->n_layers;
@@ -290,11 +293,8 @@ void icvTrainNetwork( CvNetwork* network,const CvMat* images, const CvMat* respo
 
   for ( n = 1; n <= max_iter; n++ )
   {
-    float loss, max_loss = 0;
-    int i;
     int nclasses = X[n_layers]->cols;
     CvMat * worst_img_idx = cvCreateMat(batch_size,1,CV_32S);
-    int * right_etal_idx = responses->data.i;
     CvMat * etalon = cvCreateMat(batch_size*last_layer->seq_length,nclasses,CV_32F);
 
     // Use the random image
@@ -533,9 +533,7 @@ void icvCNNModelUpdate(
       }
     }
 
-    CV_CALL( icvTrainNetwork( cnn_model->network, _train_data, responses,
-        params->grad_estim_type, params->max_iter,
-        params->start_iter, params->batch_size ));
+    CV_CALL( icvTrainNetwork( cnn_model->network, _train_data, responses, params) );
 
     __END__;
 
