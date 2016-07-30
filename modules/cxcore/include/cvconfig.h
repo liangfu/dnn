@@ -63,7 +63,7 @@
 /* Eigen Matrix & Linear Algebra Library */
 /* #undef HAVE_EIGEN */
 
-#if defined(__linux__) && !defined(__APPLE__)
+#if defined(__linux__)
 /* FFMpeg video library */
 #define HAVE_FFMPEG
 
