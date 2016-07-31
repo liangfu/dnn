@@ -24,9 +24,9 @@ void Network::loadModel(string inFile)
   CvFileStorage * fs = cvOpenFileStorage(inFile.c_str(),0,CV_STORAGE_READ);
   CvFileNode * root = cvGetRootFileNode( fs );
   CvFileNode * node = 0;
-  char nodename[10]={0,};
   float lr_init = m_solver->lr_init();
   int decay_type = m_solver->decay_type();
+  float momentum_ratio = m_solver->momentum_ratio();
 
   node = cvGetFileNodeByName(fs,root,"data");
   int n_input_planes = 1;
@@ -52,7 +52,6 @@ void Network::loadModel(string inFile)
   CvSeqReader reader;
   cvStartReadSeq( seq, &reader, 0 );
   
-  CvStringHashNode * layer_key = cvGetHashedKey( fs, "name", -1, 1 );
   for (ii=0;ii<total;ii++){
     node = (CvFileNode*)reader.ptr;
     if (!node){break;}
@@ -310,6 +309,9 @@ void Network::train(CvMat *trainingData, CvMat *responseMat)
   params.max_iter=m_solver->maxiter();
   params.batch_size = m_solver->batch_size();
   params.grad_estim_type=CV_DNN_GRAD_ESTIM_RANDOM;
+  params.nepochs = m_solver->nepochs();
+  params.validate_ratio = m_solver->validate_ratio();
+  params.momentum_ratio = m_solver->momentum_ratio();
 
   if (CV_MAT_TYPE(responseMat->type)!=CV_32F){
     CvMat * tmp = cvCreateMat(responseMat->rows,responseMat->cols,CV_32F);
