@@ -337,7 +337,7 @@ float Network::evaluate(CvMat * testing, CvMat * expected, int nsamples, const c
 
   // testing data
   cvGetRows(testing,&samples,0,nsamples);
-  m_cnn->predict(m_cnn,&samples,result,m_solver->batch_size());
+  m_cnn->predict(m_cnn->network,&samples,result,m_solver->batch_size());
 
   // compute loss & accuracy, print progress
   CvMat * expected_submat = cvCreateMat(nsamples*last_layer->seq_length,last_layer->n_output_planes,CV_32F);

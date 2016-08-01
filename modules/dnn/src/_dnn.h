@@ -33,6 +33,7 @@
 
 CvMat * cvCloneTransposed(CvMat * src);
 void cvRandShuffleRows(CvMat * src, CvMat * dst, CvRNG * rng);
+void cvReorderRows(CvMat * src, CvMat * shuffle_idx);
 
 #define CV_GEMM(src1,src2,alpha,src3,beta,dst,tABC)                     \
   cvDebugGEMM(#src1,#src2,#src3,#dst,(src1),(src2),(alpha),(src3),(beta),(dst),(tABC));

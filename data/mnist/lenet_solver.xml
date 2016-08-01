@@ -15,7 +15,7 @@
 	<maxiter>500</maxiter>
 	<batch_size>20</batch_size>
   <nepoch>1</nepoch>
-	<validate_ratio>0.1</validate_ratio>
+	<validate_ratio>0.02</validate_ratio>
 	<momentum_ratio>0.9</momentum_ratio>
 </network>
 </opencv_storage>
