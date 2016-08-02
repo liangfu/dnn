@@ -357,15 +357,17 @@ void icvTrainNetwork( CvNetwork* network,const CvMat* samples, const CvMat* resp
     float top1 = icvEvalAccuracy(last_layer, X[n_layers], expected);
     static double sumloss = 0; sumloss += trloss;
     static double sumacc  = 0; sumacc  += top1;
-    static const float log_freq = 1000.f;
+    static const float log_freq = 10000.f;
     if (int(float((n/batch_size)*log_freq)/float(max_iter))<int(float(((n/batch_size)+1)*log_freq)/float(max_iter))){
-      fprintf(stderr, "%d/%d = %.0f%%,",n,max_iter,float(n*100.f)/float(max_iter));
-      fprintf(stderr, "sumacc: %.1f%%[%.1f%%], sumloss: %f, ", sumacc*batch_size/float(n),top1,sumloss*batch_size/float(n));
+      fprintf(stderr, "epoch: %d/%d, batch: %d/%d = %.1f%%,",
+              epoch_iter+1,n_epochs,n,n_samples_train,(epoch_iter*n_samples_train+n)*100.f/float(max_iter));
+      fprintf(stderr, "sumacc: %.1f%%[%.1f%%], sumloss: %f, ",
+              sumacc*batch_size/float(epoch_iter*n_samples_train+n),top1,sumloss*batch_size/float(epoch_iter*n_samples_train+n));
       {
-        CvMat * result_valid = cvCreateMat(response_valid->rows, response_valid->cols, CV_32F);
-        icvCNNModelPredict(network, samples_valid, result_valid, batch_size);
-        float validacc = icvEvalAccuracy(last_layer, result_valid, response_valid);
-        fprintf(stderr, "validacc: %.1f%%\n", validacc); cvReleaseMat(&result_valid);
+      CvMat * result_valid = cvCreateMat(response_valid->rows, response_valid->cols, CV_32F);
+      icvCNNModelPredict(network, samples_valid, result_valid, batch_size);
+      float validacc = icvEvalAccuracy(last_layer, result_valid, response_valid);
+      fprintf(stderr, "validacc: %.1f%%\n", validacc); cvReleaseMat(&result_valid);
       }
       if (n_inputs<100){fprintf(stderr,"input:\n");cvPrintf(stderr,"%.0f ", X[0]);}
       if (batch_size<10){

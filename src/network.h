@@ -56,7 +56,7 @@ public:
     m_lr_init = cvReadRealByName(fs,node,"lr_init",0.05);
     m_maxiter = cvReadIntByName(fs,node,"maxiter",1);
     m_batch_size = cvReadIntByName(fs,node,"batch_size",1);
-    m_nepochs = cvReadIntByName(fs, node, "nepochs", 1);
+    m_nepochs = cvReadIntByName(fs, node, "n_epochs", 1);
     m_validate_ratio = cvReadRealByName(fs, node, "validate_ratio", .1);
     m_momentum_ratio = cvReadRealByName(fs, node, "momentum_ratio", .9);
     if (fs){cvReleaseFileStorage(&fs);fs=0;}

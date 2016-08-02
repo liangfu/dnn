@@ -10,11 +10,11 @@
 <network>
 	<model_filename>data/mnist/lenet_model.yml</model_filename>
 	<weights_filename>data/mnist/lenet_weights.xml</weights_filename>
-	<lr_init>0.25</lr_init>
+	<lr_init>0.10</lr_init>
 	<decay_type>invsqrt</decay_type>
 	<maxiter>500</maxiter>
 	<batch_size>20</batch_size>
-  <nepoch>1</nepoch>
+  <n_epochs>2</n_epochs>
 	<validate_ratio>0.02</validate_ratio>
 	<momentum_ratio>0.9</momentum_ratio>
 </network>
