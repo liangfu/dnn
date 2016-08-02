@@ -25,7 +25,9 @@ class CvDNNSolver
   int m_decay_type;// = CV_DNN_LEARN_RATE_DECREASE_SQRT_INV;
   int m_maxiter;
   int m_batch_size;
+  int m_nepochs;
   float m_validate_ratio;
+  float m_momentum_ratio;
 
   char m_model_filename[1<<10];
   char m_weights_filename[1<<10];
@@ -47,15 +49,16 @@ public:
     strcpy(m_response_filename,cvReadStringByName(fs,node,"response_filename",""));
     strcpy(m_testing_filename, cvReadStringByName(fs,node,"testing_filename",""));
     strcpy(m_expected_filename,cvReadStringByName(fs,node,"expected_filename",""));
-    const char * _predicted_filename = cvReadStringByName(fs,node,"predicted_filename");
-    strcpy(m_predicted_filename,_predicted_filename?_predicted_filename:"");
+    strcpy(m_predicted_filename,cvReadStringByName(fs,node,"predicted_filename",""));
     node = cvGetFileNodeByName(fs,0,"network");
-    strcpy(m_model_filename,cvReadStringByName(fs,node,"model_filename"));
-    strcpy(m_weights_filename,cvReadStringByName(fs,node,"weights_filename"));
-    m_lr_init = cvReadRealByName(fs,node,"lr_init");
-    m_maxiter = cvReadIntByName(fs,node,"maxiter");
-    m_batch_size = cvReadIntByName(fs,node,"batch_size");
-    m_validate_ratio = cvReadRealByName(fs,node,"validate_ratio");
+    strcpy(m_model_filename,cvReadStringByName(fs,node,"model_filename",""));
+    strcpy(m_weights_filename,cvReadStringByName(fs,node,"weights_filename",""));
+    m_lr_init = cvReadRealByName(fs,node,"lr_init",0.05);
+    m_maxiter = cvReadIntByName(fs,node,"maxiter",1);
+    m_batch_size = cvReadIntByName(fs,node,"batch_size",1);
+    m_nepochs = cvReadIntByName(fs, node, "n_epochs", 1);
+    m_validate_ratio = cvReadRealByName(fs, node, "validate_ratio", .1);
+    m_momentum_ratio = cvReadRealByName(fs, node, "momentum_ratio", .9);
     if (fs){cvReleaseFileStorage(&fs);fs=0;}
   }
   ~CvDNNSolver(){}
@@ -64,7 +67,9 @@ public:
   int decay_type(){return m_decay_type;}
   int maxiter(){return m_maxiter;}
   int batch_size(){return m_batch_size;}
+  int nepochs(){return m_nepochs;}
   float validate_ratio(){return m_validate_ratio;}
+  float momentum_ratio(){return m_momentum_ratio;}
 
   char * model_filename(){return (char*)m_model_filename;}
   char * weights_filename(){return (char*)m_weights_filename;}
@@ -87,8 +92,6 @@ class Network
 
 public:
   Network();
-  // CvNetwork(int height, int width, int node, int cNode,
-  //        double alpha, int maxiter, int batch_size);
   ~Network();
 
   CvDNNSolver * solver(){return m_solver;}

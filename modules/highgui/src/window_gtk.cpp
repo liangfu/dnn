@@ -41,8 +41,6 @@
 
 #include "precomp.hpp"
 
-#ifndef WIN32
-
 #ifdef HAVE_GTK
 
 #include "gtk/gtk.h"
@@ -1673,6 +1671,5 @@ CV_IMPL int cvWaitKey( int delay )
 
 
 #endif  // HAVE_GTK
-#endif  // WIN32
 
 /* End of file. */

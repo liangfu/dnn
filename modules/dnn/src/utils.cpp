@@ -70,3 +70,47 @@ CvMat * cvCloneTransposed(CvMat * src)
   cvTranspose(src,dst);
   return dst;
 }
+
+void cvRandShuffleRows(CvMat * src, CvMat * _dst, CvRNG * rng)
+{
+  CV_FUNCNAME("cvRandShuffleRows");
+  __BEGIN__;
+  CvMat * dst=_dst;
+  if (!_dst){dst=cvCloneMat(src);}
+  CV_ASSERT(CV_MAT_TYPE(src->type)==CV_32F && CV_MAT_TYPE(dst->type)==CV_32F);
+  CV_ASSERT(src->rows==dst->rows && src->cols==dst->cols);
+  CV_ASSERT(src->step==src->cols*sizeof(float) && dst->step==dst->cols*sizeof(float));
+  int n_samples = src->rows,k=0;
+  CvMat * shuffle_idx = cvCreateMat(1,n_samples,CV_32S);
+  for (int ii=0;ii<n_samples;ii++){CV_MAT_ELEM(*shuffle_idx,int,0,ii)=ii;}
+  cvRandShuffle(shuffle_idx, rng, 1.f);
+  for ( k = 0; k < n_samples; k++ ){
+    memcpy(dst->data.fl+dst->cols*k,
+           src->data.fl+dst->cols*shuffle_idx->data.i[k],
+           sizeof(float)*dst->cols);
+  }
+  if (!_dst){cvCopy(dst,src);cvReleaseMat(&dst);}
+  cvReleaseMat(&shuffle_idx);
+  __END__;
+}
+
+void cvReorderRows(CvMat * src, CvMat * shuffle_idx)
+{
+  CV_FUNCNAME("cvRandShuffleRows");
+  __BEGIN__;
+  CvMat * dst=cvCloneMat(src);
+  CV_ASSERT(CV_MAT_TYPE(src->type)==CV_32F && CV_MAT_TYPE(dst->type)==CV_32F);
+  CV_ASSERT(src->rows==dst->rows && src->cols==dst->cols);
+  CV_ASSERT(src->step==src->cols*sizeof(float) && dst->step==dst->cols*sizeof(float));
+  int n_samples = src->rows,k=0;
+  for ( k = 0; k < n_samples; k++ ){
+    memcpy(dst->data.fl+dst->cols*k,
+           src->data.fl+dst->cols*shuffle_idx->data.i[k],
+           sizeof(float)*dst->cols);
+  }
+  cvCopy(dst,src);
+  cvReleaseMat(&dst);
+  __END__;
+}
+
+

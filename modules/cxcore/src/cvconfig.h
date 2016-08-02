@@ -16,11 +16,13 @@
 /* AVFoundation video libraries */
 /* #undef HAVE_AVFOUNDATION */
 
+#if defined(__linux__)
 /* V4L capturing support */
 /* #undef HAVE_CAMV4L */
 
 /* V4L2 capturing support */
 #define HAVE_CAMV4L2
+#endif // defined(__linux__)
 
 /* Carbon windowing environment */
 /* #undef HAVE_CARBON */
@@ -31,8 +33,11 @@
 /* AMD's OpenCL Fast Fourier Transform Library*/
 /* #undef HAVE_CLAMDFFT */
 
+#if defined(__APPLE__)
 /* Cocoa API */
 /* #undef HAVE_COCOA */
+#define HAVE_COCOA
+#endif
 
 /* C= */
 /* #undef HAVE_CSTRIPES */
@@ -58,6 +63,7 @@
 /* Eigen Matrix & Linear Algebra Library */
 /* #undef HAVE_EIGEN */
 
+#if defined(__linux__) && !defined(__APPLE__)
 /* FFMpeg video library */
 #define HAVE_FFMPEG
 
@@ -73,17 +79,23 @@
 /* GTK+ 2.0 Thread support */
 #define HAVE_GTHREAD
 
+/* GTK+ 2.x toolkit */
+#define HAVE_GTK
+#endif
+
+#if defined(WIN32)
 /* Windows Runtime support */
 /* #undef HAVE_WINRT */
 
 /* Win32 UI */
 /* #undef HAVE_WIN32UI */
+#define HAVE_WIN32UI
+#endif
 
-/* GTK+ 2.x toolkit */
-#define HAVE_GTK
-
+#if defined(__APPLE__)
 /* Apple ImageIO Framework */
-/* #undef HAVE_IMAGEIO */
+#define HAVE_IMAGEIO
+#endif
 
 /* Intel Perceptual Computing SDK library */
 /* #undef HAVE_INTELPERC */
@@ -97,11 +109,15 @@
 /* IJG JPEG codec */
 #define HAVE_JPEG
 
+#if defined(__linux__)
 /* libpng/png.h needs to be included */
 #define HAVE_LIBPNG_PNG_H
+#endif
 
+#if defined(__linux__)
 /* V4L/V4L2 capturing support via libv4l */
 #define HAVE_LIBV4L
+#endif
 
 /* Microsoft Media Foundation Capture library */
 /* #undef HAVE_MSMF */

@@ -209,7 +209,7 @@ make & enjoy!
 
 #include "precomp.hpp"
 
-#if !defined WIN32 && (defined HAVE_CAMV4L || defined HAVE_CAMV4L2 || defined HAVE_VIDEOIO)
+#if !defined(WIN32) && !defined(__APPLE__) && (defined HAVE_CAMV4L || defined HAVE_CAMV4L2 || defined HAVE_VIDEOIO)
 
 #define CLEAR(x) memset (&(x), 0, sizeof (x))
 

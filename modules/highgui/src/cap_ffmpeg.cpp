@@ -40,6 +40,7 @@
 //M*/
 
 #include "precomp.hpp"
+#if defined(HAVE_FFMPEG)
 
 #if defined HAVE_FFMPEG && !defined WIN32
 #include "cap_ffmpeg_impl.hpp"
@@ -273,3 +274,5 @@ CvVideoWriter* cvCreateVideoWriter_FFMPEG_proxy( const char* filename, int fourc
     delete result;
     return 0;
 }
+
+#endif // defined HAVE_FFMPEG

@@ -92,7 +92,7 @@ typedef struct CvNetwork CvNetwork;
 
 typedef void (CV_CDECL *CvNetworkAddLayer)(CvNetwork* network, CvDNNLayer* layer);
 typedef CvDNNLayer* (CV_CDECL *CvNetworkGetLayer)(CvNetwork* network, const char * name);
-typedef CvDNNLayer* (CV_CDECL *CvNetworkGetLastLayer)(CvNetwork* network);
+typedef CvDNNLayer* (CV_CDECL *CvNetworkGetLastLayer)(const CvNetwork* network);
 typedef void (CV_CDECL *CvNetworkRelease)(CvNetwork** network);
 typedef float (CV_CDECL *CvNetworkEvaluate)(CvDNNLayer * last_layer, CvMat * result, CvMat * expected);
 
@@ -135,13 +135,16 @@ typedef struct CvDNNStatModelParams
   int max_iter;
   int start_iter;
   int grad_estim_type;
-  int batch_size;
+  int batch_size;       // typically 16~128, to enable mini-batch based gradient update
+  float validate_ratio; // typically 0.1, to split validation data from training dataset
+  int nepochs;
+  float momentum_ratio; // typically 0.9, to update momentum term to speed up training
 }CvDNNStatModelParams;
 
 // this macro is added by lxts on jun/22/2008
 struct CvDNNStatModel;
 
-typedef void (CV_CDECL *CvDNNStatModelPredict) (const CvDNNStatModel *,const CvMat *,CvMat *, const int);
+typedef void (CV_CDECL *CvDNNStatModelPredict) (const CvNetwork *,const CvMat *,CvMat *, const int);
 typedef void (CV_CDECL *CvDNNStatModelUpdate)(
         CvDNNStatModel* _cnn_model, const CvMat* _train_data, int tflag,
         const CvMat* _responses, const CvStatModelParams* _params,
@@ -176,7 +179,7 @@ CVAPI(CvNetwork*) cvLoadNetworkModel(const char * filename);
 
 CVAPI(CvDNNStatModelParams*) cvLoadNetworkSolver(const char * filename);
 
-CVAPI(CvDNNLayer*) cvGetCNNLastLayer(CvNetwork * network);
+CVAPI(CvDNNLayer*) cvGetCNNLastLayer(const CvNetwork * network);
 
 /****************************************************************************************\
 *                               Estimate classifiers algorithms                          *

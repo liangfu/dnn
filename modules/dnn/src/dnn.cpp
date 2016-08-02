@@ -57,7 +57,7 @@
 \*************************************************************************/
 
 /*------------ functions for the CNN classifier --------------------*/
-void icvCNNModelPredict(const CvDNNStatModel * cnn_model, const CvMat * image, CvMat * probs, const int batch_size );
+void icvCNNModelPredict(const CvNetwork * network, const CvMat * samples, CvMat * result, const int batch_size );
 void icvCNNModelUpdate(
         CvDNNStatModel* cnn_model, const CvMat* images, int tflag,
         const CvMat* responses, const CvStatModelParams* params,
@@ -66,8 +66,8 @@ void icvCNNModelUpdate(
 void icvCNNModelRelease( CvDNNStatModel** cnn_model );
 
 void icvTrainNetwork( CvNetwork* network,
-        const CvMat* images, const CvMat* responses, 
-        int grad_estim_type, int max_iter, int start_iter, int batch_size);
+                     const CvMat* images, const CvMat* responses, CvDNNStatModelParams * params);
+//        int grad_estim_type, int max_iter, int start_iter, int batch_size);
 
 /*-------------- functions for the CNN network -------------------------*/
 void icvNetworkAddLayer( CvNetwork* network, CvDNNLayer* layer );
@@ -231,9 +231,7 @@ cvTrainCNNClassifier( const CvMat* _train_data, int tflag,
   cnn_model->network = params->network;
   CV_CALL(cnn_model->etalons = cvCloneMat( params->etalons ));
 
-  CV_CALL( icvTrainNetwork( cnn_model->network, train_data, responses,
-                              params->grad_estim_type, 
-                              params->max_iter, params->start_iter, params->batch_size ));
+  CV_CALL( icvTrainNetwork( cnn_model->network, train_data, responses, params) );
   __END__;
 
   if ( cvGetErrStatus() < 0 && cnn_model ){
@@ -246,14 +244,18 @@ cvTrainCNNClassifier( const CvMat* _train_data, int tflag,
 }
 
 /*************************************************************************/
-void icvTrainNetwork( CvNetwork* network,const CvMat* images, const CvMat* responses,
-                               int grad_estim_type, int max_iter, int start_iter, int batch_size )
+void icvTrainNetwork( CvNetwork* network,const CvMat* samples, const CvMat* responses, CvDNNStatModelParams * params)
 {
+  // const int grad_estim_type=params->grad_estim_type;
+  const int start_iter=params->start_iter;
+  const int batch_size=params->batch_size;
+  const int n_epochs = params->nepochs;
+  const float validate_ratio=params->validate_ratio; // split validation data from training set
+  //const int max_iter=params->max_iter;
   CvMat** X     = 0;
   CvMat** dE_dX = 0;
   const int n_layers = network->n_layers;
-  int k;
-
+  int k=0;
   CV_FUNCNAME("icvTrainNetwork");
   __BEGIN__;
 
@@ -261,18 +263,45 @@ void icvTrainNetwork( CvNetwork* network,const CvMat* images, const CvMat* respo
   CvDNNLayer * last_layer = cvGetCNNLastLayer(network);
   const int n_inputs   =
     first_layer->n_input_planes*first_layer->input_width*first_layer->input_height;
-  const int n_images   = responses->rows; CV_ASSERT(n_images==images->rows);
-  CvMat * X0 = cvCreateMat( batch_size*first_layer->seq_length, n_inputs, CV_32FC1 );
-  CvDNNLayer* layer;
-  int n;
+  const int n_samples   = responses->rows; CV_ASSERT(n_samples==samples->rows);
+  CV_ASSERT(validate_ratio>0 && validate_ratio<1.f);
+  const int n_samples_train = n_samples*(1.f-validate_ratio);
+  const int n_samples_valid = n_samples-n_samples_train;
+  CvMat * samples_train = cvCreateMat(n_samples_train, samples->cols, CV_32F);
+  CvMat * samples_valid = cvCreateMat(n_samples_valid, samples->cols, CV_32F);
+  CvMat * response_train = cvCreateMat(n_samples_train, responses->cols, CV_32F);
+  CvMat * response_valid = cvCreateMat(n_samples_valid, responses->cols, CV_32F);
+  CvMat * X0 = cvCreateMat( batch_size*first_layer->seq_length, n_inputs, CV_32F );
+  CvDNNLayer * layer = 0;
+  int n=0;
   CvRNG rng = cvRNG(-1);
+  const int max_iter = n_epochs*n_samples_train;
 
-  CV_CALL(X = (CvMat**)cvAlloc( (n_layers+1)*sizeof(CvMat*) ));
-  CV_CALL(dE_dX = (CvMat**)cvAlloc( (n_layers+1)*sizeof(CvMat*) ));
-  memset( X, 0, (n_layers+1)*sizeof(CvMat*) );
-  memset( dE_dX, 0, (n_layers+1)*sizeof(CvMat*) );
-
+  // split samples into `train` and `valid`
+  CvMat * shuffle_idx = cvCreateMat(1,n_samples,CV_32S);
+  for (int ii=0;ii<n_samples;ii++){CV_MAT_ELEM(*shuffle_idx,int,0,ii)=ii;}
+  cvRandShuffle(shuffle_idx, &rng, 1.f);
+  for ( k = 0; k < n_samples_train; k++ ){
+    memcpy(samples_train->data.fl+samples->cols*k,
+           samples->data.fl+samples->cols*shuffle_idx->data.i[k],
+           sizeof(float)*samples->cols);
+    memcpy(response_train->data.fl+responses->cols*k,
+           responses->data.fl+responses->cols*shuffle_idx->data.i[k],
+           sizeof(float)*responses->cols);
+  }
+  for ( ; k < n_samples; k++ ){
+    memcpy(samples_valid->data.fl+samples->cols*(k-n_samples_train),
+           samples->data.fl+samples->cols*shuffle_idx->data.i[k],
+           sizeof(float)*samples->cols);
+    memcpy(response_valid->data.fl+responses->cols*(k-n_samples_train),
+           responses->data.fl+responses->cols*shuffle_idx->data.i[k],
+           sizeof(float)*responses->cols);
+  }
+  cvReleaseMat(&shuffle_idx);shuffle_idx=0;
+  
   // initialize input data
+  CV_CALL(X = (CvMat**)cvAlloc( (n_layers+1)*sizeof(CvMat*) )); memset( X, 0, (n_layers+1)*sizeof(CvMat*) );
+  CV_CALL(dE_dX = (CvMat**)cvAlloc( (n_layers+1)*sizeof(CvMat*) )); memset( dE_dX, 0, (n_layers+1)*sizeof(CvMat*) );
   CV_CALL(X[0] = cvCreateMat( batch_size*first_layer->seq_length, n_inputs, CV_32F ));
   CV_CALL(dE_dX[0] = cvCreateMat( batch_size*first_layer->seq_length, X[0]->cols, CV_32F ));
   cvZero(X[0]); cvZero(dE_dX[0]); cvZero(X0);
@@ -288,32 +317,24 @@ void icvTrainNetwork( CvNetwork* network,const CvMat* images, const CvMat* respo
     cvZero(X[k+1]); cvZero(dE_dX[k+1]);
   }
 
-  for ( n = 1; n <= max_iter; n++ )
+  shuffle_idx = cvCreateMat(1,n_samples_train,CV_32S);
+  for (int ii=0;ii<n_samples_train;ii++){CV_MAT_ELEM(*shuffle_idx,int,0,ii)=ii;}
+  for ( int epoch_iter=0; epoch_iter<n_epochs; epoch_iter++) {
+    cvRandShuffle(shuffle_idx, &rng, 1.f);
+    cvReorderRows(samples_train,shuffle_idx);
+    cvReorderRows(response_train,shuffle_idx);
+    
+  for ( n = 0; n < n_samples_train; n+=batch_size )
   {
-    float loss, max_loss = 0;
-    int i;
     int nclasses = X[n_layers]->cols;
-    CvMat * worst_img_idx = cvCreateMat(batch_size,1,CV_32S);
-    int * right_etal_idx = responses->data.i;
-    CvMat * etalon = cvCreateMat(batch_size*last_layer->seq_length,nclasses,CV_32F);
-
-    // Use the random image
-    if (first_layer->seq_length>1 && n_inputs!=images->cols){
-      cvRandArr(&rng,worst_img_idx,CV_RAND_UNI,cvScalar(0),cvScalar(n_images-first_layer->seq_length));
-    }else{
-      cvRandArr(&rng,worst_img_idx,CV_RAND_UNI,cvScalar(0),cvScalar(n_images-1));
-    }
-    // cvPrintf(stderr,"%d, ",worst_img_idx);
+    CvMat * expected = cvCreateMat(batch_size*last_layer->seq_length,nclasses,CV_32F);
 
     // 1) Compute the network output on the <X0>
-    CV_ASSERT(CV_MAT_TYPE(X0->type)==CV_32F && CV_MAT_TYPE(images->type)==CV_32F);
-    CV_ASSERT(n_inputs==X0->cols && n_inputs*first_layer->seq_length==images->cols);
-    for ( k = 0; k < batch_size; k++ ){
-      memcpy(X0->data.fl+images->cols*k,
-             images->data.fl+images->cols*worst_img_idx->data.i[k],
-             sizeof(float)*images->cols);
-    }
-    CV_CALL(cvCopy( X0, X[0] ));
+    CvMat X0_hdr,Y0_hdr;
+    cvGetRows(samples_train,&X0_hdr,n,n+batch_size);
+    cvGetRows(response_train,&Y0_hdr,n,n+batch_size);
+    cvCopy(&X0_hdr,X[0]); cvCopy(&Y0_hdr,expected);
+    //fprintf(stderr,"\n");cvPrintf(stderr, "%.0f,", expected);
 
     // Perform prediction with current weight parameters
     for ( k = 0, layer = first_layer; k < n_layers - 1; k++, layer = layer->next_layer ){
@@ -322,47 +343,41 @@ void icvTrainNetwork( CvNetwork* network,const CvMat* images, const CvMat* respo
     CV_CALL(layer->forward( layer, X[k], X[k+1] ));
 
     // 2) Compute the gradient
-    CvMat etalon_src, etalon_dst;
     CV_ASSERT(cvCountNAN(X[n_layers])<1);
     cvCopy( X[n_layers], dE_dX[n_layers] );
-    for ( k = 0; k < batch_size; k++ ){
-      cvGetRow(responses,&etalon_src,worst_img_idx->data.i[k]);
-      CvMat etalon_reshaped_hdr;
-      cvReshape(etalon,&etalon_reshaped_hdr,0,batch_size);
-      CvMat * etalon_reshaped = cvCloneMat(&etalon_reshaped_hdr);
-      cvGetRow(etalon_reshaped,&etalon_dst,k);
-      cvCopy(&etalon_src, &etalon_dst);
-      cvCopy(etalon_reshaped,&etalon_reshaped_hdr);
-      cvReleaseMat(&etalon_reshaped);
-    }
-    cvSub( dE_dX[n_layers], etalon, dE_dX[n_layers] );
+    cvSub( dE_dX[n_layers], expected, dE_dX[n_layers] );
 
     // 3) Update weights by the gradient descent
     for ( k = n_layers; k > 0; k--, layer = layer->prev_layer ){
-      CV_CALL(layer->backward( layer, n + start_iter, X[k-1], dE_dX[k], dE_dX[k-1] ));
+      CV_CALL(layer->backward( layer, (epoch_iter*n_samples_train+n+batch_size)/batch_size , X[k-1], dE_dX[k], dE_dX[k-1] ));
     }
 
     // 4) compute loss & accuracy, print progress
-    CvMat * etalon_transpose = cvCreateMat(etalon->cols,etalon->rows,CV_32F);
-    cvTranspose(etalon,etalon_transpose);
-    CvMat * Xn_transpose = 
-      cvCreateMat(last_layer->n_output_planes,batch_size*last_layer->seq_length,CV_32F);
-    cvTranspose(X[n_layers],Xn_transpose);
-    float trloss = cvNorm(X[n_layers], etalon)/float(batch_size);
-    float top1 = icvEvalAccuracy(last_layer, Xn_transpose, etalon_transpose);
+    float trloss = cvNorm(X[n_layers], expected)/float(batch_size);
+    float top1 = icvEvalAccuracy(last_layer, X[n_layers], expected);
     static double sumloss = 0; sumloss += trloss;
     static double sumacc  = 0; sumacc  += top1;
-    if (int(float(n*100)/float(max_iter))<int(float((n+1)*100)/float(max_iter))){
-      fprintf(stderr, "%d/%d = %.0f%%,",n+1,max_iter,float(n*100.f)/float(max_iter));
-      fprintf(stderr, "sumacc: %.1f%%[%.1f%%], sumloss: %f\n", sumacc/float(n),top1,sumloss/float(n));
+    static const float log_freq = 10000.f;
+    if (int(float((n/batch_size)*log_freq)/float(max_iter))<int(float(((n/batch_size)+1)*log_freq)/float(max_iter))){
+      fprintf(stderr, "epoch: %d/%d, batch: %d/%d = %.1f%%,",
+              epoch_iter+1,n_epochs,n,n_samples_train,(epoch_iter*n_samples_train+n)*100.f/float(max_iter));
+      fprintf(stderr, "sumacc: %.1f%%[%.1f%%], sumloss: %f, ",
+              sumacc*batch_size/float(epoch_iter*n_samples_train+n),top1,sumloss*batch_size/float(epoch_iter*n_samples_train+n));
+      {
+      CvMat * result_valid = cvCreateMat(response_valid->rows, response_valid->cols, CV_32F);
+      icvCNNModelPredict(network, samples_valid, result_valid, batch_size);
+      float validacc = icvEvalAccuracy(last_layer, result_valid, response_valid);
+      fprintf(stderr, "validacc: %.1f%%\n", validacc); cvReleaseMat(&result_valid);
+      }
       if (n_inputs<100){fprintf(stderr,"input:\n");cvPrintf(stderr,"%.0f ", X[0]);}
-      {fprintf(stderr,"output:\n");cvPrintf(stderr,"%.1f ", X[n_layers]);}
-      {fprintf(stderr,"expect:\n");cvPrintf(stderr,"%.1f ", etalon);}
+      if (batch_size<10){
+        {fprintf(stderr,"output:\n");cvPrintf(stderr,"%.1f ", X[n_layers]);}
+        {fprintf(stderr,"expect:\n");cvPrintf(stderr,"%.1f ", expected);}
+      }
     }
-    cvReleaseMat(&Xn_transpose);
-    cvReleaseMat(&etalon_transpose);
 
-    if (etalon){cvReleaseMat(&etalon);etalon=0;}
+    if (expected){cvReleaseMat(&expected);expected=0;}
+  }
   }
   if (X0){cvReleaseMat(&X0);X0=0;}
   __END__;
@@ -379,9 +394,6 @@ float icvEvalAccuracy(CvDNNLayer * last_layer, CvMat * result, CvMat * expected)
 {
   CV_FUNCNAME("icvEvalAccuracy");
   float top1 = 0;
-  int n_outputs = last_layer->n_output_planes;
-  int seq_length = icvIsSimpleRNNLayer(last_layer)?
-    ((CvDNNSimpleRNNLayer*)last_layer)->seq_length:1;
   int batch_size = result->rows;
   CvMat * sorted = cvCreateMat(result->rows,result->cols,CV_32F);
   CvMat * indices = cvCreateMat(result->rows,result->cols,CV_32S);
@@ -410,13 +422,14 @@ float icvEvalAccuracy(CvDNNLayer * last_layer, CvMat * result, CvMat * expected)
 }
 
 /*************************************************************************/
-void icvCNNModelPredict( const CvDNNStatModel* model, const CvMat* testdata, CvMat* result,
+void icvCNNModelPredict( const CvNetwork * network, const CvMat* testdata, CvMat* result,
                                 const int batch_size )
 {
   CV_FUNCNAME("icvCNNModelPredict");
   __BEGIN__;
 
-  CvDNNStatModel * cnn_model = (CvDNNStatModel*)model;
+  //CvDNNStatModel * cnn_model = (CvDNNStatModel*)model;
+  //CvNetwork * network = cnn_model->network;
   CvDNNLayer * layer = 0;
   CvMat ** X = 0;
   int nclasses, i, k;
@@ -424,21 +437,21 @@ void icvCNNModelPredict( const CvDNNStatModel* model, const CvMat* testdata, CvM
   float* result_data;
   CvMat etalon;
   int nsamples = testdata->rows;;
-  const CvDNNLayer * first_layer = cnn_model->network->first_layer;
-  const CvDNNLayer * last_layer = cnn_model->network->get_last_layer(cnn_model->network);
+  const CvDNNLayer * first_layer = network->first_layer;
+  const CvDNNLayer * last_layer = network->get_last_layer(network);
   const int n_inputs   =
     first_layer->n_input_planes*first_layer->input_width*first_layer->input_height;
 
-  if ( model==0 ) { CV_ERROR( CV_StsBadArg, "Invalid model" ); }
+  if ( network==0 ) { CV_ERROR( CV_StsBadArg, "Invalid model" ); }
 
   nclasses = result->rows;
-  const int n_layers = cnn_model->network->n_layers;
+  const int n_layers = network->n_layers;
   const int seq_length = first_layer->seq_length;
   
   CvMat * samples = cvCloneMat(testdata);
 
   // normalize image value range
-  if (icvIsConvolutionLayer(cnn_model->network->first_layer->next_layer)){
+  if (icvIsConvolutionLayer(network->first_layer->next_layer)){
     double minval, maxval;
     cvMinMaxLoc(samples,&minval,&maxval,0,0);
     cvAddS(samples,cvScalar(-minval),samples);
@@ -538,9 +551,7 @@ void icvCNNModelUpdate(
       }
     }
 
-    CV_CALL( icvTrainNetwork( cnn_model->network, _train_data, responses,
-        params->grad_estim_type, params->max_iter,
-        params->start_iter, params->batch_size ));
+    CV_CALL( icvTrainNetwork( cnn_model->network, _train_data, responses, params) );
 
     __END__;
 
@@ -683,7 +694,7 @@ CvDNNLayer* icvNetworkGetLayer( CvNetwork* network, const char * name )
   return target_layer;
 }
 
-CvDNNLayer * cvGetCNNLastLayer(CvNetwork * network)
+CvDNNLayer * cvGetCNNLastLayer(const CvNetwork * network)
 {
   CV_FUNCNAME("icvGetCNNLastLayer");
   CvDNNLayer* first_layer, *layer, *last_layer;

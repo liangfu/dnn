@@ -40,6 +40,8 @@
 //
 //M*/
 
+#if 1
+
 #include "cap_ffmpeg_api.hpp"
 #include <assert.h>
 #include <algorithm>
@@ -302,8 +304,8 @@ void CvCapture_FFMPEG::close()
     if( picture )
     {
         // FFmpeg and Libav added avcodec_free_frame in different versions.
-#if LIBAVCODEC_BUILD >= (LIBAVCODEC_VERSION_MICRO >= 100 \
-    ? CALC_FFMPEG_VERSION(54, 59, 100) : CALC_FFMPEG_VERSION(54, 28, 0))
+// #if LIBAVCODEC_BUILD < CALC_FFMPEG_VERSION(54, 59, 100)
+#if LIBAVFORMAT_BUILD <= 4628
         avcodec_free_frame(&picture);
 #else
         av_free(picture);
@@ -2303,3 +2305,5 @@ int read_InputMediaStream_FFMPEG(InputMediaStream_FFMPEG* stream, unsigned char*
 {
     return stream->read(data, size, endOfFile);
 }
+
+#endif
