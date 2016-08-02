@@ -72,8 +72,9 @@ int main(int argc, char * argv[])
   int count=0;
   for (int idx=start_index;; idx++){
     sprintf(filepath,path,idx);
-    IplImage * img = cvLoadImage(filepath,0);
-    if (!img){break;}else{count++;}
+    //IplImage * img = cvLoadImage(filepath,0);
+    FILE * img = fopen(filepath,"rb");
+    if (!img){break;}else{count++;fclose(img);}
   }  
 
   CvMat * testing = cvCreateMat(count,nr*nc,CV_32F);
@@ -112,7 +113,8 @@ int main(int argc, char * argv[])
     if (eh){
       cvMinS(out,255,out); cvMaxS(out,40,out);
       cvEqualizeHistEx(out);
-      cvScale(out,out,2.2f);
+      cvScale(out,out,1.6f);
+      // cvScale(out,out,2.2f);
     }
 
     if (er){
