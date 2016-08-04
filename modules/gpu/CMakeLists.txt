@@ -19,11 +19,7 @@ set(Srcs
 find_package( OpenMP )
 find_package( OpenCL REQUIRED )
 
-add_library(gpu SHARED ${Srcs})
-
-# if (APPLE)
-#   target_compile_definitions(gpu INTERFACE "-framework OpenCL")
-# endif()
+add_executable(gpu  ${Srcs}) # SHARED
 
 # add_executable(test_gpu
 # 	test/test_main.cpp

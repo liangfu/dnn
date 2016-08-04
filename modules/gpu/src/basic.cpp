@@ -33,7 +33,7 @@
 #include "basic.hpp"
 
 
-#ifdef __linux__
+#if defined __linux__ || defined __APPLE__
 #include <sys/time.h>
 #include <unistd.h>
 #include <libgen.h>

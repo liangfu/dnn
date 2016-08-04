@@ -36,6 +36,7 @@
 
 using namespace std;
 
+char * gemm_program_text();
 
 // Check validity for multiplication of square matrices: Cresult == alpha*A*Btransposed(B) + beta*Cinit.
 // Samll simplification here: the procedure assumes that initial C values are all zeros,
@@ -405,9 +406,7 @@ int main (int argc, const char** argv)
 
         // Build kernel
         OpenCLProgramOneKernel executable(
-            oclobjects,
-            L"gemm.cl",
-            "",
+            oclobjects,L"",gemm_program_text(),
             "gemm_" + cmdparser.kernel.getValue(),
             build_options
         );
@@ -449,3 +448,115 @@ int main (int argc, const char** argv)
         return 1;
     }
 }
+
+char * gemm_program_text()
+{
+  return (char*)_CL_STRINGIFY(
+  // C := alpha*A*B + beta*C
+  // A is in column-major form
+  // B is in row-major form (transposed; this is different from gemm_nn)
+  // C is in column-major form
+  __attribute__((reqd_work_group_size(TILE_GROUP_M, TILE_GROUP_N, 1)))
+  kernel void gemm_nt (
+                       global const T * restrict A,
+                       int lda,    // column stride in elements for matrix A
+                       global const T * restrict B,
+                       int ldb,    // row stride in elements for matrix B
+                       global T * restrict C,
+                       int ldc,    // column stride in elements for matrix C
+                       int k,        // number of columns/rows in a matrix
+                       T alpha,
+                       T beta
+                       )
+  {
+    // Indices for matrices A and B are calculated similarly
+    // as they are in different formats (the first one is in
+    // column-major form and the second one is in row-major) and
+    // matrix multiplication involves "natural transpose" for
+    // one of the matrix.
+    
+    int Aind = get_group_id(0)*TILE_GROUP_M*TILE_SIZE_M + get_local_id(0);
+    int Bind = get_group_id(1)*TILE_GROUP_N*TILE_SIZE_N + get_local_id(1);
+    int Cind = Aind + Bind*ldc;
+    
+    T c[TILE_SIZE_M*TILE_SIZE_N] = {(T)0};
+    
+    // main accumulation loop
+    for(int l = 0; l < k; ++l)
+    {
+      for(int i = 0; i < TILE_SIZE_M; ++i)
+        for(int j = 0; j < TILE_SIZE_N; ++j)
+          c[i*TILE_SIZE_N + j] +=
+          A[Aind + i*TILE_GROUP_M] *
+          B[Bind + j*TILE_GROUP_N];
+      Aind += lda;
+      Bind += ldb;
+    }
+    
+    // Store accumulated results from c to C with alpha and beta multiplication
+    for(int i = 0; i < TILE_SIZE_M; ++i)
+      for(int j = 0; j < TILE_SIZE_N; ++j)
+      {
+        int Ccur = Cind + i*TILE_GROUP_M + j*TILE_GROUP_N*ldc;
+        C[Ccur] = alpha*c[i*TILE_SIZE_N + j] + beta*C[Ccur];
+      }
+  }
+                              
+                              
+  // C := alpha*A*B + beta*C
+  // A is in column-major form
+  // B is in column-major form (this is different from gemm_nt)
+  // C is in column-major form
+  __attribute__((reqd_work_group_size(TILE_GROUP_M, TILE_GROUP_N, 1)))
+  kernel void gemm_nn (
+                       global const T * restrict A,
+                       int lda,    // column stride in elements for matrix A
+                       global const T * restrict B,
+                       int ldb,    // column stride in elements for matrix B
+                       global T * restrict C,
+                       int ldc,    // column stride in elements for matrix C
+                       int k,
+                       T alpha,
+                       T beta
+                       )
+  {
+    // Indices for matrices A and B are calculated differently
+    // because they have the same format (both column-major) and
+    // matrix multiplication involves "natural transpose" for
+    // one of the matrix.
+    
+    int Aind = get_group_id(0)*TILE_GROUP_M*TILE_SIZE_M + get_local_id(0);
+    int Bind = get_group_id(1)*TILE_GROUP_N*TILE_SIZE_N + get_local_id(1);
+    int Cind = Aind + Bind*ldc;
+    
+    Bind *= ldb;    // matrix B is in column-major form
+    
+    T c[TILE_SIZE_M*TILE_SIZE_N] = {(T)0};
+    
+    // Main accumulation loop
+    for(int l_block = 0; l_block < k; l_block += TILE_SIZE_K)
+    {
+      for(int i = 0; i < TILE_SIZE_M; ++i)
+        for(int j = 0; j < TILE_SIZE_N; ++j)
+          for(int l = 0; l < TILE_SIZE_K; ++l)
+            c[i*TILE_SIZE_N + j] +=
+            A[Aind + l*lda + i*TILE_GROUP_M] *
+            B[Bind + l + j*ldb*TILE_GROUP_N];
+      Aind += lda*TILE_SIZE_K;
+      Bind += TILE_SIZE_K;
+    }
+    
+    // Store accumulated results from c to C with alpha and beta multiplication
+    for(int i = 0; i < TILE_SIZE_M; ++i)
+      for(int j = 0; j < TILE_SIZE_N; ++j)
+      {
+        int Ccur = Cind + i*TILE_GROUP_M + j*TILE_GROUP_N*ldc;
+        C[Ccur] = alpha*c[i*TILE_SIZE_N + j] + beta*C[Ccur];
+      }
+  }
+
+                              );
+
+}
+
+
