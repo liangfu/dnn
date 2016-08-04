@@ -45,6 +45,7 @@ add_subdirectory(thirdparty/zlib)
 add_subdirectory(thirdparty/znzlib)
 
 add_subdirectory(modules/cxcore)
+add_subdirectory(modules/gpu)
 add_subdirectory(modules/cv)
 # add_subdirectory(modules/video)
 add_subdirectory(modules/highgui)
