@@ -173,7 +173,7 @@ bool is_number (const string& x)
 
 double time_stamp ()
 {
-#ifdef __linux__
+#if defined __linux__ || defined __APPLE__
     {
         struct timeval t;
         if(gettimeofday(&t, 0) != 0)

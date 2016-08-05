@@ -8,7 +8,7 @@ if(POLICY CMP0025)
   cmake_policy(SET CMP0025 NEW) # CMake 3.0
 endif()
 
-project(DNNLAB)
+project(DNN)
 
 if(APPLE)
   SET(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/lib)
