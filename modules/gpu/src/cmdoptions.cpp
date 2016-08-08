@@ -48,9 +48,9 @@ CmdParserGEMM::CmdParserGEMM (int argc, const char** argv) :
         "iterations",
         "<integer>",
         "Number of kernel invocations. For each invoction, "
-            "performance information will be printed. "
-            "Zero is allowed: in this case no kernel invocation "
-            " is performed but all other host stuff is created.",
+        "performance information will be printed. "
+        "Zero is allowed: in this case no kernel invocation "
+        " is performed but all other host stuff is created.",
         10
     ),
     arithmetic(
@@ -69,11 +69,11 @@ CmdParserGEMM::CmdParserGEMM (int argc, const char** argv) :
         "kernel",
         "",
         "Determines format of matrices involved in multiplication. "
-            "There are two supported form: nn and nt; nn is for case when "
-            "both matrices A and B are in column-major form; nt is for case "
-            "when A is in column-major form, but B is in row major format "
-            "(i.e. transposed). Matrices A and C are always in column major "
-            "format.",
+        "There are two supported form: nn and nt; nn is for case when "
+        "both matrices A and B are in column-major form; nt is for case "
+        "when A is in column-major form, but B is in row major format "
+        "(i.e. transposed). Matrices A and C are always in column major "
+        "format.",
         "nn"
     ),
     kernel_nn(kernel, "nn"),
