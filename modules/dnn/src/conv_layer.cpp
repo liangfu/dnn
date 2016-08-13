@@ -25,6 +25,9 @@
 
 #include "_dnn.h"
 
+void icvCNNConvolutionForwardDirect( CvDNNLayer* _layer, const CvMat* X, CvMat* Y );
+void icvCNNConvolutionForwardFFT( CvDNNLayer* _layer, const CvMat* X, CvMat* Y );
+
 /*************************************************************************/
 ML_IMPL CvDNNLayer* cvCreateConvolutionLayer( 
     const int dtype, const char * name, const CvDNNLayer * ref_layer,
@@ -114,6 +117,15 @@ ML_IMPL CvDNNLayer* cvCreateConvolutionLayer(
 
 void icvCNNConvolutionForward( CvDNNLayer* _layer, const CvMat* X, CvMat* Y )
 {
+#if 0
+  icvCNNConvolutionForwardDirect(_layer, X, Y);
+#else
+  icvCNNConvolutionForwardFFT(_layer, X, Y);
+#endif
+}
+
+void icvCNNConvolutionForwardDirect( CvDNNLayer* _layer, const CvMat* X, CvMat* Y )
+{
   CV_FUNCNAME("icvCNNConvolutionForward");
 
   if (!icvIsConvolutionLayer(_layer)){CV_ERROR( CV_StsBadArg, "Invalid layer" );}
@@ -184,14 +196,132 @@ void icvCNNConvolutionForward( CvDNNLayer* _layer, const CvMat* X, CvMat* Y )
           WX += (xptr+Xwidth*yy+xx)[Xwidth*ky+kx]*wptr[K*ky+kx];
         } // kx
         } // ky
-        yptr[(Xwidth-K+1)*yy+xx] += WX + wptr[K*K];
+        yptr[(Xwidth-K+1)*yy+xx] += WX + wptr[K*K]; // bias
       } // xx
       } // yy
     } // ni
     } // no
   } // si
 
-  cvScale(Y,Y,1.f/float(K*K));
+  cvScale(Y,Y,1.f/float(K*K)); fprintf(stderr,"avg: %f, sdv: %f\n",cvAvg(Y).val[0],cvSdv(Y));
+  if (!layer->WX){layer->WX=cvCloneMat(Y);}
+  else if (layer->WX->rows==Y->rows){cvCopy(Y,layer->WX);}
+  else{cvReleaseMat(&layer->WX);layer->WX=cvCloneMat(Y);}
+
+  if (!strcmp(layer->activation,"none")){ // do nothing
+  }else if (!strcmp(layer->activation,"tanh")){ CV_CALL(cvTanh( Y, Y ));
+  }else if (!strcmp(layer->activation,"sigmoid")){ CV_CALL(cvSigmoid( Y, Y ));
+  }else if (!strcmp(layer->activation,"relu")){ CV_CALL(cvReLU( Y, Y ));
+  }else{CV_ERROR(CV_StsBadArg,"Unknown activation type");}
+
+  CV_ASSERT(cvCountNAN(Y)<1);
+  
+  if (layer->Y){
+    if (layer->Y->rows==Y->rows){cvCopy(Y,layer->Y);}else{cvReleaseMat(&layer->Y);layer->Y=cvCloneMat(Y);}
+  }else{layer->Y=cvCloneMat(Y);}
+  if (layer->visualize){icvVisualizeCNNLayer((CvDNNLayer*)layer,Y);}
+
+  __END__;
+}
+
+void icvCNNConvolutionForwardFFT( CvDNNLayer* _layer, const CvMat* X, CvMat* Y )
+{
+  CV_FUNCNAME("icvCNNConvolutionForward");
+
+  if (!icvIsConvolutionLayer(_layer)){CV_ERROR( CV_StsBadArg, "Invalid layer" );}
+
+  __BEGIN__;
+
+  CvDNNConvolutionLayer* layer = (CvDNNConvolutionLayer*) _layer;
+  CvDNNLayer * ref_layer = layer->ref_layer;
+  CvMat * weights = ref_layer?ref_layer->weights:layer->weights;
+  
+  const int K = layer->K;
+  const int n_weights_for_Yplane = K*K + 1;
+  CV_ASSERT(weights->cols==n_weights_for_Yplane);
+
+  const int nXplanes = layer->n_input_planes;
+  const int Xheight  = layer->input_height;
+  const int Xwidth   = layer->input_width ;
+  const int Xsize    = Xwidth*Xheight;
+
+  const int nYplanes = layer->n_output_planes;
+  const int Yheight  = layer->output_height;
+  const int Ywidth   = layer->output_width;
+  const int Ysize    = Ywidth*Yheight;
+
+  const int nsamples = X->rows; // training batch size
+
+  // int no; xx, yy, ni, , kx, ky
+  // float *Yplane = 0, *Xplane = 0, *w = 0;
+  uchar* connect_mask_data = 0;
+
+  CV_ASSERT( X->cols == nXplanes*Xsize && X->rows == nsamples );
+  CV_ASSERT( Y->cols == nYplanes*Ysize && Y->rows == nsamples );
+  CV_ASSERT( Xheight-K+1 == Yheight && Xwidth-K+1 == Ywidth );
+
+  cvSetZero( Y );
+
+  // Yplane = Y->data.fl;
+  // w = layer->weights->data.fl;
+  connect_mask_data = layer->connect_mask->data.ptr;
+
+  // normalize input
+  CvScalar avg,sdv;
+  for ( int si = 0; si < nsamples; si++ ){
+  for ( int no = 0; no < nXplanes; no++ ){
+    float * xptr = X->data.fl+Xsize*nXplanes*si+Xsize*no;
+    CvMat img = cvMat(Xsize,1,CV_32F,xptr);
+    cvAvgSdv(&img,&avg,&sdv);
+    cvSubS(&img,avg,&img);
+    cvScale(&img,&img,.5f/(1e-5f+sdv.val[0]));
+  }
+  }
+  
+  const int dft_M = cvGetOptimalDFTSize(Xheight+K-1);
+  const int dft_N = cvGetOptimalDFTSize(Xwidth+K-1);
+#pragma omp parallel for
+  for ( int si = 0; si < nsamples; si++ ){
+    CvMat * dft_A = cvCreateMat(dft_M, dft_N, CV_32F); cvZero(dft_A);
+    CvMat * dft_B = cvCreateMat(dft_M, dft_N, CV_32F); cvZero(dft_B);
+    for ( int no = 0; no < nYplanes; no++ ){
+    float * xptr = X->data.fl+Xsize*nXplanes*si;
+    float * yptr = Y->data.fl+Ysize*nYplanes*si+Ysize*no;
+    float * wptr = weights->data.fl+n_weights_for_Yplane*no;
+    for ( int ni = 0; ni < nXplanes; ni++, xptr += Xsize ){
+    CvMat A = cvMat(Xheight,Xwidth,CV_32F,xptr);
+    CvMat B = cvMat(K,K,CV_32F,wptr);
+    CvMat C = cvMat(Yheight,Ywidth,CV_32F,yptr);
+    CvMat submat_hdr;
+    cvGetSubRect( dft_A, &submat_hdr, cvRect(0,0,A.cols,A.rows)); cvCopy(&A,&submat_hdr);
+    cvGetSubRect( dft_A, &submat_hdr, cvRect(A.cols,0,dft_A->cols-A.cols,A.rows)); cvZero(&submat_hdr);
+    cvDFT( dft_A, dft_A, CV_DXT_FORWARD, A.rows );
+    cvGetSubRect( dft_B, &submat_hdr, cvRect(0,0,B.cols,B.rows)); cvCopy(&B,&submat_hdr);
+    cvGetSubRect( dft_B, &submat_hdr, cvRect(B.cols,0,dft_B->cols-B.cols,B.rows)); cvZero(&submat_hdr);
+    cvDFT( dft_B, dft_B, CV_DXT_FORWARD, B.rows );
+    cvMulSpectrums( dft_A, dft_B, dft_A, 0);
+    cvDFT( dft_A, dft_A, CV_DXT_INVERSE_SCALE, C.rows ); // calculate only the top part
+    cvGetSubRect( dft_A, &submat_hdr, cvRect(0,0,C.cols,C.rows) );
+    cvAddS(&submat_hdr, cvScalar(wptr[K*K]), &C);
+    //   for ( int yy = 0; yy < Xheight-K+1; yy++ ){
+    //   for ( int xx = 0; xx < Xwidth-K+1; xx++ ){
+    //     float WX = 0;
+    //     for ( int ky = 0; ky < K; ky++ ){
+    //     for ( int kx = 0; kx < K; kx++ ){
+    //       WX += (xptr+Xwidth*yy+xx)[Xwidth*ky+kx]*wptr[K*ky+kx];
+    //     } // kx
+    //     } // ky
+    //     yptr[(Xwidth-K+1)*yy+xx] += WX + wptr[K*K];
+    //   } // xx
+    //   } // yy
+    } // ni
+    } // no
+    if (dft_A){cvReleaseMat(&dft_A);dft_A=0;}
+    if (dft_B){cvReleaseMat(&dft_B);dft_B=0;}
+  } // si
+
+  //cvScale(Y,Y,1.f/float(K*K));
+  //fprintf(stderr,"avg: %f, sdv: %f\n",cvAvg(Y).val[0],cvSdv(Y));
   if (!layer->WX){layer->WX=cvCloneMat(Y);}
   else if (layer->WX->rows==Y->rows){cvCopy(Y,layer->WX);}
   else{cvReleaseMat(&layer->WX);layer->WX=cvCloneMat(Y);}
