@@ -290,7 +290,7 @@ void icvCNNConvolutionForwardFFT( CvDNNLayer* _layer, const CvMat* X, CvMat* Y )
     float * wptr = weights->data.fl+n_weights_for_Yplane*no;
     CvMat submat_hdr;
     CvMat B = cvMat(K,K,CV_32F,wptr);
-    cvGetSubRect( dft_B, &submat_hdr, cvRect(0,0,B.cols,B.rows)); cvCopy(&B,&submat_hdr);
+    cvGetSubRect( dft_B, &submat_hdr, cvRect(0,0,B.cols,B.rows)); cvCopy(&B,&submat_hdr); cvFlip(&submat_hdr,&submat_hdr,-1);
     cvGetSubRect( dft_B, &submat_hdr, cvRect(B.cols,0,dft_B->cols-B.cols,B.rows)); cvZero(&submat_hdr);
     cvDFT( dft_B, dft_B, CV_DXT_FORWARD, B.rows );
     for ( int ni = 0; ni < nXplanes; ni++, xptr += Xsize ){
