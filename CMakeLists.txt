@@ -34,6 +34,8 @@ endif()
 # add a custom "postfix" to static and shared libraries when in Debug build
 SET(CMAKE_DEBUG_POSTFIX "_debug")
 
+find_package(OpenCL)
+
 IF(APPLE)
   INCLUDE_DIRECTORIES(/usr/local/include)
   LINK_DIRECTORIES(/usr/local/lib)
@@ -45,7 +47,9 @@ add_subdirectory(thirdparty/zlib)
 add_subdirectory(thirdparty/znzlib)
 
 add_subdirectory(modules/cxcore)
-add_subdirectory(modules/gpu)
+if (OPENCL_FOUND)
+  add_subdirectory(modules/gpu)
+endif()
 add_subdirectory(modules/cv)
 # add_subdirectory(modules/video)
 add_subdirectory(modules/highgui)

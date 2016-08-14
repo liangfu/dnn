@@ -322,7 +322,7 @@ void icvCNNConvolutionForwardFFT( CvDNNLayer* _layer, const CvMat* X, CvMat* Y )
 
   cvScale(Y,Y,1.f/float(K*K));
   cvScale(Y,Y,1.f/float(K*K));
-  cvScale(Y,Y,.5);
+  cvScale(Y,Y,.25);
   //fprintf(stderr,"avg: %f, sdv: %f\n",cvAvg(Y).val[0],cvSdv(Y));
   if (!layer->WX){layer->WX=cvCloneMat(Y);}
   else if (layer->WX->rows==Y->rows){cvCopy(Y,layer->WX);}

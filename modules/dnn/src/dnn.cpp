@@ -277,7 +277,6 @@ void icvTrainNetwork( CvNetwork* network,const CvMat* samples, const CvMat* resp
   int n=0;
   CvRNG rng = cvRNG(-1);
   const int max_iter = n_epochs*n_samples_train;
-  CvTimer timer; timer.start();
 
   // split samples into `train` and `valid`
   CvMat * shuffle_idx = cvCreateMat(1,n_samples,CV_32S);
@@ -319,6 +318,7 @@ void icvTrainNetwork( CvNetwork* network,const CvMat* samples, const CvMat* resp
     cvZero(X[k+1]); cvZero(dE_dX[k+1]);
   }
 
+  CvTimer timer; timer.start();
   shuffle_idx = cvCreateMat(1,n_samples_train,CV_32S);
   for (int ii=0;ii<n_samples_train;ii++){CV_MAT_ELEM(*shuffle_idx,int,0,ii)=ii;}
   for ( int epoch_iter=0; epoch_iter<n_epochs; epoch_iter++) {
@@ -362,11 +362,12 @@ void icvTrainNetwork( CvNetwork* network,const CvMat* samples, const CvMat* resp
     static const float log_freq = 10000.f;
     if (int(float((n/batch_size)*log_freq)/float(max_iter))<int(float(((n/batch_size)+1)*log_freq)/float(max_iter))){
       float progress=(epoch_iter*n_samples_train+n)/float(max_iter);
+      float elapsed=timer.elapsed();
       fprintf(stderr, "epoch: %d/%d, batch: %d/%d = %.1f%%, ",
               epoch_iter+1,n_epochs,n,n_samples_train,progress*100.f);
       fprintf(stderr, "sumacc: %.1f%%[%.1f%%], sumloss: %f, ",
               sumacc*batch_size/float(epoch_iter*n_samples_train+n),top1,sumloss*batch_size/float(epoch_iter*n_samples_train+n));
-      fprintf(stderr,"eta: %s, ",time2str_concise(timer.elapsed()/progress));
+      fprintf(stderr,"eta: %s, ",time2str_concise(elapsed/progress*(1.-progress)));
       {
       CvMat * result_valid = cvCreateMat(response_valid->rows, response_valid->cols, CV_32F);
       icvCNNModelPredict(network, samples_valid, result_valid, batch_size);
