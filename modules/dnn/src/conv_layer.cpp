@@ -288,21 +288,21 @@ void icvCNNConvolutionForwardFFT( CvDNNLayer* _layer, const CvMat* X, CvMat* Y )
     float * xptr = X->data.fl+Xsize*nXplanes*si;
     float * yptr = Y->data.fl+Ysize*nYplanes*si+Ysize*no;
     float * wptr = weights->data.fl+n_weights_for_Yplane*no;
-    for ( int ni = 0; ni < nXplanes; ni++, xptr += Xsize ){
-    CvMat A = cvMat(Xheight,Xwidth,CV_32F,xptr);
-    CvMat B = cvMat(K,K,CV_32F,wptr);
-    CvMat C = cvMat(Yheight,Ywidth,CV_32F,yptr);
     CvMat submat_hdr;
-    cvGetSubRect( dft_A, &submat_hdr, cvRect(0,0,A.cols,A.rows)); cvCopy(&A,&submat_hdr);
-    cvGetSubRect( dft_A, &submat_hdr, cvRect(A.cols,0,dft_A->cols-A.cols,A.rows)); cvZero(&submat_hdr);
-    cvDFT( dft_A, dft_A, CV_DXT_FORWARD, A.rows );
+    CvMat B = cvMat(K,K,CV_32F,wptr);
     cvGetSubRect( dft_B, &submat_hdr, cvRect(0,0,B.cols,B.rows)); cvCopy(&B,&submat_hdr);
     cvGetSubRect( dft_B, &submat_hdr, cvRect(B.cols,0,dft_B->cols-B.cols,B.rows)); cvZero(&submat_hdr);
     cvDFT( dft_B, dft_B, CV_DXT_FORWARD, B.rows );
+    for ( int ni = 0; ni < nXplanes; ni++, xptr += Xsize ){
+    CvMat A = cvMat(Xheight,Xwidth,CV_32F,xptr);
+    CvMat C = cvMat(Yheight,Ywidth,CV_32F,yptr);
+    cvGetSubRect( dft_A, &submat_hdr, cvRect(0,0,A.cols,A.rows)); cvCopy(&A,&submat_hdr);
+    cvGetSubRect( dft_A, &submat_hdr, cvRect(A.cols,0,dft_A->cols-A.cols,A.rows)); cvZero(&submat_hdr);
+    cvDFT( dft_A, dft_A, CV_DXT_FORWARD, A.rows );
     cvMulSpectrums( dft_A, dft_B, dft_A, 0);
-    cvDFT( dft_A, dft_A, CV_DXT_INVERSE_SCALE, C.rows ); // calculate only the top part
+    cvDFT( dft_A, dft_A, CV_DXT_INVERSE, C.rows ); // calculate only the top part
     cvGetSubRect( dft_A, &submat_hdr, cvRect(K-1,K-1,C.cols,C.rows) );
-    cvAddS(&submat_hdr, cvScalar(wptr[K*K]), &C);
+    cvAddS(&submat_hdr, cvScalar(wptr[K*K]), &C); // bias
     //   for ( int yy = 0; yy < Yheight; yy++ ){
     //   for ( int xx = 0; xx < Ywidth; xx++ ){
     //     float WX = 0;
@@ -320,8 +320,9 @@ void icvCNNConvolutionForwardFFT( CvDNNLayer* _layer, const CvMat* X, CvMat* Y )
     if (dft_B){cvReleaseMat(&dft_B);dft_B=0;}
   } // si
 
-  //cvScale(Y,Y,1.f/float(K*K));
-  cvScale(Y,Y,.35);
+  cvScale(Y,Y,1.f/float(K*K));
+  cvScale(Y,Y,1.f/float(K*K));
+  cvScale(Y,Y,.5);
   //fprintf(stderr,"avg: %f, sdv: %f\n",cvAvg(Y).val[0],cvSdv(Y));
   if (!layer->WX){layer->WX=cvCloneMat(Y);}
   else if (layer->WX->rows==Y->rows){cvCopy(Y,layer->WX);}

@@ -73,14 +73,29 @@ class CvTimer
 static char * time2str(float elapsed)
 {
   static char res[80];
-  int h = int(elapsed/3600.f)%24;                               
-  int m = int(elapsed/60.f)%60;                                 
-  int s = int(elapsed)%60;                                      
+  int h = int(elapsed/3600.f)%24;
+  int m = int(elapsed/60.f)%60;
+  int s = int(elapsed)%60;
   float ms = float(elapsed-h*3600-m*60-s)*1000.f;
   if (h>0){sprintf(res,"%d hour %d min %d sec",h,m,s);}
   else if (m>0){sprintf(res,"%d min %d sec %.0f ms",m,s,ms);}
   else if (s>0){sprintf(res,"%d sec %.0f ms",s,ms);}
   else if (ms>0){sprintf(res,"%.2f ms",ms);}
+  else{sprintf(res,"0 ms");}
+  return res;
+}
+
+static char * time2str_concise(float elapsed)
+{
+  static char res[80];
+  int h = int(elapsed/3600.f)%24;
+  int m = int(elapsed/60.f)%60;
+  int s = int(elapsed)%60;
+  float ms = float(elapsed-h*3600-m*60-s)*1000.f;
+  if (h>0){sprintf(res,"%dh%dm",h,m);}
+  else if (m>0){sprintf(res,"%dm%ds",m,s);}
+  else if (s>0){sprintf(res,"%ds%.0fms",s,ms);}
+  else if (ms>0){sprintf(res,"%.2fms",ms);}
   else{sprintf(res,"0 ms");}
   return res;
 }
