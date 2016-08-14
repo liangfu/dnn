@@ -300,7 +300,7 @@ void icvCNNConvolutionForwardFFT( CvDNNLayer* _layer, const CvMat* X, CvMat* Y )
     cvGetSubRect( dft_A, &submat_hdr, cvRect(A.cols,0,dft_A->cols-A.cols,A.rows)); cvZero(&submat_hdr);
     cvDFT( dft_A, dft_A, CV_DXT_FORWARD, A.rows );
     cvMulSpectrums( dft_A, dft_B, dft_A, 0);
-    cvDFT( dft_A, dft_A, CV_DXT_INVERSE, C.rows ); // calculate only the top part
+    cvDFT( dft_A, dft_A, CV_DXT_INVERSE, C.rows+K-1 ); // calculate only the top part
     cvGetSubRect( dft_A, &submat_hdr, cvRect(K-1,K-1,C.cols,C.rows) );
     cvAddS(&submat_hdr, cvScalar(wptr[K*K]), &C); // bias
     //   for ( int yy = 0; yy < Yheight; yy++ ){
@@ -320,10 +320,8 @@ void icvCNNConvolutionForwardFFT( CvDNNLayer* _layer, const CvMat* X, CvMat* Y )
     if (dft_B){cvReleaseMat(&dft_B);dft_B=0;}
   } // si
 
-  cvScale(Y,Y,1.f/float(K*K));
-  cvScale(Y,Y,1.f/float(K*K));
-  cvScale(Y,Y,.25);
-  //fprintf(stderr,"avg: %f, sdv: %f\n",cvAvg(Y).val[0],cvSdv(Y));
+  cvScale(Y,Y,.5/float(K*K*K*K));
+  fprintf(stderr,"avg: %f, sdv: %f\n",cvAvg(Y).val[0],cvSdv(Y));
   if (!layer->WX){layer->WX=cvCloneMat(Y);}
   else if (layer->WX->rows==Y->rows){cvCopy(Y,layer->WX);}
   else{cvReleaseMat(&layer->WX);layer->WX=cvCloneMat(Y);}
