@@ -25,6 +25,8 @@
 
 #include "_dnn.h" 
 
+void icvCNNDenseClear( CvDNNLayer * p_layer );
+
 /*************************************************************************/
 ML_IMPL
 CvDNNLayer * cvCreateDenseLayer( 
@@ -53,6 +55,7 @@ CvDNNLayer * cvCreateDenseLayer(
   layer->WX = 0;
   layer->dE_dW = 0;
   layer->seq_length = 1;
+  layer->clear = icvCNNDenseClear;
 
   strcpy(layer->activation,activation);
   layer->visualize = visualize;
@@ -364,6 +367,28 @@ void icvCNNDenseRelease( CvDNNLayer** p_layer )
   cvReleaseMat( &layer->WX );
   cvReleaseMat( &layer->weights );
   cvFree( p_layer );
+
+  __END__;
+}
+
+void icvCNNDenseClear( CvDNNLayer * p_layer )
+{
+  CV_FUNCNAME("icvCNNDenseClear");
+  __BEGIN__;
+
+  CvDNNDenseLayer* layer = 0;
+
+  if ( !p_layer )
+      CV_ERROR( CV_StsNullPtr, "Null double pointer" );
+
+  layer = (CvDNNDenseLayer*)p_layer;
+
+  if ( !layer )
+      return;
+  if ( !icvIsDenseLayer((CvDNNLayer*)layer) )
+      CV_ERROR( CV_StsBadArg, "Invalid layer" );
+
+  if (layer->WX) { cvReleaseMat( &layer->WX ); layer->WX=0; }
 
   __END__;
 }

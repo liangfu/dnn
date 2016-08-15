@@ -25,6 +25,8 @@
 
 #include "_dnn.h" 
 
+void icvCNNMaxPoolingClear( CvDNNLayer* p_layer );
+
 /*************************************************************************/
 ML_IMPL CvDNNLayer* cvCreateMaxPoolingLayer( 
     const int dtype, const char * name, const int visualize,
@@ -58,6 +60,7 @@ ML_IMPL CvDNNLayer* cvCreateMaxPoolingLayer(
     layer->visualize = visualize;
     layer->seq_length = 1;
     layer->mask = 0;
+    layer->clear= icvCNNMaxPoolingClear;
 
     CV_CALL(layer->sumX =
         cvCreateMat( n_output_planes*output_width*output_height, 1, CV_32FC1 ));
@@ -253,10 +256,35 @@ void icvCNNMaxPoolingRelease( CvDNNLayer** p_layer )
   if ( !icvIsMaxPoolingLayer((CvDNNLayer*)layer) )
       CV_ERROR( CV_StsBadArg, "Invalid layer" );
 
-  if (layer->mask      ){cvReleaseMat( &layer->mask       ); layer->mask      =0;}
+  if (layer->mask){cvReleaseMat( &layer->mask); layer->mask=0;}
   if (layer->WX){cvReleaseMat( &layer->WX ); layer->WX=0;}
-  if (layer->weights   ){cvReleaseMat( &layer->weights    ); layer->weights   =0;}
+  if (layer->weights){cvReleaseMat( &layer->weights); layer->weights=0;}
   cvFree( p_layer );
+
+  __END__;
+}
+
+void icvCNNMaxPoolingClear( CvDNNLayer* p_layer )
+{
+  CV_FUNCNAME("icvCNNMaxPoolingClear");
+  __BEGIN__;
+
+  CvDNNMaxPoolingLayer* layer = 0;
+
+  if ( !p_layer )
+      CV_ERROR( CV_StsNullPtr, "Null double pointer" );
+
+  layer = (CvDNNMaxPoolingLayer*)p_layer;
+
+  if ( !layer )
+      return;
+  if ( !icvIsMaxPoolingLayer((CvDNNLayer*)layer) )
+      CV_ERROR( CV_StsBadArg, "Invalid layer" );
+
+  if (layer->mask){cvReleaseMat( &layer->mask); layer->mask=0;}
+  // if (layer->WX){cvReleaseMat( &layer->WX ); layer->WX=0;}
+  // if (layer->weights){cvReleaseMat( &layer->weights); layer->weights=0;}
+  // cvFree( p_layer );
 
   __END__;
 }

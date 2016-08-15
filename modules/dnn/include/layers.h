@@ -35,6 +35,7 @@ typedef void (CV_CDECL *CvDNNLayerForward)
 typedef void (CV_CDECL *CvDNNLayerBackward)
     ( CvDNNLayer* layer, int t, const CvMat* X, const CvMat* dE_dY, CvMat* dE_dX);
 typedef void (CV_CDECL *CvDNNLayerRelease)(CvDNNLayer** layer);
+typedef void (CV_CDECL *CvDNNLayerClear)(CvDNNLayer* layer);
 
 #define CV_DNN_LAYER_FIELDS()                                         \
     /* Indicator of the layer's type */                               \
@@ -64,7 +65,7 @@ typedef void (CV_CDECL *CvDNNLayerRelease)(CvDNNLayer** layer);
                                                                         \
     /* activation function type for hidden layer activation, */         \
     /* either sigmoid,tanh,softmax or relu */                           \
-    char activation[20];                                           \
+    char activation[20];                                                \
     /* Learning rate at the first iteration */                          \
     float init_learn_rate;                                              \
     /* Dynamics of learning rate decreasing */                          \
@@ -86,6 +87,7 @@ typedef void (CV_CDECL *CvDNNLayerRelease)(CvDNNLayer** layer);
     CvDNNLayerForward  forward;                                         \
     CvDNNLayerBackward backward;                                        \
     CvDNNLayerRelease  release;                                         \
+    CvDNNLayerClear  clear;                                             \
     /* Pointers to the previous and next layers in the network */       \
     CvDNNLayer* prev_layer;                                             \
     CvDNNLayer* next_layer;                                             \

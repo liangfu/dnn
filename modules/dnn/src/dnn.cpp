@@ -442,7 +442,7 @@ void icvCNNModelPredict( const CvNetwork * network, const CvMat* testdata, CvMat
   float* result_data;
   CvMat etalon;
   int nsamples = testdata->rows;;
-  const CvDNNLayer * first_layer = network->first_layer;
+  CvDNNLayer * first_layer = network->first_layer;
   const CvDNNLayer * last_layer = network->get_last_layer(network);
   const int n_inputs   =
     first_layer->n_input_planes*first_layer->input_width*first_layer->input_height;
@@ -474,7 +474,7 @@ void icvCNNModelPredict( const CvNetwork * network, const CvMat* testdata, CvMat
   
   // split full test data set into mini batches
   X[0] = cvCreateMat( batch_size*first_layer->seq_length, n_inputs, CV_32F ); cvZero(X[0]);
-  for ( k = 0, layer = (CvDNNLayer*)first_layer; k < n_layers; k++, layer = layer->next_layer ){
+  for ( k = 0, layer = first_layer; k < n_layers; k++, layer = layer->next_layer ){
     int n_outputs = layer->n_output_planes*layer->output_height*layer->output_width;
     if (icvIsInputLayer(layer)){
       CV_CALL(X[k+1] = cvCreateMat( batch_size*layer->seq_length, n_outputs, CV_32F ));
@@ -485,7 +485,7 @@ void icvCNNModelPredict( const CvNetwork * network, const CvMat* testdata, CvMat
   for (sidx=0;sidx<nsamples-batch_size;sidx+=batch_size){
     cvGetRows( &samples_reshape_hdr, &X0_hdr, sidx, sidx+batch_size ); cvCopy(&X0_hdr,X[0]);
     cvGetRows( result,               &Xn_hdr, sidx, sidx+batch_size );
-    for ( k = 0, layer = (CvDNNLayer*)first_layer; k < n_layers; k++, layer = layer->next_layer ) {
+    for ( k = 0, layer = first_layer; k < n_layers; k++, layer = layer->next_layer ) {
       CV_CALL(layer->forward( layer, X[k], X[k+1] ));
     }cvCopy(X[n_layers],&Xn_hdr);
   }
@@ -494,7 +494,7 @@ void icvCNNModelPredict( const CvNetwork * network, const CvMat* testdata, CvMat
   // rest of the data set
   int bsize = nsamples-sidx;
   X[0] = cvCreateMat( bsize*first_layer->seq_length, n_inputs, CV_32F ); cvZero(X[0]);
-  for ( k = 0, layer = (CvDNNLayer*)first_layer; k < n_layers; k++, layer = layer->next_layer ){
+  for ( k = 0, layer = first_layer; k < n_layers; k++, layer = layer->next_layer ){
     int n_outputs = layer->n_output_planes*layer->output_height*layer->output_width;
     if (icvIsInputLayer(layer)){
       CV_CALL(X[k+1] = cvCreateMat( bsize*layer->seq_length, n_outputs, CV_32F ));
@@ -504,11 +504,14 @@ void icvCNNModelPredict( const CvNetwork * network, const CvMat* testdata, CvMat
   }
   cvGetRows( &samples_reshape_hdr, &X0_hdr, sidx, sidx+bsize ); cvCopy(&X0_hdr,X[0]);
   cvGetRows( result,               &Xn_hdr, sidx, sidx+bsize );
-  for ( k = 0, layer = (CvDNNLayer*)first_layer; k < n_layers; k++, layer = layer->next_layer ) {
+  for ( k = 0, layer = first_layer; k < n_layers; k++, layer = layer->next_layer ) {
     CV_CALL(layer->forward( layer, X[k], X[k+1] ));
   }cvCopy(X[n_layers],&Xn_hdr);
 
   cvReleaseMat(&samples);
+  for ( k = 0, layer = first_layer; k < n_layers; k++, layer = layer->next_layer ) {
+    if (layer->clear) { layer->clear( layer ); }
+  }
   for ( k = 0; k <= n_layers; k++ ) { cvReleaseMat( &X[k] ); }
   if (X){cvFree( &X );X=0;}
 

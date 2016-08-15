@@ -380,7 +380,6 @@ void icvCNNConvolutionBackward(
       }
     } // average loss from all task
   }
-  // CvMat * dE_dY_T = cvCreateMat(dE_dY->cols, dE_dY->rows, CV_32F); cvZero(dE_dY_T);
   CvMat * dE_dY_afder = cvCreateMat(dE_dY->rows, dE_dY->cols, CV_32F); cvZero(dE_dY_afder);
 
   CV_ASSERT( t >= 1 );
@@ -398,7 +397,6 @@ void icvCNNConvolutionBackward(
   cvZero( dY_dW );
 
   // compute gradient of the loss function with respect to X and W
-  // CvMat * Xt = cvCreateMat(X->cols,X->rows,CV_32F); cvTranspose(X,Xt);
 #pragma omp parallel for
   for ( int si = 0; si < batch_size; si++ ){
     int yloc = 0;
@@ -440,7 +438,6 @@ void icvCNNConvolutionBackward(
     } // ni
     } // no
   } // si
-  // cvReleaseMat(&Xt);
   cvScale(dY_dW,dY_dW,1.f/float(batch_size));
 
   // dE_dY_afder = (tanh'(WX))*dE_dY
@@ -448,15 +445,12 @@ void icvCNNConvolutionBackward(
     cvCopy(dE_dY,dE_dY_afder);
   }else if (!strcmp(layer->activation,"tanh")){ 
     cvTanhDer(layer->WX,dE_dY_afder);
-    // cvTranspose(dE_dY,dE_dY_T);
     cvMul(dE_dY_afder,dE_dY,dE_dY_afder);
   }else if (!strcmp(layer->activation,"sigmoid")){ 
     cvSigmoidDer(layer->WX,dE_dY_afder);
-    // cvTranspose(dE_dY,dE_dY_T);
     cvMul(dE_dY_afder,dE_dY,dE_dY_afder);
   }else if (!strcmp(layer->activation,"relu")){ 
     cvReLUDer(layer->WX,dE_dY_afder);
-    // cvTranspose(dE_dY,dE_dY_T);
     cvMul(dE_dY_afder,dE_dY,dE_dY_afder);
   }else{CV_ASSERT(false);}
 
@@ -472,14 +466,6 @@ void icvCNNConvolutionBackward(
   // update weights
   {
     CvMat dE_dW_mat;
-    // float eta;
-    // if ( layer->decay_type == CV_DNN_LEARN_RATE_DECREASE_LOG_INV ) {
-    //   eta = -layer->init_learn_rate/logf(1+(float)t);
-    // } else if ( layer->decay_type == CV_DNN_LEARN_RATE_DECREASE_SQRT_INV ) {
-    //   eta = -layer->init_learn_rate/sqrtf((float)t);
-    // } else {
-    //   eta = -layer->init_learn_rate/(float)t;
-    // }
     float eta = -layer->init_learn_rate*cvInvSqrt((float)t);
     cvReshape( dE_dW, &dE_dW_mat, 0, weights->rows );
     if (!layer->dE_dW){
