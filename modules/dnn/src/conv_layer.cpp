@@ -117,7 +117,7 @@ ML_IMPL CvDNNLayer* cvCreateConvolutionLayer(
 
 void icvCNNConvolutionForward( CvDNNLayer* _layer, const CvMat* X, CvMat* Y )
 {
-#if 0
+#if 1
   icvCNNConvolutionForwardDirect(_layer, X, Y);
 #else
   icvCNNConvolutionForwardFFT(_layer, X, Y);
@@ -178,8 +178,6 @@ void icvCNNConvolutionForwardDirect( CvDNNLayer* _layer, const CvMat* X, CvMat* 
   }
   }
   
-  // CV_ASSERT(cvCountNAN((CvMat*)X)<1);
-  
   // for ( no = 0; no < nYplanes; no++, Yplane += Ysize, w += n_weights_for_Yplane ){
 #pragma omp parallel for
   for ( int si = 0; si < nsamples; si++ ){
@@ -190,10 +188,11 @@ void icvCNNConvolutionForwardDirect( CvDNNLayer* _layer, const CvMat* X, CvMat* 
     for ( int ni = 0; ni < nXplanes; ni++, xptr += Xsize ){
       for ( int yy = 0; yy < Yheight; yy++ ){
       for ( int xx = 0; xx < Ywidth; xx++ ){
-        float WX = 0;
+        float WX = 0; int xrstep=Xwidth*yy+xx;
         for ( int ky = 0; ky < K; ky++ ){
-        for ( int kx = 0; kx < K; kx++ ){
-          WX += (xptr+Xwidth*yy+xx)[Xwidth*ky+kx]*wptr[K*ky+kx];
+        int xcstep=Xwidth*ky,wstep=K*ky;
+        for ( int kx=0; kx < K; kx++ ){
+          WX += (xptr+xrstep)[xcstep+kx]*wptr[wstep+kx];
         } // kx
         } // ky
         yptr[Ywidth*yy+xx] += WX + wptr[K*K]; // bias
@@ -290,7 +289,8 @@ void icvCNNConvolutionForwardFFT( CvDNNLayer* _layer, const CvMat* X, CvMat* Y )
     float * wptr = weights->data.fl+n_weights_for_Yplane*no;
     CvMat submat_hdr;
     CvMat B = cvMat(K,K,CV_32F,wptr);
-    cvGetSubRect( dft_B, &submat_hdr, cvRect(0,0,B.cols,B.rows)); cvCopy(&B,&submat_hdr); cvFlip(&submat_hdr,&submat_hdr,-1);
+    cvGetSubRect( dft_B, &submat_hdr, cvRect(0,0,B.cols,B.rows)); cvCopy(&B,&submat_hdr);
+    cvFlip(&submat_hdr,&submat_hdr,-1);
     cvGetSubRect( dft_B, &submat_hdr, cvRect(B.cols,0,dft_B->cols-B.cols,B.rows)); cvZero(&submat_hdr);
     cvDFT( dft_B, dft_B, CV_DXT_FORWARD, B.rows );
     for ( int ni = 0; ni < nXplanes; ni++, xptr += Xsize ){
@@ -303,17 +303,6 @@ void icvCNNConvolutionForwardFFT( CvDNNLayer* _layer, const CvMat* X, CvMat* Y )
     cvDFT( dft_A, dft_A, CV_DXT_INVERSE, C.rows+K-1 ); // calculate only the top part
     cvGetSubRect( dft_A, &submat_hdr, cvRect(K-1,K-1,C.cols,C.rows) );
     cvAddS(&submat_hdr, cvScalar(wptr[K*K]), &C); // bias
-    //   for ( int yy = 0; yy < Yheight; yy++ ){
-    //   for ( int xx = 0; xx < Ywidth; xx++ ){
-    //     float WX = 0;
-    //     for ( int ky = 0; ky < K; ky++ ){
-    //     for ( int kx = 0; kx < K; kx++ ){
-    //       WX += (xptr+Xwidth*yy+xx)[Xwidth*ky+kx]*wptr[K*ky+kx];
-    //     } // kx
-    //     } // ky
-    //     yptr[Ywidth*yy+xx] += WX + wptr[K*K];
-    //   } // xx
-    //   } // yy
     } // ni
     } // no
     if (dft_A){cvReleaseMat(&dft_A);dft_A=0;}
@@ -421,6 +410,7 @@ void icvCNNConvolutionBackward(
     for ( int ni = 0; ni < n_X_planes; ni++, xptr += X_plane_size, xloc += X_plane_size ){
       for ( int yy = 0; yy < Xheight - K + 1; yy++ ){
       for ( int xx = 0; xx < Xwidth - K + 1; xx++ ){
+#if 0
         for ( int ky = 0; ky < K; ky++ ){
         for ( int kx = 0; kx < K; kx++ ){
           int kidx = K*ky+kx; // weights
@@ -431,6 +421,19 @@ void icvCNNConvolutionBackward(
         } // ky
         } // kx
         int ridx = Ywidth*yy+xx;
+#else
+        int ridx=Ywidth*yy+xx;
+        int dydx_step=(yloc+ridx)*dY_dX->cols;
+        int dydw_step=(yloc+ridx)*dY_dW->cols;
+        for ( int ky = 0; ky < K; ky++ ){
+        int kstep=K*ky; int xstep=Xwidth*(yy+ky);
+        for ( int kx = 0; kx < K; kx++ ){
+          int kidx=kstep+kx, cidx=xstep+(xx+kx);
+          (dY_dX->data.fl+dydx_step)[xloc+cidx]=wptr[kidx];
+          (dY_dW->data.fl+dydw_step)[noKK+kidx]+=xptr[cidx];
+        } // ky
+        } // kx
+#endif
         CV_MAT_ELEM(*dY_dW, float, yloc+ridx, noKK+KK) += 1; // bias
       } // xx
       } // yy
