@@ -487,6 +487,7 @@ void icvCNNModelPredict( const CvNetwork * network, const CvMat* testdata, CvMat
     cvGetRows( result,               &Xn_hdr, sidx, sidx+batch_size );
     for ( k = 0, layer = first_layer; k < n_layers; k++, layer = layer->next_layer ) {
       CV_CALL(layer->forward( layer, X[k], X[k+1] ));
+      if (layer->clear) { layer->clear( layer ); }
     }cvCopy(X[n_layers],&Xn_hdr);
   }
   for ( k = 0; k <= n_layers; k++ ) { cvReleaseMat( &X[k] ); }
@@ -506,12 +507,13 @@ void icvCNNModelPredict( const CvNetwork * network, const CvMat* testdata, CvMat
   cvGetRows( result,               &Xn_hdr, sidx, sidx+bsize );
   for ( k = 0, layer = first_layer; k < n_layers; k++, layer = layer->next_layer ) {
     CV_CALL(layer->forward( layer, X[k], X[k+1] ));
+    if (layer->clear) { layer->clear( layer ); }
   }cvCopy(X[n_layers],&Xn_hdr);
 
   cvReleaseMat(&samples);
-  for ( k = 0, layer = first_layer; k < n_layers; k++, layer = layer->next_layer ) {
-    if (layer->clear) { layer->clear( layer ); }
-  }
+  // for ( k = 0, layer = first_layer; k < n_layers; k++, layer = layer->next_layer ) {
+  //   if (layer->clear) { layer->clear( layer ); }
+  // }
   for ( k = 0; k <= n_layers; k++ ) { cvReleaseMat( &X[k] ); }
   if (X){cvFree( &X );X=0;}
 
