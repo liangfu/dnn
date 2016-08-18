@@ -94,20 +94,20 @@ static void icvCNNTimeDistributedForward( CvDNNLayer * _layer, const CvMat * _X,
   const int output_height = layer->output_height;
   const int output_width = layer->output_width;
   const CvMat * X = (((CvDNNLayer*)input_layer)==layer->prev_layer)?_X:input_layer->Y;
-  const int batch_size = icvIsInputLayer((CvDNNLayer*)input_layer)?(X->rows/input_layer->seq_length):X->rows;
-  CV_ASSERT(Y->cols==layer->n_output_planes*layer->output_height*layer->output_width);
-  CV_ASSERT(batch_size*input_seqlen==X->rows && batch_size*output_seqlen==Y->rows); // batch_size
+  const int batch_size = X->rows;
+  CV_ASSERT(X->cols==layer->n_input_planes*input_height*input_width*input_seqlen);
+  CV_ASSERT(Y->cols==layer->n_output_planes*output_height*output_width*output_seqlen);
+  CV_ASSERT(batch_size==X->rows && batch_size==Y->rows); // batch_size
   CvMat * input_data = input_layer->Y;
   CV_ASSERT(CV_MAT_TYPE(input_data->type)==CV_32F);
   if (input_seqlen>output_seqlen){ // temporal sampling
-    CvMat input_data_submat;
+    CvMat X_submat_hdr;
     CvMat Y_submat_hdr;
     for (int bidx=0;bidx<batch_size;bidx++){
-      // cvGetCol(input_data,&input_data_submat,bidx*input_seqlen+time_index);
-      // cvGetCol(Y,&Y_submat_hdr,bidx);
-      cvGetRow(input_data,&input_data_submat,bidx*input_seqlen+time_index);
+      //cvGetRow(input_data,&input_data_submat,bidx*input_seqlen+time_index);
+      cvGetSubRect(input_data,&X_submat_hdr,cvRect(n_outputs*time_index,bidx,n_outputs,1));
       cvGetRow(Y,&Y_submat_hdr,bidx);
-      cvCopy(&input_data_submat,&Y_submat_hdr);
+      cvCopy(&X_submat_hdr,&Y_submat_hdr);
     }
   }else{
     CV_ERROR(CV_StsBadArg,"invalid layer definition.");

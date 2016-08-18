@@ -303,14 +303,14 @@ void icvTrainNetwork( CvNetwork* network,const CvMat* samples, const CvMat* resp
   // initialize input data
   CV_CALL(X = (CvMat**)cvAlloc( (n_layers+1)*sizeof(CvMat*) )); memset( X, 0, (n_layers+1)*sizeof(CvMat*) );
   CV_CALL(dE_dX = (CvMat**)cvAlloc( (n_layers+1)*sizeof(CvMat*) )); memset( dE_dX, 0, (n_layers+1)*sizeof(CvMat*) );
-  CV_CALL(X[0] = cvCreateMat( batch_size*first_layer->seq_length, n_inputs, CV_32F ));
-  CV_CALL(dE_dX[0] = cvCreateMat( batch_size*first_layer->seq_length, X[0]->cols, CV_32F ));
+  CV_CALL(X[0] = cvCreateMat( batch_size, n_inputs*first_layer->seq_length, CV_32F ));
+  CV_CALL(dE_dX[0] = cvCreateMat( batch_size, X[0]->cols*first_layer->seq_length, CV_32F ));
   cvZero(X[0]); cvZero(dE_dX[0]); cvZero(X0);
   for ( k = 0, layer = first_layer; k < n_layers; k++, layer = layer->next_layer ){
     int n_outputs = layer->n_output_planes*layer->output_height*layer->output_width;
     if (icvIsInputLayer(layer)){
-      CV_CALL(X[k+1] = cvCreateMat( batch_size*layer->seq_length, n_outputs, CV_32F )); 
-      CV_CALL(dE_dX[k+1] = cvCreateMat( batch_size*layer->seq_length, X[k+1]->cols, CV_32F ));
+      CV_CALL(X[k+1] = cvCreateMat( batch_size, n_outputs*layer->seq_length, CV_32F )); 
+      CV_CALL(dE_dX[k+1] = cvCreateMat( batch_size, X[k+1]->cols*layer->seq_length, CV_32F ));
     }else{
       CV_CALL(X[k+1] = cvCreateMat( batch_size, n_outputs, CV_32F )); 
       CV_CALL(dE_dX[k+1] = cvCreateMat( batch_size, X[k+1]->cols, CV_32F ));
@@ -322,9 +322,9 @@ void icvTrainNetwork( CvNetwork* network,const CvMat* samples, const CvMat* resp
   shuffle_idx = cvCreateMat(1,n_samples_train,CV_32S);
   for (int ii=0;ii<n_samples_train;ii++){CV_MAT_ELEM(*shuffle_idx,int,0,ii)=ii;}
   for ( int epoch_iter=0; epoch_iter<n_epochs; epoch_iter++) {
-    cvRandShuffle(shuffle_idx, &rng, 1.f);
-    cvReorderRows(samples_train,shuffle_idx);
-    cvReorderRows(response_train,shuffle_idx);
+  cvRandShuffle(shuffle_idx, &rng, 1.f);
+  cvReorderRows(samples_train,shuffle_idx);
+  cvReorderRows(response_train,shuffle_idx);
     
   for ( n = 0; n < n_samples_train; n+=batch_size )
   {
@@ -351,7 +351,8 @@ void icvTrainNetwork( CvNetwork* network,const CvMat* samples, const CvMat* resp
 
     // 3) Update weights by the gradient descent
     for ( k = n_layers; k > 0; k--, layer = layer->prev_layer ){
-      CV_CALL(layer->backward( layer, (epoch_iter*n_samples_train+n+batch_size)/batch_size , X[k-1], dE_dX[k], dE_dX[k-1] ));
+      int ttt = (epoch_iter*n_samples_train+n+batch_size)/batch_size;
+      CV_CALL(layer->backward( layer, ttt, X[k-1], dE_dX[k], dE_dX[k-1] ));
     }
 
     // 4) compute loss & accuracy, print progress
@@ -359,14 +360,15 @@ void icvTrainNetwork( CvNetwork* network,const CvMat* samples, const CvMat* resp
     float top1 = icvEvalAccuracy(last_layer, X[n_layers], expected);
     static double sumloss = 0; sumloss += trloss;
     static double sumacc  = 0; sumacc  += top1;
-    static const float log_freq = 10000.f;
+    static const float log_freq = 100.f;
     if (int(float((n/batch_size)*log_freq)/float(max_iter))<int(float(((n/batch_size)+1)*log_freq)/float(max_iter))){
       float progress=(epoch_iter*n_samples_train+n)/float(max_iter);
       float elapsed=timer.elapsed();
+      float accval=sumacc*batch_size/float(epoch_iter*n_samples_train+n);
+      float lossval=sumloss*batch_size/float(epoch_iter*n_samples_train+n);
       fprintf(stderr, "epoch: %d/%d, batch: %d/%d = %.1f%%, ",
               epoch_iter+1,n_epochs,n,n_samples_train,progress*100.f);
-      fprintf(stderr, "sumacc: %.1f%%[%.1f%%], sumloss: %f, ",
-              sumacc*batch_size/float(epoch_iter*n_samples_train+n),top1,sumloss*batch_size/float(epoch_iter*n_samples_train+n));
+      fprintf(stderr, "sumacc: %.1f%%[%.1f%%], sumloss: %f, ", accval,top1,lossval);
       fprintf(stderr,"eta: %s, ",time2str_concise(elapsed/progress*(1.-progress)));
       {
       CvMat * result_valid = cvCreateMat(response_valid->rows, response_valid->cols, CV_32F);
@@ -374,7 +376,11 @@ void icvTrainNetwork( CvNetwork* network,const CvMat* samples, const CvMat* resp
       float validacc = icvEvalAccuracy(last_layer, result_valid, response_valid);
       fprintf(stderr, "validacc: %.1f%%\n", validacc); cvReleaseMat(&result_valid);
       }
-      if (n_inputs<100){fprintf(stderr,"input:\n");cvPrintf(stderr,"%.0f ", X[0]);}
+      if (n_inputs<100){
+        CvMat X0_reshape_hdr; cvReshape(X[0],&X0_reshape_hdr,0,batch_size*first_layer->seq_length);
+        fprintf(stderr,"input:\n");// cvPrintf(stderr,"%.0f ", X[0]);
+        cvPrintf(stderr,"%.0f ", &X0_reshape_hdr);
+      }
       if (batch_size<10){
         {fprintf(stderr,"output:\n");cvPrintf(stderr,"%.1f ", X[n_layers]);}
         {fprintf(stderr,"expect:\n");cvPrintf(stderr,"%.1f ", expected);}
@@ -473,18 +479,18 @@ void icvCNNModelPredict( const CvNetwork * network, const CvMat* testdata, CvMat
   int sidx=0; CvMat X0_hdr,Xn_hdr;
   
   // split full test data set into mini batches
-  X[0] = cvCreateMat( batch_size*first_layer->seq_length, n_inputs, CV_32F ); cvZero(X[0]);
+  X[0] = cvCreateMat( batch_size, n_inputs*first_layer->seq_length, CV_32F ); cvZero(X[0]);
   for ( k = 0, layer = first_layer; k < n_layers; k++, layer = layer->next_layer ){
     int n_outputs = layer->n_output_planes*layer->output_height*layer->output_width;
     if (icvIsInputLayer(layer)){
-      CV_CALL(X[k+1] = cvCreateMat( batch_size*layer->seq_length, n_outputs, CV_32F ));
+      CV_CALL(X[k+1] = cvCreateMat( batch_size, n_outputs*layer->seq_length, CV_32F ));
     }else{
       CV_CALL(X[k+1] = cvCreateMat( batch_size, n_outputs, CV_32F ));
     }cvZero(X[k+1]);
   }
   for (sidx=0;sidx<nsamples-batch_size;sidx+=batch_size){
-    cvGetRows( &samples_reshape_hdr, &X0_hdr, sidx, sidx+batch_size ); cvCopy(&X0_hdr,X[0]);
-    cvGetRows( result,               &Xn_hdr, sidx, sidx+batch_size );
+    cvGetRows( samples, &X0_hdr, sidx, sidx+batch_size ); cvCopy(&X0_hdr,X[0]);
+    cvGetRows( result,  &Xn_hdr, sidx, sidx+batch_size );
     for ( k = 0, layer = first_layer; k < n_layers; k++, layer = layer->next_layer ) {
       CV_CALL(layer->forward( layer, X[k], X[k+1] ));
       if (layer->clear) { layer->clear( layer ); }
@@ -494,27 +500,24 @@ void icvCNNModelPredict( const CvNetwork * network, const CvMat* testdata, CvMat
 
   // rest of the data set
   int bsize = nsamples-sidx;
-  X[0] = cvCreateMat( bsize*first_layer->seq_length, n_inputs, CV_32F ); cvZero(X[0]);
+  X[0] = cvCreateMat( bsize, n_inputs*first_layer->seq_length, CV_32F ); cvZero(X[0]);
   for ( k = 0, layer = first_layer; k < n_layers; k++, layer = layer->next_layer ){
     int n_outputs = layer->n_output_planes*layer->output_height*layer->output_width;
     if (icvIsInputLayer(layer)){
-      CV_CALL(X[k+1] = cvCreateMat( bsize*layer->seq_length, n_outputs, CV_32F ));
+      CV_CALL(X[k+1] = cvCreateMat( bsize, n_outputs*layer->seq_length, CV_32F ));
     }else{
       CV_CALL(X[k+1] = cvCreateMat( bsize, n_outputs, CV_32F ));
     }cvZero(X[k+1]);
   }
-  cvGetRows( &samples_reshape_hdr, &X0_hdr, sidx, sidx+bsize ); cvCopy(&X0_hdr,X[0]);
-  cvGetRows( result,               &Xn_hdr, sidx, sidx+bsize );
+  cvGetRows( samples, &X0_hdr, sidx, sidx+bsize ); cvCopy(&X0_hdr,X[0]);
+  cvGetRows( result,  &Xn_hdr, sidx, sidx+bsize );
   for ( k = 0, layer = first_layer; k < n_layers; k++, layer = layer->next_layer ) {
     CV_CALL(layer->forward( layer, X[k], X[k+1] ));
     if (layer->clear) { layer->clear( layer ); }
   }cvCopy(X[n_layers],&Xn_hdr);
 
   cvReleaseMat(&samples);
-  // for ( k = 0, layer = first_layer; k < n_layers; k++, layer = layer->next_layer ) {
-  //   if (layer->clear) { layer->clear( layer ); }
-  // }
-  for ( k = 0; k <= n_layers; k++ ) { cvReleaseMat( &X[k] ); }
+  for ( k = 0; k <= n_layers; k++ ) { cvReleaseMat( &X[k] ); X[k]=0; }
   if (X){cvFree( &X );X=0;}
 
   __END__;
