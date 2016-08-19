@@ -119,11 +119,15 @@ void icvCNNSpatialTransformForward( CvDNNLayer * _layer, const CvMat* X, CvMat* 
       CV_MAT_ELEM(*p,float,0,0)=CV_MAT_ELEM(*p,float,1,1)=1.f;
       CV_MAT_ELEM(*p,float,0,2)=tx;
       CV_MAT_ELEM(*p,float,1,2)=ty; // fprintf(stderr,"--\n"); cvPrintf(stderr,"%f ",p);
-      CV_ASSERT(I->cols==input_height*input_width && CV_MAT_TYPE(I->type)==CV_32F);
-      CV_ASSERT(Y->cols==output_height*output_width && CV_MAT_TYPE(Y->type)==CV_32F);
-      CvMat srchdr = cvMat(input_height,input_width,CV_32F,I->data.ptr);
-      CvMat dsthdr = cvMat(output_height,output_width,CV_32F,Y->data.ptr);
-      icvWarp(&srchdr,&dsthdr,p); // CV_SHOW(&srchdr); CV_SHOW(&dsthdr);
+      int nchannels=I->cols/(input_height*input_width);
+      CV_ASSERT(I->cols==input_height*input_width*nchannels && CV_MAT_TYPE(I->type)==CV_32F);
+      CV_ASSERT(Y->cols==output_height*output_width*nchannels && CV_MAT_TYPE(Y->type)==CV_32F);
+      for (int chidx=0; chidx<nchannels; chidx++){
+        CvMat srchdr = cvMat(input_height,input_width,CV_32F,I->data.fl+input_height*input_width*chidx);
+        CvMat dsthdr = cvMat(output_height,output_width,CV_32F,Y->data.fl+output_height*output_width*chidx);
+        icvWarp(&srchdr,&dsthdr,p);
+      }
+      // CV_SHOW(&srchdr); CV_SHOW(&dsthdr);
     }else if (X->cols==3){ CV_ASSERT(X->rows==1); // crop and resize
     }else{ // resize image
       float scale = float(output_height)/float(input_height);

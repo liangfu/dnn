@@ -224,6 +224,13 @@ if (CMAKE_BUILD_TYPE STREQUAL Debug)
 	set_target_properties(transfer_svhn_dram PROPERTIES SUFFIX "_debug")
 endif()
 
+add_executable(transfer_cifar src/transfer_cifar.cpp  src/network.cpp)
+target_link_libraries(transfer_cifar cxcore cvutil cv highgui dnn 
+  ${FFMPEG_LIBRARIES} ${OPENMP_LIBRARIES})
+if (CMAKE_BUILD_TYPE STREQUAL Debug)
+	set_target_properties(transfer_cifar PROPERTIES SUFFIX "_debug")
+endif()
+
 add_executable(transfer_primate_convnet src/transfer_primate_convnet.cpp  src/network.cpp)
 target_link_libraries(transfer_primate_convnet cxcore cvutil cv highgui dnn 
   ${FFMPEG_LIBRARIES} ${OPENMP_LIBRARIES})

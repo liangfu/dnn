@@ -1,0 +1,19 @@
+<?xml version="1.0"?>
+<opencv_storage>
+<data>
+	<training_filename>data/cifar/attention_training.xml.gz</training_filename>
+	<response_filename>data/cifar/attention_response.xml.gz</response_filename>
+	<testing_filename> data/cifar/attention_testing.xml.gz</testing_filename>
+	<expected_filename>data/cifar/attention_expected.xml.gz</expected_filename>
+</data>
+<network>
+	<model_filename>data/cifar/attention_model.yml</model_filename>
+	<weights_filename>data/cifar/attention_weights.xml</weights_filename>
+	<lr_init>0.25</lr_init>
+	<decay_type>invsqrt</decay_type>
+	<maxiter>50000</maxiter>
+  <n_epochs>2</n_epochs>
+	<batch_size>1</batch_size>
+	<validate_ratio>0.02</validate_ratio>
+</network>
+</opencv_storage>

@@ -1,0 +1,28 @@
+%YAML:1.0
+layers:
+  - {type: Input, name: input1, n_input_planes: 3, input_height: 32, input_width: 32, seq_length: 1}
+  - {type: Dense, name: fc1, visualize: 0, n_output_planes: 128, activation: tanh}
+  - {type: SimpleRNN, name: rnn1, n_output_planes: 128, seq_length: 4, time_index: 0, activation: tanh}
+  - {type: RepeatVector, name: input2}
+
+  - {type: Dense, name: fc2, visualize: 0, n_output_planes: 2, activation: sigmoid}
+  - {type: SpatialTransform, name: crop1, input_layer: input1, n_output_planes: 3, output_height: 12, output_width: 12}
+  - {type: Dense, name: fc3, visualize: 0, n_output_planes: 128, activation: tanh}
+  - {predefined: rnn1, time_index: 1}
+  - {type: RepeatVector, name: input3}
+
+  - {type: Dense, name: fc4, visualize: 0, n_output_planes: 2, activation: sigmoid}
+  - {type: SpatialTransform, name: crop2, input_layer: input1, n_output_planes: 3, output_height: 12, output_width: 12}
+  - {type: Dense, name: fc5, visualize: 0, n_output_planes: 128, activation: tanh}
+  - {predefined: rnn1, time_index: 2}
+  - {type: RepeatVector, name: input4}
+
+  - {type: Dense, name: fc6, visualize: 0, n_output_planes: 2, activation: sigmoid}
+  - {type: SpatialTransform, name: crop2, input_layer: input1, n_output_planes: 3, output_height: 12, output_width: 12}
+  - {type: Dense, name: fc7, visualize: 0, n_output_planes: 128, activation: tanh}
+  - {predefined: rnn1, time_index: 3}
+  - {type: RepeatVector, name: input5}
+
+  - {type: Merge, name: merge1, input_layers: "input2,input3,input4,input5", n_output_planes: 512}
+  - {type: Dense, name: fc8, visualize: 0, n_output_planes: 10, activation: softmax}
+

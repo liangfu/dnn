@@ -10,6 +10,7 @@
 #include "network.h"
 
 typedef cv::CommandLineParser CvCommandLineParser;
+CvMat * cvLoadMat32f(const char * fname);
 
 int main(int argc, char * argv[])
 {
@@ -57,8 +58,8 @@ int main(int argc, char * argv[])
   fprintf(stderr,"Loading Dataset ...\n");
   
   if (!strcmp(task,"train")){
-    CvMat * training = (CvMat*)cvLoad((char*)training_filename);
-    CvMat * response = (CvMat*)cvLoad((char*)response_filename);
+    CvMat * training = cvLoadMat32f((char*)training_filename);
+    CvMat * response = cvLoadMat32f((char*)response_filename);
     if (!response || !training){
       LOGE("error: not all training files available, try transfer data first.\n"); return -1;
     }
@@ -72,8 +73,8 @@ int main(int argc, char * argv[])
     cvReleaseMat(&training);
     cvReleaseMat(&response);
   }else{
-    CvMat * testing  = (CvMat*)cvLoad((char*) testing_filename);
-    CvMat * expected = strlen(expected_filename)<1?0:(CvMat*)cvLoad((char*)expected_filename);
+    CvMat * testing  = cvLoadMat32f((char*) testing_filename);
+    CvMat * expected = strlen(expected_filename)<1?0:cvLoadMat32f((char*)expected_filename);
     if (!testing){
       LOGE("error: testing file not available, try transfer data first.\n"); return -1;
     }
@@ -93,4 +94,17 @@ int main(int argc, char * argv[])
   }
 
   return 0;
+}
+
+CvMat * cvLoadMat32f(const char * fname)
+{
+  CvMat * ret = 0;
+  CvMat * mat = (CvMat*)cvLoad(fname);
+  if (!mat){return 0;}
+  if (CV_MAT_TYPE(mat->type)!=CV_32F){
+    ret = cvCreateMat(mat->rows,mat->cols,CV_32F);
+    cvConvert(mat,ret);
+    cvReleaseMat(&mat);
+    return ret;
+  }else{return mat;}
 }
