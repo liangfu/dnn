@@ -13,7 +13,7 @@
 	<decay_type>invsqrt</decay_type>
 	<maxiter>50000</maxiter>
   <n_epochs>2</n_epochs>
-	<batch_size>2</batch_size>
+	<batch_size>20</batch_size>
 	<validate_ratio>0.02</validate_ratio>
 </network>
 </opencv_storage>
