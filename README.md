@@ -13,6 +13,7 @@ while removing some components that is not tightly related to the deep learning 
 Comparing to Caffe and many other implements, DNN is relatively independent to third-party libraries, 
 (Yes, we don't require Boost and Database systems to be install before crafting your own network models)
 and it can be more easily portable to mobile systems, like iOS, Android and RaspberryPi etc.
+And more importantly, DNN is powerful! It supports both convolutional networks and recurrent networks, as well as combinations of the two.
 
 ## Available Modules
 
@@ -29,25 +30,27 @@ The following modules are implemented in current version:
  `InputLayer`          | for storing original input images
  `ConvolutionLayer`    | performs 2d convolution upon images
  `MaxPoolingLayer`     | performs max-pooling operation
- `DenseLayer`          | fully connected Layer (with activation options, e.g. tanh, sigmoid, softmax, relu etc.)
+ `DenseLayer`          | fully connected Layer (optionally, perform activation and dropout)
  `SimpleRNNLayer`      | for processing sequence data
  `MergeLayer`          | for combining output results from multiple different layers
 
 More modules will be available online !
 
-### Network Definition
+### Options To Define A Specific Layer
 
-Layer Type | Attributes
---- | ---
-`Input` | `name`,`n_input_planes`,`input_height`,`input_width`,`seq_length`
-`Convolution` | `name`,`visualize`,`n_output_planes`,`ksize`
-`MaxPooling` | `name`,`visualize`,`ksize`
-`Dense` | `name`,`input_layer(optional)`,`visualize`,`n_output_planes`,`activation_type`
-`SimpleRNN` | `name`,`n_output_planes`,`seq_length`,`time_index`,`activation_type`
-`Merge` | `name`,`input_layers`,`visualize`,`n_output_planes`
+Layer Type         | Attributes
+---                | ---
+`Input`            | `name`,`n_input_planes`,`input_height`,`input_width`,`seq_length`
+`Convolution`      | `name`,`visualize`,`n_output_planes`,`ksize`
+`MaxPooling`       | `name`,`visualize`,`ksize`
+`SpatialTransform` | `name`,`input_layer`,`n_output_planes`,`output_height`,`output_width`
+`Dense`            | `name`,`input_layer(optional)`,`visualize`,`n_output_planes`,`activation`
+`TimeDistributed`  | `name`,`n_output_planes`,`output_height`,`output_width`,`seq_length`,`time_index`
+`SimpleRNN`        | `name`,`n_output_planes`,`seq_length`,`time_index`,`activation`
+`Merge`            | `name`,`input_layers`,`visualize`,`n_output_planes`
 
 With the above parameters given in YAML format, one can simply define a network. 
-For instance, a lenet model can be:
+For instance, a lenet model can be defined as:
 
 ```yaml
 %YAML:1.0
@@ -57,7 +60,7 @@ layers:
   - {type: MaxPooling, name: pool1, visualize: 0, ksize: 2, stride: 2}
   - {type: Convolution, name: conv2, visualize: 0, n_output_planes: 16, ksize: 5, stride: 1}
   - {type: MaxPooling, name: pool2, visualize: 0, ksize: 2, stride: 2}
-  - {type: Dense, name: fc1, visualize: 0, n_output_planes: 10, activation_type: tanh}
+  - {type: Dense, name: fc1, visualize: 0, n_output_planes: 10, activation: softmax}
 ```
 
 Then, by ruuning network training program:
