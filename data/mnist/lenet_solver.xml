@@ -14,7 +14,7 @@
 	<decay_type>invsqrt</decay_type>
 	<maxiter>500</maxiter>
 	<batch_size>20</batch_size>
-  <n_epochs>2</n_epochs>
+  <n_epochs>1</n_epochs>
 	<validate_ratio>0.02</validate_ratio>
 	<momentum_ratio>0.9</momentum_ratio>
 </network>
