@@ -1,0 +1,10 @@
+%YAML:1.0
+layers:
+  - {type: Input, name: input1, n_input_planes: 3, input_height: 32, input_width: 32, seq_length: 1}
+  - {type: Convolution, name: conv1, visualize: 0, activation: relu, n_output_planes: 20, ksize: 5, stride: 1}
+  - {type: MaxPooling, name: pool1, visualize: 0, ksize: 2, stride: 2}
+  - {type: Convolution, name: conv2, visualize: 0, activation: relu, n_output_planes: 50, ksize: 5, stride: 1}
+  - {type: MaxPooling, name: pool2, visualize: 0, ksize: 2, stride: 2}
+  - {type: Dense, name: fc1, visualize: 0, n_output_planes: 120, activation: relu}
+  - {type: Dense, name: fc2, visualize: 0, n_output_planes: 10, activation: softmax}
+
